@@ -1,276 +1,399 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { CalendarRange, Sun, Moon, ListTodo, CalendarClock, Edit3, Eye, Settings as SettingsIcon } from 'lucide-vue-next'
-import TodoManagerList from './components/TodoManagerList.vue'
-import TaskManagerList from './components/TaskManagerList.vue'
-import Editor from './components/Editor/index.vue'
-import CanvasViewer from './components/CanvasViewer.vue'
-import VoiceAssistant from './components/VoiceAssistant.vue'
-import SettingsModal from './components/SettingsModal.vue'
+import TodoForm from './components/TodoForm.vue'
+import TodoList from './components/TodoList.vue'
+import TodoStats from './components/TodoStats.vue'
+import CalendarPlanner from './components/CalendarPlanner.vue'
+import ScheduleManager from './components/ScheduleManager.vue'
+import { 
+  Sun, 
+  Moon, 
+  CheckSquare, 
+  Home, 
+  Inbox, 
+  CalendarDays, 
+  BarChart3 
+} from 'lucide-vue-next'
 
-const currentMainView = ref<'timeline' | 'todos' | 'tasks'>('timeline')
-const isEditorMode = ref(false)
-const isDark = ref(false) // Default to light theme
-const isSettingsOpen = ref(false)
+// View Switcher logic: 'home' | 'backlog' | 'schedule' | 'dashboard'
+const currentView = ref<'home' | 'backlog' | 'schedule' | 'dashboard'>('home')
 
-// --- Theme toggle ---
+// Theme toggle logic
+const isDark = ref(true)
+
+const initTheme = () => {
+  const savedTheme = localStorage.getItem('antigravity-theme')
+  if (savedTheme) {
+    isDark.value = savedTheme === 'dark'
+  } else {
+    isDark.value = window.matchMedia('(prefers-color-scheme: dark)').matches
+  }
+  updateThemeAttr()
+}
+
 const toggleTheme = () => {
   isDark.value = !isDark.value
-  document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light')
+  localStorage.setItem('antigravity-theme', isDark.value ? 'dark' : 'light')
+  updateThemeAttr()
+}
+
+const updateThemeAttr = () => {
+  if (isDark.value) {
+    document.documentElement.setAttribute('data-theme', 'dark')
+  } else {
+    document.documentElement.removeAttribute('data-theme')
+  }
 }
 
 onMounted(() => {
-  // Initialize light mode
-  document.documentElement.setAttribute('data-theme', 'light')
+  initTheme()
 })
 </script>
 
 <template>
-  <div class="app-layout">
-    <!-- Header Banner -->
+  <div class="app-wrapper">
+    <!-- Premium Header -->
     <header class="app-header glass-panel">
-      <div class="logo-group">
-        <CalendarRange class="logo-icon" />
-        <h1>太空时间轴</h1>
-        <span class="view-tag" :class="{ 'editor-mode': isEditorMode && currentMainView === 'timeline' }">
-          {{ currentMainView === 'timeline' ? '时间轴' : currentMainView === 'todos' ? '待办管理' : '任务管理' }}{{ currentMainView === 'timeline' ? ` · ${isEditorMode ? '编辑' : '浏览'}` : '' }}
-        </span>
+      <div class="header-logo">
+        <div class="logo-circle">
+          <CheckSquare class="logo-icon" />
+        </div>
+        <div class="logo-text">
+          <h1>ANTIGRAVITY <span class="logo-gradient">TODO</span></h1>
+          <p class="logo-sub">轻量 · 高效 · 未来感日程待办面板</p>
+        </div>
       </div>
 
-      <div class="actions-group">
-        <!-- Main View Switcher tabs (Timeline only) -->
-        <div class="main-view-switcher">
+      <!-- View & Theme Action Control -->
+      <div class="header-actions">
+        <!-- Four-tab View switcher buttons -->
+        <div class="view-switcher-group glass-card">
           <button 
-            class="btn-switch-tab" 
-            :class="{ active: currentMainView === 'timeline' }" 
-            @click="currentMainView = 'timeline'"
+            @click="currentView = 'home'" 
+            class="view-tab-btn" 
+            :class="{ 'active': currentView === 'home' }"
           >
-            <CalendarRange class="action-icon" />
-            <span>时间轴</span>
+            <Home class="tab-btn-icon" />
+            <span>日程</span>
+          </button>
+          <button 
+            @click="currentView = 'backlog'" 
+            class="view-tab-btn" 
+            :class="{ 'active': currentView === 'backlog' }"
+          >
+            <Inbox class="tab-btn-icon" />
+            <span>待办</span>
+          </button>
+          <button 
+            @click="currentView = 'schedule'" 
+            class="view-tab-btn" 
+            :class="{ 'active': currentView === 'schedule' }"
+          >
+            <CalendarDays class="tab-btn-icon" />
+            <span>任务</span>
+          </button>
+          <button 
+            @click="currentView = 'dashboard'" 
+            class="view-tab-btn" 
+            :class="{ 'active': currentView === 'dashboard' }"
+          >
+            <BarChart3 class="tab-btn-icon" />
+            <span>看板</span>
           </button>
         </div>
 
-        <!-- Mode toggle -->
+        <!-- Light/Dark theme switcher -->
         <button 
-          v-if="currentMainView === 'timeline'"
-          class="btn-action btn-mode-toggle" 
-          :class="{ 'active': isEditorMode }"
-          @click="isEditorMode = !isEditorMode"
+          @click="toggleTheme" 
+          class="theme-toggle-btn glass-card pulse-hover"
+          :title="isDark ? '切换亮色模式' : '切换暗色模式'"
         >
-          <Edit3 v-if="!isEditorMode" class="action-icon" />
-          <Eye v-else class="action-icon" />
-          <span>{{ isEditorMode ? '退出编辑' : '进入编辑' }}</span>
+          <Sun v-if="isDark" class="theme-icon sun" />
+          <Moon v-else class="theme-icon moon" />
         </button>
-
-        <!-- Theme toggle -->
-        <button class="btn-action theme-toggle" @click="toggleTheme" :title="isDark ? '切为明亮模式' : '切为暗黑模式'">
-          <Sun v-if="isDark" class="action-icon" />
-          <Moon v-else class="action-icon" />
-        </button>
-
-        <!-- Settings toggle -->
-        <button class="btn-action settings-toggle" @click="isSettingsOpen = true" title="AI 设置">
-          <SettingsIcon class="action-icon" />
-        </button>
-
-        <!-- Management View Switcher tabs -->
-        <div class="main-view-switcher">
-          <button 
-            class="btn-switch-tab" 
-            :class="{ active: currentMainView === 'todos' }" 
-            @click="currentMainView = 'todos'"
-          >
-            <ListTodo class="action-icon" />
-            <span>待办管理</span>
-          </button>
-          <button 
-            class="btn-switch-tab" 
-            :class="{ active: currentMainView === 'tasks' }" 
-            @click="currentMainView = 'tasks'"
-          >
-            <CalendarClock class="action-icon" />
-            <span>任务管理</span>
-          </button>
-        </div>
       </div>
     </header>
 
-    <!-- Main Workspace -->
-    <main class="main-workspace">
-      <!-- 1. Timeline / Canvas -->
-      <template v-if="currentMainView === 'timeline'">
-        <Editor v-slot="{ selectedTaskId }" v-if="isEditorMode" />
-        <CanvasViewer v-else />
+    <!-- Main Workspace Area -->
+    <main 
+      class="app-main" 
+      :class="[
+        `view-layout-${currentView}`
+      ]"
+    >
+      <!-- 1. Home View: Calendar Planner Grid (includes backlog aside) -->
+      <template v-if="currentView === 'home'">
+        <div class="full-width-workspace">
+          <CalendarPlanner />
+        </div>
       </template>
 
-      <!-- 2. Todo List management -->
-      <TodoManagerList v-else-if="currentMainView === 'todos'" />
+      <!-- 2. Backlog View: Todo List (full-width) -->
+      <template v-else-if="currentView === 'backlog'">
+        <div class="full-width-workspace">
+          <TodoList />
+        </div>
+      </template>
 
-      <!-- 3. Task List management -->
-      <TaskManagerList v-else-if="currentMainView === 'tasks'" />
+      <!-- 3. Schedule View: Date Grouped Agenda list -->
+      <template v-else-if="currentView === 'schedule'">
+        <div class="full-width-workspace">
+          <ScheduleManager />
+        </div>
+      </template>
+
+      <!-- 4. Dashboard View: Stats analytics dashboard -->
+      <template v-else-if="currentView === 'dashboard'">
+        <div class="full-width-workspace">
+          <TodoStats />
+        </div>
+      </template>
     </main>
 
-    <!-- Global Floating Actions & Modals -->
-    <VoiceAssistant />
-    <SettingsModal :is-open="isSettingsOpen" @close="isSettingsOpen = false" />
+    <!-- Global Floating Action Button & Form -->
+    <TodoForm :current-view="currentView" />
+
+
   </div>
 </template>
 
 <style>
-/* Global App style injection */
-@import './styles/theme.css';
-
-.app-layout {
+/* Reset scroll behaviors, sizing and grid structures */
+.app-wrapper {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 16px;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  padding: 20px;
-  gap: 16px;
-  max-width: 1440px;
-  margin: 0 auto;
-  box-sizing: border-box;
+  gap: 24px;
+  min-height: 100vh;
 }
 
+/* Header style with premium blur and alignment */
 .app-header {
-  height: 64px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 24px;
-  flex-shrink: 0;
+  padding: 16px 28px;
+  border-radius: 24px !important;
 }
 
-.logo-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.logo-icon {
-  width: 24px;
-  height: 24px;
-  color: var(--color-primary-light);
-}
-
-.logo-group h1 {
-  font-size: 1.15rem;
-  font-weight: 800;
-  letter-spacing: 1px;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.view-tag {
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: var(--color-success-alpha);
-  color: var(--color-success);
-  border: 1px solid rgba(34, 197, 94, 0.1);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.view-tag.editor-mode {
-  background: var(--color-warning-alpha);
-  color: var(--color-warning);
-  border: 1px solid rgba(245, 158, 11, 0.1);
-}
-
-.actions-group {
+.header-logo {
   display: flex;
   align-items: center;
   gap: 16px;
 }
 
-.main-view-switcher {
-  display: flex;
-  background: var(--input-bg);
-  padding: 4px;
-  border-radius: 12px;
-  border: 1px solid var(--border-glass-subtle);
-  gap: 4px;
-}
-
-.btn-switch-tab {
-  height: 32px;
-  padding: 0 16px;
-  border-radius: 8px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--text-secondary);
-  background: transparent;
-  border: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-switch-tab:hover {
-  color: var(--text-primary);
-  background: var(--border-glass);
-}
-
-.btn-switch-tab.active {
-  background: var(--bg-glass-solid);
-  color: var(--color-primary-light);
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
-  border: 1px solid var(--border-glass-subtle);
-}
-
-.btn-action {
-  height: 38px;
-  padding: 0 14px;
-  background: var(--border-glass);
-  border: 1px solid var(--border-glass-subtle);
-  color: var(--text-secondary);
-  border-radius: 10px;
-}
-
-.btn-action:hover {
-  background: var(--card-hover-bg);
-  color: var(--text-primary);
-}
-
-.btn-mode-toggle.active {
-  background: var(--color-primary);
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
-  border-color: transparent;
-}
-
-.btn-mode-toggle.active:hover {
-  background: var(--color-primary-light);
-  color: #fff;
-}
-
-.btn-mode-toggle span {
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
-.theme-toggle {
-  width: 38px;
-  padding: 0;
+.logo-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.4);
 }
 
-.action-icon {
+.logo-icon {
+  width: 22px;
+  height: 22px;
+  color: #ffffff;
+}
+
+.logo-text h1 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.logo-gradient {
+  background: linear-gradient(to right, var(--color-primary-light), var(--color-info));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.logo-sub {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+/* Theme switch btn with glass card glow */
+.theme-toggle-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border-glass-subtle);
+  background: var(--bg-glass-solid);
+}
+
+.theme-toggle-btn:hover {
+  transform: translateY(-2px);
+}
+
+.theme-icon {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.5s ease;
+}
+
+.sun {
+  color: var(--color-warning);
+}
+
+.moon {
+  color: var(--color-primary);
+}
+
+/* Main Grid Layout */
+.app-main {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.app-main.split-layout {
+  grid-template-columns: 340px 1fr;
+}
+
+.full-width-workspace {
+  width: 100%;
+}
+
+.sidebar-section {
+  position: sticky;
+  top: 24px;
+}
+
+.main-content-section {
+  min-width: 0; /* Prevents flex/grid overflows */
+}
+
+/* View switcher styles inside header */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.view-switcher-group {
+  display: flex;
+  background: var(--input-bg);
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid var(--border-glass-subtle);
+  box-shadow: none;
+}
+
+.view-tab-btn {
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.view-tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.view-tab-btn.active {
+  background: var(--bg-glass-solid);
+  color: var(--color-primary);
+  box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+.tab-btn-icon {
   width: 16px;
   height: 16px;
 }
 
-/* Workspace layout */
-.main-workspace {
-  display: flex;
-  flex: 1;
-  gap: 16px;
-  overflow: hidden;
-  height: calc(100vh - 120px);
+/* Footer layout */
+.app-footer {
+  margin-top: auto;
+  padding: 24px 0 12px;
+  text-align: center;
+}
+
+.footer-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.footer-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--color-primary-light);
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 968px) {
+  .app-main.split-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .sidebar-section {
+    position: static;
+  }
+  
+  .header-actions {
+    flex-wrap: wrap-reverse;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 640px) {
+  .view-switcher-group {
+    padding: 2px;
+  }
+  
+  .view-tab-btn {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    gap: 4px;
+  }
+  
+  .view-tab-btn span {
+    display: none; /* Hide text on extra small mobile to save space */
+  }
+}
+
+@media (max-width: 576px) {
+  .app-header {
+    padding: 14px 20px;
+    border-radius: 18px !important;
+  }
+  
+  .logo-text h1 {
+    font-size: 1.1rem;
+  }
+  
+  .logo-circle {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+  }
+  
+  .logo-icon {
+    width: 18px;
+    height: 18px;
+  }
 }
 </style>
