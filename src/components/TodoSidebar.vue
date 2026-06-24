@@ -1,0 +1,356 @@
+<template>
+  <aside class="todo-sidebar glass-panel" :class="{ 'is-collapsed': isCollapsed }">
+    
+    <!-- Collapsed View -->
+    <div v-if="isCollapsed" class="collapsed-view">
+      <button class="btn-icon" @click="isCollapsed = false" title="展开备忘录">
+        <PanelLeftOpen class="icon-sm text-primary" />
+      </button>
+      <button class="btn-icon" @click="$emit('open-settings')" title="全局设置">
+        <SettingsIcon class="icon-sm" />
+      </button>
+    </div>
+
+    <!-- Expanded View -->
+    <div v-else class="expanded-view">
+      <div class="sidebar-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <h2>备忘录 (待办)</h2>
+          <span class="count-badge">{{ activeTodos.length }}</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <button class="btn-icon" @click="$emit('open-settings')" title="全局设置">
+            <SettingsIcon class="icon-sm" />
+          </button>
+          <button class="btn-icon" @click="isCollapsed = true" title="收起备忘录">
+            <PanelRightClose class="icon-sm text-secondary" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Add Todo Input -->
+    <form @submit.prevent="handleCreateTodo" class="add-todo-form">
+      <input 
+        v-model="newTodoTitle" 
+        type="text" 
+        placeholder="添加新备忘录..." 
+        class="glass-input"
+      />
+      <button type="submit" class="btn-add">
+        <Plus class="icon-sm" />
+      </button>
+    </form>
+
+    <!-- Draggable Todo List -->
+    <draggable 
+      v-model="activeTodos" 
+      item-key="id" 
+      class="todo-list" 
+      ref="draggableContainer"
+      handle=".drag-handle"
+      ghost-class="ghost-todo"
+      :animation="200"
+    >
+      <template #item="{ element: todo }">
+        <div class="todo-item glass-card">
+          <!-- SortableJS Handle -->
+          <div class="drag-handle" title="上下拖拽排序">
+            <GripVertical class="icon-sm" />
+          </div>
+          
+          <!-- FullCalendar Draggable Target -->
+          <div 
+            class="todo-content draggable-event" 
+            title="往左侧拖拽进行排期"
+            :data-event="JSON.stringify({
+              title: todo.title,
+              id: todo.id,
+              todoId: todo.id,
+              color: 'blue'
+            })"
+          >
+            <span class="todo-title">{{ todo.title }}</span>
+          </div>
+
+          <button class="btn-delete" @click="deleteTodo(todo.id)" title="删除备忘录">
+            <Trash2 class="icon-sm" />
+          </button>
+        </div>
+      </template>
+      
+      <template #header v-if="activeTodos.length === 0">
+        <p class="empty-state">目前没有待办事项</p>
+      </template>
+    </draggable>
+    </div>
+  </aside>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { Plus, GripVertical, Trash2, Settings as SettingsIcon, PanelRightClose, PanelLeftOpen } from 'lucide-vue-next'
+import { useTodos } from '../composables/useTodos'
+import { Draggable } from '@fullcalendar/interaction'
+import draggable from 'vuedraggable'
+
+const { todos, addTodo, deleteTodo } = useTodos()
+
+defineEmits<{
+  (e: 'open-settings'): void
+}>()
+
+const isCollapsed = ref(false)
+const newTodoTitle = ref('')
+const draggableContainer = ref<any>(null)
+let fcDraggableInstance: Draggable | null = null
+
+const activeTodos = computed({
+  get: () => todos.value.filter(t => !t.completed),
+  set: (val) => {
+    const completed = todos.value.filter(t => t.completed)
+    todos.value = [...val, ...completed]
+  }
+})
+
+const handleCreateTodo = () => {
+  if (!newTodoTitle.value.trim()) return
+  addTodo({
+    title: newTodoTitle.value.trim(),
+    description: '',
+    category: 'other',
+    priority: 'medium'
+  })
+  newTodoTitle.value = ''
+}
+
+onMounted(() => {
+  // Use $el to get the DOM element from the vuedraggable component
+  const containerEl = draggableContainer.value?.$el
+  if (containerEl) {
+    fcDraggableInstance = new Draggable(containerEl, {
+      itemSelector: '.draggable-event',
+      eventData: function(eventEl) {
+        return JSON.parse(eventEl.getAttribute('data-event') || '{}')
+      }
+    })
+  }
+})
+
+onUnmounted(() => {
+  if (fcDraggableInstance) {
+    fcDraggableInstance.destroy()
+  }
+})
+</script>
+
+<style scoped>
+.todo-sidebar {
+  width: 320px;
+  background: var(--bg-glass-solid);
+  backdrop-filter: var(--blur-glass);
+  -webkit-backdrop-filter: var(--blur-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-glass);
+  transition: width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  flex-shrink: 0;
+}
+
+.todo-sidebar.is-collapsed {
+  width: 64px;
+}
+
+.collapsed-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0;
+  gap: 20px;
+  height: 100%;
+}
+
+.expanded-view {
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  height: 100%;
+}
+
+.sidebar-header {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-glass);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-icon:hover {
+  background: var(--card-hover-bg);
+  color: var(--text-primary);
+}
+
+.sidebar-header h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.count-badge {
+  background: var(--color-primary-alpha);
+  color: var(--color-primary);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.add-todo-form {
+  padding: 16px;
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-glass-subtle);
+}
+
+.glass-input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-glass);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.glass-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-alpha);
+}
+
+.btn-add {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-add:hover {
+  background: var(--color-primary-light);
+  transform: translateY(-1px);
+}
+
+.todo-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Custom scrollbar for todo list */
+.todo-list::-webkit-scrollbar {
+  width: 6px;
+}
+.todo-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.todo-list::-webkit-scrollbar-thumb {
+  background: var(--border-glass-subtle);
+  border-radius: 4px;
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-top: 32px;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-glass);
+  gap: 12px;
+  cursor: grab;
+  transition: all 0.2s ease;
+}
+
+.todo-item:hover {
+  border-color: var(--color-primary-alpha);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.todo-item:active {
+  cursor: grabbing;
+}
+
+.drag-handle {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.todo-content {
+  flex: 1;
+  overflow: hidden;
+}
+
+.todo-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-delete {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-delete:hover {
+  background: rgba(244, 63, 94, 0.1);
+  color: var(--color-danger);
+}
+</style>

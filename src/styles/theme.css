@@ -27,8 +27,8 @@
   --bg-app: #f5f7fb;
   --bg-glass: rgba(255, 255, 255, 0.45);
   --bg-glass-solid: rgba(255, 255, 255, 0.75);
-  --border-glass: rgba(255, 255, 255, 0.5);
-  --border-glass-subtle: rgba(255, 255, 255, 0.3);
+  --border-glass: rgba(0, 0, 0, 0.08);
+  --border-glass-subtle: rgba(0, 0, 0, 0.04);
   --text-primary: #1e1e2f;
   --text-secondary: #64748b;
   --text-muted: #94a3b8;
@@ -76,7 +76,7 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   transition: background-color 0.4s ease, background-image 0.4s ease, color 0.4s ease;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 /* Glassmorphism Panel Base Utility */
@@ -103,7 +103,7 @@ body {
 }
 
 .glass-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
   background: var(--card-hover-bg);
   box-shadow: 0 12px 24px 0 var(--shadow-color);
   border-color: rgba(255, 255, 255, 0.15);
@@ -115,10 +115,10 @@ input, select, textarea {
   background: var(--input-bg);
   border: 1px solid var(--border-glass);
   border-radius: 12px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   color: var(--text-primary);
   outline: none;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   transition: all 0.25s ease;
 }
 
@@ -146,76 +146,20 @@ button:active {
   transform: scale(0.96);
 }
 
-/* Scrollbars */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border-glass);
-  border-radius: 8px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
-}
-
-/* Animations & Transitions */
-@keyframes pulse-subtle {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.03);
-    opacity: 0.95;
-  }
-}
-
-.pulse-hover:hover {
-  animation: pulse-subtle 2s infinite ease-in-out;
-}
-
-/* Vue List Transitions */
-.list-enter-active,
-.list-leave-active {
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.list-enter-from {
-  opacity: 0;
-  transform: translateY(20px) scale(0.95);
-}
-
-.list-leave-to {
-  opacity: 0;
-  transform: translateY(-20px) scale(0.9);
-}
-
-/* Smooth Reordering */
-.list-move {
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
 /* Categories Badge colors */
-.cat-work { --cat-color: #3b82f6; --cat-bg: rgba(59, 130, 246, 0.15); }
-.cat-personal { --cat-color: #ec4899; --cat-bg: rgba(236, 72, 153, 0.15); }
-.cat-fitness { --cat-color: #10b981; --cat-bg: rgba(16, 185, 129, 0.15); }
-.cat-ideas { --cat-color: #8b5cf6; --cat-bg: rgba(139, 92, 246, 0.15); }
-.cat-shopping { --cat-color: #f59e0b; --cat-bg: rgba(245, 158, 11, 0.15); }
-.cat-other { --cat-color: #64748b; --cat-bg: rgba(100, 116, 139, 0.15); }
+.cat-work { --cat-color: #3b82f6; --cat-bg: rgba(59, 130, 246, 0.12); }
+.cat-personal { --cat-color: #ec4899; --cat-bg: rgba(236, 72, 153, 0.12); }
+.cat-fitness { --cat-color: #10b981; --cat-bg: rgba(16, 185, 129, 0.12); }
+.cat-ideas { --cat-color: #8b5cf6; --cat-bg: rgba(139, 92, 246, 0.12); }
+.cat-shopping { --cat-color: #f59e0b; --cat-bg: rgba(245, 158, 11, 0.12); }
+.cat-other { --cat-color: #64748b; --cat-bg: rgba(100, 116, 139, 0.12); }
 
 .category-badge {
   background: var(--cat-bg);
   color: var(--cat-color);
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 9999px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -224,20 +168,19 @@ button:active {
 }
 
 /* Color Selector Presets */
-.color-selectors, .color-selectors-mini {
+.color-selectors {
   display: flex;
   gap: 8px;
   align-items: center;
-  margin-top: 4px;
 }
 
 .color-dot-btn {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   border: 2px solid transparent;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
   padding: 0;
   display: inline-block;
   flex-shrink: 0;
@@ -249,8 +192,7 @@ button:active {
 
 .color-dot-btn.selected {
   border-color: var(--text-primary) !important;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
-  transform: scale(1.1);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
 }
 
 .color-violet { background-color: #8b5cf6; }
@@ -259,4 +201,3 @@ button:active {
 .color-amber { background-color: #f59e0b; }
 .color-rose { background-color: #f43f5e; }
 .color-cyan { background-color: #06b6d4; }
-
