@@ -10,12 +10,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'AI Todo Calendar',
-        short_name: 'AI Todo',
-        description: 'Local WebLLM powered calendar and todo list',
-        theme_color: '#ffffff',
-        background_color: '#ffffff',
-        display: 'standalone',
+        name: 'Antigravity Todo',
+        short_name: 'Todo',
+        description: 'A powerful AI-driven calendar todo app',
+        theme_color: '#8b5cf6',
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -28,6 +26,9 @@ export default defineConfig({
             type: 'image/png'
           }
         ]
+      },
+      workbox: {
+        maximumFileSizeToCacheInBytes: 10485760 // 10 MiB limit
       },
       devOptions: {
         enabled: true
