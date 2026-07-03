@@ -1,0 +1,6 @@
+e23b25b feat: PWA, WebLLM, and Mobile UI Refactoring (V3)
+a717771 merge: V3 最终合并入主干
+217e0cb refactor: 引入 FullCalendar 与玻璃拟物化设计 (V3)
+8ce16a2 refactor: 架构重写为 Canvas 版本 (V2)
+d1687d5 feat: V1 初始版本 (基础 Todo 列表)
+d2016d8 init: Antigravity Todo Project

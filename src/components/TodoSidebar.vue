@@ -6,6 +6,9 @@
       <button class="btn-icon" @click="isCollapsed = false" title="展开备忘录">
         <PanelLeftOpen class="icon-sm text-primary" />
       </button>
+      <a href="/museum/index.html" class="btn-icon" title="岁月史书 (Museum)">
+        <Library class="icon-sm text-primary" />
+      </a>
       <button class="btn-icon" @click="$emit('open-settings')" title="全局设置">
         <SettingsIcon class="icon-sm" />
       </button>
@@ -19,6 +22,9 @@
           <span class="count-badge">{{ activeTodos.length }}</span>
         </div>
         <div style="display: flex; align-items: center; gap: 4px;">
+          <a href="/museum/index.html" class="btn-icon" title="岁月史书 (Museum)">
+            <Library class="icon-sm text-primary" />
+          </a>
           <button class="btn-icon" @click="$emit('open-settings')" title="全局设置">
             <SettingsIcon class="icon-sm" />
           </button>
@@ -88,7 +94,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Plus, GripVertical, Trash2, Settings as SettingsIcon, PanelRightClose, PanelLeftOpen } from 'lucide-vue-next'
+import { Plus, GripVertical, Trash2, Settings as SettingsIcon, PanelRightClose, PanelLeftOpen, Library } from 'lucide-vue-next'
 import { useTodos } from '../composables/useTodos'
 import { Draggable } from '@fullcalendar/interaction'
 import draggable from 'vuedraggable'
