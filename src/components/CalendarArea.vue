@@ -1,6 +1,7 @@
 <template>
   <div 
     class="calendar-wrapper glass-panel"
+    :class="{ 'is-mobile-calendar': isMobile }"
     :style="{
       '--slot-height': settings.slotHeight + 'px',
       '--major-line-width': settings.majorLineWidth + 'px',
@@ -15,21 +16,34 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import FullCalendar from '@fullcalendar/vue3'
 import timeGridPlugin from '@fullcalendar/timegrid'
-import interactionPlugin, { Draggable } from '@fullcalendar/interaction'
+import interactionPlugin from '@fullcalendar/interaction'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import { useTodos } from '../composables/useTodos'
 import { useSettings } from '../composables/useSettings'
 import { useTheme } from '../composables/useTheme'
+import { useMobile } from '../composables/useMobile'
 
 const { tasks, updateTask, addTaskFromTodo } = useTodos()
 const { settings } = useSettings()
 const { isDark } = useTheme()
+const { isMobile } = useMobile()
 
 const fullCalendar = ref<InstanceType<typeof FullCalendar> | null>(null)
 let resizeObserver: ResizeObserver | null = null
+
+watch(isMobile, (newVal) => {
+  if (fullCalendar.value) {
+    const api = fullCalendar.value.getApi()
+    if (newVal) {
+      api.changeView('timeGridDay')
+    } else {
+      api.changeView('timeGridWeek')
+    }
+  }
+})
 
 // Update mode to recalculate colors if needed
 onMounted(() => {
@@ -121,16 +135,22 @@ const handleEventReceive = (info: any) => {
 
 const calendarOptions = computed(() => ({
   plugins: [timeGridPlugin, interactionPlugin, dayGridPlugin],
-  initialView: 'timeGridWeek',
+  initialView: isMobile.value ? 'timeGridDay' : 'timeGridWeek',
   events: calendarEvents.value,
   editable: true,
   selectable: true,
   droppable: true, // Enable dropping from external sources
-  headerToolbar: {
-    left: 'prev,next today',
-    center: 'title',
-    right: 'dayGridMonth,timeGridWeek,timeGridDay'
-  },
+  headerToolbar: isMobile.value 
+    ? {
+        left: 'prev,next',
+        center: 'title',
+        right: 'today'
+      }
+    : {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+      },
   slotMinTime: `${settings.value.startHour.toString().padStart(2, '0')}:00:00`,
   slotMaxTime: `${settings.value.endHour.toString().padStart(2, '0')}:00:00`,
   slotDuration: settings.value.slotDuration,
@@ -289,5 +309,23 @@ const calendarOptions = computed(() => ({
 /* Background Color Override for Day Area */
 .fc .fc-timegrid-col.fc-day-today {
   background-color: rgba(var(--color-primary), 0.02) !important;
+}
+</style>
+
+<style scoped>
+/* Mobile adjustments for toolbar to save screen space */
+.is-mobile-calendar :deep(.fc-header-toolbar) {
+  margin-bottom: 8px !important;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.is-mobile-calendar :deep(.fc-toolbar-title) {
+  font-size: 1rem !important;
+}
+
+.is-mobile-calendar :deep(.fc-button) {
+  padding: 4px 8px !important;
+  font-size: 0.8rem !important;
 }
 </style>

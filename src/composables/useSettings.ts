@@ -3,6 +3,9 @@ import { ref, watch } from 'vue'
 const LOCAL_STORAGE_SETTINGS = 'canvas_settings'
 
 export interface Settings {
+  aiMode: 'cloud' | 'local'
+  localModelName: string
+  webLlmProgress: string
   apiBaseUrl: string
   apiKey: string
   modelName: string
@@ -18,6 +21,9 @@ export interface Settings {
 }
 
 const defaultSettings: Settings = {
+  aiMode: 'cloud',
+  localModelName: 'Phi-3-mini-4k-instruct-q4f16_1-MLC',
+  webLlmProgress: '',
   apiBaseUrl: 'https://api.deepseek.com/v1',
   apiKey: '',
   modelName: 'deepseek-chat',

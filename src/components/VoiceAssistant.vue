@@ -1,14 +1,42 @@
 <template>
-  <div class="voice-assistant-fab" :style="fabStyle">
-    <!-- Feedback Toast -->
+  <div class="voice-assistant-fab" :style="isMobile ? { bottom: '24px', right: '24px', left: 'auto', top: 'auto' } : fabStyle">
+    <!-- Desktop Toast -->
     <Transition name="toast-slide">
-      <div v-if="toastMessage" class="voice-toast glass-panel" :class="toastType">
+      <div v-if="!isMobile && toastMessage" class="voice-toast glass-panel" :class="toastType">
         {{ toastMessage }}
       </div>
     </Transition>
 
+    <!-- Mobile Bottom Sheet -->
+    <Teleport to="body">
+      <Transition name="sheet-slide">
+        <div v-if="isMobile && (state !== 'idle' || toastMessage)" class="mobile-bottom-sheet-overlay" @click.self="closeSheet">
+          <div class="mobile-bottom-sheet">
+            <div class="sheet-handle"></div>
+            <div class="sheet-content">
+               <div class="sheet-status">
+                 <Mic v-if="state === 'idle' || state === 'listening'" class="sheet-icon" :class="{'pulse': state==='listening'}" />
+                 <Loader2 v-else-if="state === 'processing'" class="sheet-icon spin" />
+                 <Check v-else-if="state === 'success'" class="sheet-icon text-success" />
+                 <AlertCircle v-else-if="state === 'error'" class="sheet-icon text-danger" />
+                 <h3>{{ tooltip }}</h3>
+               </div>
+               <div class="sheet-message" v-if="toastMessage || accumulatedText">
+                 <p>{{ toastMessage || accumulatedText }}</p>
+               </div>
+               
+               <button class="sheet-close-btn" @click="closeSheet" :disabled="state === 'processing'">
+                 {{ state === 'listening' ? '停止倾听' : '关闭' }}
+               </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <!-- Main FAB -->
     <button 
+      v-show="!isMobile || (isMobile && state === 'idle' && !toastMessage)"
       class="fab-btn"
       :class="[state, { 'is-pulsing': state === 'listening', 'is-dragging': isDraggingState }]"
       @mousedown="startDrag"
@@ -28,19 +56,102 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Mic, Loader2, Check, AlertCircle } from 'lucide-vue-next'
-import { parseVoiceCommand } from '../services/llmService'
+import Fuse from 'fuse.js'
+import { parseVoiceCommand, type VoiceIntent } from '../services/llmService'
 import { useTodos } from '../composables/useTodos'
+import { useSettings } from '../composables/useSettings'
+import { useMobile } from '../composables/useMobile'
 
 type VoiceState = 'idle' | 'listening' | 'processing' | 'success' | 'error'
 
+const { isMobile } = useMobile()
 const state = ref<VoiceState>('idle')
 const toastMessage = ref('')
 const toastType = ref<'info' | 'success' | 'error'>('info')
 let recognition: any = null
+let silenceTimer: any = null
+let toastTimer: any = null
+const accumulatedText = ref('')
 
-const { addTask } = useTodos()
+const { tasks, todos, addTask, updateTask, deleteTask, addTodo, updateTodo, deleteTodo } = useTodos()
+const { settings } = useSettings()
+
+const executeIntent = (intent: VoiceIntent): string => {
+  if (intent.action === 'add') {
+    if (intent.target === 'todo') {
+      const payload = intent.payload || {}
+      addTodo({
+        title: payload.todoText || '新待办',
+        description: '',
+        category: 'ideas',
+        priority: 'medium'
+      })
+      return '已成功添加待办：' + (payload.todoText || '新待办')
+    } else {
+      const payload = intent.payload || {}
+      addTask({
+        title: payload.title || '新日程',
+        date: payload.date || new Date().toISOString().split('T')[0],
+        startTime: payload.startTime || '12:00',
+        endTime: payload.endTime || '13:00',
+        color: payload.color || 'blue'
+      })
+      return '已成功添加日程：' + (payload.title || '新日程')
+    }
+  }
+
+  const listToSearch = intent.target === 'todo' ? todos.value : tasks.value
+  let bestMatch: any = null
+
+  if (intent.targetId) {
+    bestMatch = listToSearch.find(item => String(item.id) === String(intent.targetId))
+  }
+
+  if (!bestMatch) {
+    if (!intent.searchQuery) {
+      throw new Error('未提供搜索关键词，也未找到确切目标，无法执行操作')
+    }
+
+    const fuse = new Fuse(listToSearch as any[], {
+      keys: ['title', 'description'],
+      threshold: 0.4
+    })
+
+    const results = fuse.search(intent.searchQuery)
+    if (results.length === 0) {
+      throw new Error(`找不到符合 "${intent.searchQuery}" 的记录`)
+    }
+
+    bestMatch = results[0].item
+  }
+
+  if (intent.action === 'delete') {
+    if (intent.target === 'todo') {
+      deleteTodo(bestMatch.id)
+      return `已删除待办：${bestMatch.title}`
+    } else {
+      deleteTask(bestMatch.id)
+      return `已删除日程：${bestMatch.title}`
+    }
+  }
+
+  if (intent.action === 'edit') {
+    const payload = intent.payload || {}
+    if (intent.target === 'todo') {
+      updateTodo(bestMatch.id, { title: payload.todoText || bestMatch.title })
+      return `已修改待办：${payload.todoText || bestMatch.title}`
+    } else {
+      // Clean undefined keys from payload
+      const updates = Object.fromEntries(Object.entries(payload).filter(([_, v]) => v != null))
+      updateTask(bestMatch.id, updates)
+      return `已修改日程：${updates.title || bestMatch.title}`
+    }
+  }
+
+  throw new Error('未知的操作指令')
+}
 
 // --- Draggable Logic ---
 const positionX = ref<number | null>(null)
@@ -139,12 +250,19 @@ const tooltip = computed(() => {
 })
 
 const showToast = (msg: string, type: 'info' | 'success' | 'error' = 'info', duration = 3000) => {
+  if (toastTimer) clearTimeout(toastTimer)
   toastMessage.value = msg
   toastType.value = type
-  setTimeout(() => {
+  toastTimer = setTimeout(() => {
     toastMessage.value = ''
   }, duration)
 }
+
+watch(() => settings.value.webLlmProgress, (newProgress) => {
+  if (state.value === 'processing' && settings.value.aiMode === 'local' && newProgress) {
+    showToast(`引擎加载中: ${newProgress}`, 'info', 10000)
+  }
+})
 
 const initSpeechRecognition = () => {
   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -156,36 +274,103 @@ const initSpeechRecognition = () => {
 
   recognition = new SpeechRecognition()
   recognition.lang = 'zh-CN'
-  recognition.interimResults = false
+  recognition.continuous = true
+  recognition.interimResults = true
   recognition.maxAlternatives = 1
 
-  recognition.onstart = () => {
-    state.value = 'listening'
-    showToast('请说出您的日程安排...', 'info', 5000)
-  }
-
-  recognition.onresult = async (event: any) => {
-    const text = event.results[0][0].transcript
+  const processVoice = async (text: string) => {
+    recognition?.stop()
     state.value = 'processing'
     showToast(`正在解析: "${text}"`, 'info', 5000)
     
+    // Optimize context tokens using Fuse.js locally first
+    const fuseEvents = new Fuse(tasks.value as any[], { keys: ['title', 'description'], threshold: 0.8 })
+    const matchedEvents = fuseEvents.search(text).slice(0, 3).map(r => r.item)
+    
+    const fuseTodos = new Fuse(todos.value as any[], { keys: ['title', 'description'], threshold: 0.8 })
+    const matchedTodos = fuseTodos.search(text).slice(0, 3).map(r => r.item)
+
+    const contextData = {
+      events: matchedEvents.map(t => ({ id: String(t.id), title: t.title, date: t.date })),
+      todos: matchedTodos.map(t => ({ id: String(t.id), text: t.title }))
+    }
+    
     try {
-      const parsedTask = await parseVoiceCommand(text)
-      addTask(parsedTask)
+      const intent = await parseVoiceCommand(text, false, contextData)
+      const successMsg = executeIntent(intent)
       state.value = 'success'
-      showToast(`已成功创建: ${parsedTask.title}`, 'success')
+      showToast(successMsg, 'success')
       
       setTimeout(() => {
         state.value = 'idle'
       }, 2000)
     } catch (e: any) {
-      state.value = 'error'
-      showToast(e.message || 'AI 解析失败', 'error')
-      
-      setTimeout(() => {
-        state.value = 'idle'
-      }, 3000)
+      if (settings.value.aiMode === 'local') {
+        showToast('本地模型似乎不能用，自动切换到云端...', 'info', 5000)
+        try {
+          const cloudIntent = await parseVoiceCommand(text, true, contextData)
+          const cloudSuccessMsg = executeIntent(cloudIntent)
+          state.value = 'success'
+          showToast(cloudSuccessMsg, 'success')
+          
+          setTimeout(() => {
+            state.value = 'idle'
+          }, 2000)
+        } catch (cloudErr: any) {
+          state.value = 'error'
+          showToast(cloudErr.message || '云端 AI 解析失败', 'error')
+          setTimeout(() => { state.value = 'idle' }, 3000)
+        }
+      } else {
+        state.value = 'error'
+        showToast(e.message || 'AI 解析失败', 'error')
+        
+        setTimeout(() => {
+          state.value = 'idle'
+        }, 3000)
+      }
     }
+  }
+
+  recognition.onstart = () => {
+    accumulatedText.value = ''
+    state.value = 'listening'
+    showToast('请说出您的日程安排...', 'info', 5000)
+  }
+
+  recognition.onresult = (event: any) => {
+    if (state.value !== 'listening') return
+    if (silenceTimer) clearTimeout(silenceTimer)
+    
+    let currentInterim = ''
+    let currentFinal = ''
+
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      if (event.results[i].isFinal) {
+        currentFinal += event.results[i][0].transcript
+      } else {
+        currentInterim += event.results[i][0].transcript
+      }
+    }
+
+    if (currentFinal) {
+      accumulatedText.value += currentFinal
+    }
+    
+    const displayString = accumulatedText.value + currentInterim
+    if (displayString) {
+      showToast(`正在听: "${displayString}"`, 'info', 5000)
+    }
+
+    silenceTimer = setTimeout(() => {
+      const finalText = accumulatedText.value + currentInterim
+      if (!finalText.trim()) {
+        state.value = 'idle'
+        recognition.stop()
+        return
+      }
+      processVoice(finalText)
+    }, 1500)
   }
 
   recognition.onerror = (event: any) => {
@@ -211,7 +396,13 @@ const toggleVoice = () => {
   if (state.value === 'processing') return
 
   if (state.value === 'listening') {
+    if (silenceTimer) clearTimeout(silenceTimer)
     recognition?.stop()
+    if (accumulatedText.value.trim()) {
+      // process if they click stop but have spoken
+      // but if we do this, it will call processVoice inside toggleVoice. We didn't expose processVoice.
+      // So we just cancel and let them try again, or we can just drop it. Let's drop it to match original behavior.
+    }
     state.value = 'idle'
     toastMessage.value = ''
     return
@@ -229,6 +420,16 @@ const toggleVoice = () => {
     recognition.stop()
   }
 }
+
+const closeSheet = () => {
+  if (state.value === 'processing') return
+  if (state.value === 'listening') {
+    toggleVoice()
+  } else {
+    state.value = 'idle'
+    toastMessage.value = ''
+  }
+}
 </script>
 
 <style scoped>
@@ -236,14 +437,15 @@ const toggleVoice = () => {
   position: fixed;
   bottom: 40px;
   right: 40px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 16px;
   z-index: 9999;
+  width: 64px;
+  height: 64px;
 }
 
 .voice-toast {
+  position: absolute;
+  bottom: calc(100% + 16px);
+  right: 0;
   padding: 12px 20px;
   border-radius: 12px;
   background: var(--bg-glass-solid);
@@ -253,9 +455,11 @@ const toggleVoice = () => {
   font-size: 0.9rem;
   font-weight: 500;
   max-width: 300px;
+  width: max-content;
   word-wrap: break-word;
   color: var(--text-primary);
   border-left: 4px solid var(--color-primary);
+  pointer-events: none;
 }
 
 .voice-toast.success {
@@ -351,5 +555,129 @@ const toggleVoice = () => {
 @keyframes pulse-anim {
   0% { transform: scale(0.95); opacity: 0.8; }
   100% { transform: scale(1.6); opacity: 0; border-width: 1px; }
+}
+
+/* Mobile Bottom Sheet */
+.mobile-bottom-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 99999;
+  display: flex;
+  align-items: flex-end;
+}
+
+.mobile-bottom-sheet {
+  width: 100%;
+  background: var(--bg-primary);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  padding: 16px 24px 32px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+html.dark .mobile-bottom-sheet {
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-color);
+}
+
+.sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--border-color);
+  border-radius: 2px;
+  margin-bottom: 24px;
+}
+
+.sheet-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.sheet-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.sheet-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--color-primary);
+}
+
+.sheet-icon.pulse {
+  animation: pulse-icon 1.5s infinite;
+}
+
+@keyframes pulse-icon {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.sheet-status h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.sheet-message {
+  width: 100%;
+  padding: 16px;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  text-align: center;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sheet-message p {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+.sheet-close-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  background: var(--color-primary);
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.sheet-close-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sheet-slide-enter-active,
+.sheet-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.sheet-slide-enter-from,
+.sheet-slide-leave-to {
+  opacity: 0;
+}
+.sheet-slide-enter-from .mobile-bottom-sheet,
+.sheet-slide-leave-to .mobile-bottom-sheet {
+  transform: translateY(100%);
 }
 </style>

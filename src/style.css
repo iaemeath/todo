@@ -81,3 +81,78 @@ code {
   flex-direction: column;
   box-sizing: border-box;
 }
+
+/* Mobile Responsive Overrides */
+.mobile-layout {
+  padding: 10px !important;
+  padding-bottom: 80px !important; /* Space for bottom nav */
+}
+
+.mobile-layout .main-workspace {
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+
+.mobile-bottom-nav {
+  display: flex;
+  justify-content: space-around;
+  padding: 12px 20px;
+  border-radius: 24px;
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 85%;
+  z-index: 9000;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+.nav-btn {
+  background: transparent;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 8px 16px;
+  border-radius: 12px;
+}
+
+.nav-btn.active {
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.nav-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.mobile-layout .todo-sidebar {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+
+.mobile-layout .calendar-wrapper {
+  width: 100% !important;
+}
+
+.mobile-layout .fc-toolbar-title {
+  font-size: 1.1em !important;
+}
+
+.mobile-layout .voice-assistant-fab {
+  bottom: 100px !important; /* Float above nav bar */
+  right: 20px !important;
+}
+
+.mobile-layout .setting-modal-content {
+  width: 95vw !important;
+  max-width: 95vw !important;
+  max-height: 90vh !important;
+}

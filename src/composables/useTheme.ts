@@ -1,4 +1,4 @@
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 
 const LOCAL_STORAGE_THEME = 'canvas_theme'
 const isDark = ref(false)
