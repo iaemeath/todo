@@ -1,1 +1,0 @@
-import{n as e,t}from"./index-SWtEgPy-.js";var n=null;async function r(){let{settings:r,updateSettings:i}=e();return n||(n=await t(r.value.localModelName,{initProgressCallback:e=>{i({webLlmProgress:e.text})}}),n)}export{r as getLocalEngine};
