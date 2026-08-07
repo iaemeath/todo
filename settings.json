@@ -1,0 +1,224 @@
+{
+  "_comment": "全局设置配置文件 - 从 SettingsModal 提取（2026-08-07）",
+  "_description": "原全局设置弹窗包含三个标签页：视觉与外观、AI 助理配置、API 消耗记录。以下为所有设置项及其默认值。",
+
+  "tabs": {
+    "view": {
+      "label": "视觉与外观",
+      "icon": "Monitor",
+      "description": "定制专属的日历工作区界面。所有的修改即刻生效，无需保存。",
+      "sections": [
+        {
+          "title": "界面主题",
+          "settings": {
+            "darkMode": {
+              "label": "暗黑模式",
+              "desc": "切换深色/浅色主题",
+              "type": "toggle",
+              "default": false
+            }
+          }
+        },
+        {
+          "title": "日历画布与密度",
+          "settings": {
+            "startHour": {
+              "label": "起始时间 (时)",
+              "type": "number",
+              "min": 0,
+              "max": 23,
+              "default": 5
+            },
+            "endHour": {
+              "label": "结束时间 (时)",
+              "type": "number",
+              "min": 1,
+              "max": 24,
+              "default": 24
+            },
+            "slotDuration": {
+              "label": "时行数 (一个小时划分为几行)",
+              "type": "select",
+              "options": [
+                { "value": "01:00:00", "label": "1 行 / 小时 (每行 60 分钟)" },
+                { "value": "00:30:00", "label": "2 行 / 小时 (每行 30 分钟)" },
+                { "value": "00:20:00", "label": "3 行 / 小时 (每行 20 分钟)" },
+                { "value": "00:15:00", "label": "4 行 / 小时 (每行 15 分钟)" },
+                { "value": "00:10:00", "label": "6 行 / 小时 (每行 10 分钟)" }
+              ],
+              "default": "00:30:00"
+            },
+            "slotHeight": {
+              "label": "行高度 (单个单元格高度)",
+              "type": "range",
+              "min": 20,
+              "max": 120,
+              "step": 2,
+              "unit": "px",
+              "default": 50
+            }
+          }
+        },
+        {
+          "title": "网格控制 (整点)",
+          "settings": {
+            "majorLineWidth": {
+              "label": "整点分割线粗细",
+              "type": "range",
+              "min": 0.5,
+              "max": 4,
+              "step": 0.5,
+              "unit": "px",
+              "default": 1.5
+            },
+            "majorLineOpacity": {
+              "label": "整点分割线颜色深度",
+              "type": "range",
+              "min": 0.05,
+              "max": 1,
+              "step": 0.05,
+              "default": 0.4
+            }
+          }
+        },
+        {
+          "title": "辅助网格控制 (非整点)",
+          "settings": {
+            "showMinorLines": {
+              "label": "显示非整点辅助细线",
+              "desc": "关闭后网格将呈现极简的纯小时块",
+              "type": "switch",
+              "default": true
+            },
+            "minorLineWidth": {
+              "label": "辅助细线粗细",
+              "type": "range",
+              "min": 0.5,
+              "max": 3,
+              "step": 0.5,
+              "unit": "px",
+              "default": 1.0,
+              "visibleWhen": "showMinorLines"
+            },
+            "minorLineOpacity": {
+              "label": "辅助细线颜色深度",
+              "type": "range",
+              "min": 0.05,
+              "max": 1,
+              "step": 0.05,
+              "default": 0.15,
+              "visibleWhen": "showMinorLines"
+            }
+          }
+        }
+      ]
+    },
+
+    "ai": {
+      "label": "AI 助理配置",
+      "icon": "Bot",
+      "description": "配置用来解析语音指令的大模型。支持云端极速 API 或 100% 本地离线引擎。",
+      "sections": [
+        {
+          "title": "引擎模式选择",
+          "settings": {
+            "aiMode": {
+              "label": "引擎模式",
+              "type": "radio",
+              "options": [
+                { "value": "cloud", "label": "云端 API (速度快，兼容全平台)" },
+                { "value": "local", "label": "本地 WebLLM (断网可用，仅限高配电脑)" }
+              ],
+              "default": "cloud"
+            },
+            "localModelName": {
+              "label": "本地模型",
+              "type": "model-manager",
+              "default": "Phi-3-mini-4k-instruct-q4f16_1-MLC",
+              "_note": "包含模型搜索、缓存管理、下载/删除功能"
+            }
+          }
+        },
+        {
+          "title": "API 核心参数 (云端模式)",
+          "visibleWhen": "aiMode === 'cloud'",
+          "settings": {
+            "apiBaseUrl": {
+              "label": "API Base URL",
+              "type": "url",
+              "placeholder": "例如: https://api.deepseek.com/v1",
+              "default": "https://api.deepseek.com/v1"
+            },
+            "modelName": {
+              "label": "模型名称 (Model)",
+              "type": "text",
+              "placeholder": "例如: deepseek-chat 或 gpt-4o-mini",
+              "default": "deepseek-chat"
+            },
+            "apiKey": {
+              "label": "API Key",
+              "type": "password",
+              "placeholder": "sk-...",
+              "hint": "安全提示：您的 API 密钥仅保存在本地浏览器中，绝不会被上传至任何其他服务器。",
+              "default": ""
+            }
+          }
+        }
+      ]
+    },
+
+    "usage": {
+      "label": "API 消耗记录",
+      "icon": "Activity",
+      "description": "追踪云端大模型的 Token 消耗量。",
+      "sections": [
+        {
+          "title": "统计概览",
+          "settings": {
+            "totalTokensAllTime": {
+              "label": "总计 Token 消耗",
+              "type": "stat",
+              "default": 0
+            },
+            "requestCount": {
+              "label": "请求总次数",
+              "type": "stat",
+              "default": 0
+            }
+          }
+        },
+        {
+          "title": "消耗明细",
+          "settings": {
+            "usageHistory": {
+              "label": "消耗历史记录",
+              "type": "table",
+              "columns": ["调用时间", "模型名称", "Prompt / Completion", "总 Tokens"],
+              "expandable": true,
+              "detailFields": ["语音指令 (User)", "原始报文 (Raw Prompt)", "AI 解析结果 (Assistant)"],
+              "default": []
+            }
+          }
+        }
+      ]
+    }
+  },
+
+  "_defaults_flat": {
+    "aiMode": "cloud",
+    "localModelName": "Phi-3-mini-4k-instruct-q4f16_1-MLC",
+    "webLlmProgress": "",
+    "apiBaseUrl": "https://api.deepseek.com/v1",
+    "apiKey": "",
+    "modelName": "deepseek-chat",
+    "slotDuration": "00:30:00",
+    "slotHeight": 50,
+    "majorLineWidth": 1.5,
+    "majorLineOpacity": 0.4,
+    "showMinorLines": true,
+    "minorLineWidth": 1.0,
+    "minorLineOpacity": 0.15,
+    "startHour": 5,
+    "endHour": 24
+  }
+}

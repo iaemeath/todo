@@ -3,12 +3,10 @@ import { ref, onMounted } from 'vue'
 import CalendarArea from './components/CalendarArea.vue'
 import TodoSidebar from './components/TodoSidebar.vue'
 import VoiceAssistant from './components/VoiceAssistant.vue'
-import SettingsModal from './components/SettingsModal.vue'
 import { Calendar as CalendarIcon, List as ListIcon } from 'lucide-vue-next'
 import { useTheme } from './composables/useTheme'
 import { useMobile } from './composables/useMobile'
 
-const isSettingsOpen = ref(false)
 const { loadTheme } = useTheme()
 const { isMobile } = useMobile()
 const activeTab = ref<'calendar' | 'todos'>('calendar')
@@ -24,7 +22,6 @@ onMounted(() => {
       <CalendarArea v-show="!isMobile || activeTab === 'calendar'" />
       <TodoSidebar 
         v-show="!isMobile || activeTab === 'todos'" 
-        @open-settings="isSettingsOpen = true" 
       />
     </main>
 
@@ -41,10 +38,6 @@ onMounted(() => {
     </nav>
 
     <VoiceAssistant />
-    <SettingsModal 
-      :isOpen="isSettingsOpen" 
-      @close="isSettingsOpen = false" 
-    />
   </div>
 </template>
 
