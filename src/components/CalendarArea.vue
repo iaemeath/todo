@@ -151,6 +151,11 @@ const calendarOptions = computed(() => ({
         center: 'title',
         right: 'dayGridMonth,timeGridWeek,timeGridDay'
       },
+  slotLabelFormat: {
+    hour: '2-digit' as const,
+    minute: '2-digit' as const,
+    hour12: false
+  },
   slotMinTime: `${settings.value.startHour.toString().padStart(2, '0')}:00:00`,
   slotMaxTime: `${settings.value.endHour.toString().padStart(2, '0')}:00:00`,
   slotDuration: settings.value.slotDuration,
@@ -240,11 +245,25 @@ const calendarOptions = computed(() => ({
   border-top: var(--major-line-width, 1.5px) solid rgb(128 128 128 / var(--major-line-opacity, 0.4)) !important;
 }
 
+.fc .fc-timegrid-slot-label,
+.fc .fc-timegrid-axis {
+  position: relative !important;
+}
+
 .fc .fc-timegrid-slot-label-cushion,
 .fc .fc-timegrid-axis-cushion {
   color: var(--text-secondary) !important;
   font-weight: 600 !important;
   font-size: 0.75rem !important;
+  position: absolute;
+  top: 0;
+  left: 4px;               /* 贴左对齐 */
+  transform: translateY(-50%);  /* 让文字中心对准刻度线 */
+  background: var(--bg-glass-solid);
+  padding: 0 4px;
+  border-radius: 3px;
+  z-index: 2;
+  white-space: nowrap;
 }
 
 /* Headers */
