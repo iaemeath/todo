@@ -26,10 +26,12 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import { useSchedules } from '../composables/useTasks'
 import { useSettings } from '../composables/useSettings'
 import { useTheme } from '../composables/useTheme'
+import { useUI } from '../composables/useUI'
 
 const { schedules, updateSchedule, addScheduleFromTask } = useSchedules()
 const { settings } = useSettings()
 const { isDark } = useTheme()
+const { isMobile } = useUI()
 
 const fullCalendar = ref<InstanceType<typeof FullCalendar> | null>(null)
 let resizeObserver: ResizeObserver | null = null
@@ -128,11 +130,9 @@ const calendarOptions = computed(() => ({
   editable: true,
   selectable: true,
   droppable: true, // Enable dropping from external sources
-  headerToolbar: {
-    left: 'prev,next today',
-    center: 'title',
-    right: 'dayGridMonth,timeGridWeek,timeGridDay'
-  },
+  headerToolbar: isMobile.value
+    ? { left: 'prev,next today', center: 'title', right: 'timeGridWeek,timeGridDay' }
+    : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
   slotLabelFormat: {
     hour: '2-digit' as const,
     minute: '2-digit' as const,

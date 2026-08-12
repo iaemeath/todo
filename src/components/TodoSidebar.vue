@@ -131,6 +131,16 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+/* 移动端：占满宽度，由 App.vue 主页子 Tab 容器约束高度 */
+@media (max-width: 768px) {
+  .todo-sidebar {
+    width: 100%;
+    flex: 1;
+    flex-shrink: 1;
+    min-height: 0;
+  }
+}
+
 .sidebar-header {
   padding: 16px 20px;
   display: flex;
