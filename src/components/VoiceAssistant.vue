@@ -60,7 +60,7 @@ import { ref, computed, watch } from 'vue'
 import { Mic, Loader2, Check, AlertCircle } from 'lucide-vue-next'
 import Fuse from 'fuse.js'
 import { parseVoiceCommand, type VoiceIntent } from '../services/llmService'
-import { useTodos } from '../composables/useTodos'
+import { useTasks, useSchedules } from '../composables/useTasks'
 import { useSettings } from '../composables/useSettings'
 import { useMobile } from '../composables/useMobile'
 
@@ -75,14 +75,16 @@ let silenceTimer: any = null
 let toastTimer: any = null
 const accumulatedText = ref('')
 
-const { tasks, todos, addTask, updateTask, deleteTask, addTodo, updateTodo, deleteTodo } = useTodos()
+// 'todo' 意图 → 任务树(tasks)；'event' 意图 → 日程(schedules)
+const { tasks, addTask, updateTask, deleteTask } = useTasks()
+const { schedules, addSchedule, updateSchedule, deleteSchedule } = useSchedules()
 const { settings } = useSettings()
 
 const executeIntent = (intent: VoiceIntent): string => {
   if (intent.action === 'add') {
     if (intent.target === 'todo') {
       const payload = intent.payload || {}
-      addTodo({
+      addTask({
         title: payload.todoText || '新待办',
         description: '',
         category: 'ideas',
@@ -91,7 +93,7 @@ const executeIntent = (intent: VoiceIntent): string => {
       return '已成功添加待办：' + (payload.todoText || '新待办')
     } else {
       const payload = intent.payload || {}
-      addTask({
+      addSchedule({
         title: payload.title || '新日程',
         date: payload.date || new Date().toISOString().split('T')[0],
         startTime: payload.startTime || '12:00',
@@ -102,7 +104,7 @@ const executeIntent = (intent: VoiceIntent): string => {
     }
   }
 
-  const listToSearch = intent.target === 'todo' ? todos.value : tasks.value
+  const listToSearch = intent.target === 'todo' ? tasks.value : schedules.value
   let bestMatch: any = null
 
   if (intent.targetId) {
@@ -129,10 +131,10 @@ const executeIntent = (intent: VoiceIntent): string => {
 
   if (intent.action === 'delete') {
     if (intent.target === 'todo') {
-      deleteTodo(bestMatch.id)
+      deleteTask(bestMatch.id)
       return `已删除待办：${bestMatch.title}`
     } else {
-      deleteTask(bestMatch.id)
+      deleteSchedule(bestMatch.id)
       return `已删除日程：${bestMatch.title}`
     }
   }
@@ -140,12 +142,12 @@ const executeIntent = (intent: VoiceIntent): string => {
   if (intent.action === 'edit') {
     const payload = intent.payload || {}
     if (intent.target === 'todo') {
-      updateTodo(bestMatch.id, { title: payload.todoText || bestMatch.title })
+      updateTask(bestMatch.id, { title: payload.todoText || bestMatch.title })
       return `已修改待办：${payload.todoText || bestMatch.title}`
     } else {
       // Clean undefined keys from payload
       const updates = Object.fromEntries(Object.entries(payload).filter(([_, v]) => v != null))
-      updateTask(bestMatch.id, updates)
+      updateSchedule(bestMatch.id, updates)
       return `已修改日程：${updates.title || bestMatch.title}`
     }
   }
@@ -284,10 +286,10 @@ const initSpeechRecognition = () => {
     showToast(`正在解析: "${text}"`, 'info', 5000)
     
     // Optimize context tokens using Fuse.js locally first
-    const fuseEvents = new Fuse(tasks.value as any[], { keys: ['title', 'description'], threshold: 0.8 })
+    const fuseEvents = new Fuse(schedules.value as any[], { keys: ['title'], threshold: 0.8 })
     const matchedEvents = fuseEvents.search(text).slice(0, 3).map(r => r.item)
-    
-    const fuseTodos = new Fuse(todos.value as any[], { keys: ['title', 'description'], threshold: 0.8 })
+
+    const fuseTodos = new Fuse(tasks.value as any[], { keys: ['title', 'description'], threshold: 0.8 })
     const matchedTodos = fuseTodos.search(text).slice(0, 3).map(r => r.item)
 
     const contextData = {

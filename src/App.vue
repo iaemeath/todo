@@ -1,20 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
+import AppNavBar from './components/AppNavBar.vue'
 import CalendarArea from './components/CalendarArea.vue'
 import TodoSidebar from './components/TodoSidebar.vue'
 import VoiceAssistant from './components/VoiceAssistant.vue'
-import SettingsModal from './components/SettingsModal.vue'
-import { Calendar as CalendarIcon, List as ListIcon } from 'lucide-vue-next'
+import TodoManagePage from './components/TodoManagePage.vue'
+import ScheduleManagePage from './components/ScheduleManagePage.vue'
+import SettingsPage from './components/SettingsPage.vue'
 import { useTheme } from './composables/useTheme'
-import { useMobile } from './composables/useMobile'
 import { useUI } from './composables/useUI'
 
 const { loadTheme } = useTheme()
-const { isMobile } = useMobile()
-const { sidebarOpen, settingsOpen, closeSettings } = useUI()
-
-// Mobile-only: which tab is shown (calendar vs todo list)
-const activeTab = ref<'calendar' | 'todos'>('calendar')
+const { currentView } = useUI()
 
 onMounted(() => {
   loadTheme()
@@ -22,33 +19,27 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="app-layout" :class="{ 'mobile-layout': isMobile }">
-    <main class="main-workspace">
-      <CalendarArea v-show="!isMobile || activeTab === 'calendar'" />
-      <!-- Desktop: memo sidebar in push mode, driven by useUI.sidebarOpen -->
-      <TodoSidebar
-        v-if="!isMobile"
-        v-show="sidebarOpen"
-      />
+  <div class="app-layout">
+    <AppNavBar />
+
+    <main class="content-area">
+      <!-- 主页：左右布局（左日历 + 右待办） -->
+      <div v-if="currentView === 'home'" class="home-view">
+        <CalendarArea />
+        <TodoSidebar />
+      </div>
+
+      <!-- 任务管理 -->
+      <TodoManagePage v-else-if="currentView === 'task'" />
+
+      <!-- 日程管理 -->
+      <ScheduleManagePage v-else-if="currentView === 'schedule'" />
+
+      <!-- 设置 -->
+      <SettingsPage v-else-if="currentView === 'settings'" />
     </main>
 
-    <!-- Mobile Bottom Navigation -->
-    <nav v-if="isMobile" class="mobile-bottom-nav glass-panel">
-      <button class="nav-btn" :class="{ active: activeTab === 'calendar' }" @click="activeTab = 'calendar'">
-        <CalendarIcon class="nav-icon" />
-        <span>日历</span>
-      </button>
-      <button class="nav-btn" :class="{ active: activeTab === 'todos' }" @click="activeTab = 'todos'">
-        <ListIcon class="nav-icon" />
-        <span>待办</span>
-      </button>
-    </nav>
-
     <VoiceAssistant />
-    <SettingsModal
-      :isOpen="settingsOpen"
-      @close="closeSettings"
-    />
   </div>
 </template>
 
@@ -71,17 +62,30 @@ html, body {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  padding: 20px;
-  gap: 16px;
   width: 100%;
   box-sizing: border-box;
 }
 
-.main-workspace {
-  display: flex;
+.content-area {
   flex: 1;
   overflow: hidden;
-  height: 100%;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+/* 主页：左右布局 */
+.home-view {
+  display: flex;
   gap: 16px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.home-view > :first-child {
+  flex: 1;
+}
+
+.home-view > :last-child {
+  flex-shrink: 0;
 }
 </style>

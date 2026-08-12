@@ -3,17 +3,17 @@
 
       <div class="sidebar-header">
         <div style="display: flex; align-items: center; gap: 8px;">
-          <h2>备忘录 (待办)</h2>
+          <h2>待办</h2>
           <span class="count-badge">{{ activeTodos.length }}</span>
         </div>
       </div>
 
       <!-- Add Todo Input -->
     <form @submit.prevent="handleCreateTodo" class="add-todo-form">
-      <input 
-        v-model="newTodoTitle" 
-        type="text" 
-        placeholder="添加新备忘录..." 
+      <input
+        v-model="newTodoTitle"
+        type="text"
+        placeholder="添加新待办..."
         class="glass-input"
       />
       <button type="submit" class="btn-add">
@@ -45,14 +45,14 @@
             :data-event="JSON.stringify({
               title: todo.title,
               id: todo.id,
-              todoId: todo.id,
+              taskId: todo.id,
               color: 'blue'
             })"
           >
             <span class="todo-title">{{ todo.title }}</span>
           </div>
 
-          <button class="btn-delete" @click="deleteTodo(todo.id)" title="删除备忘录">
+          <button class="btn-delete" @click="deleteTask(todo.id)" title="删除待办">
             <Trash2 class="icon-sm" />
           </button>
         </div>
@@ -68,27 +68,27 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Plus, GripVertical, Trash2 } from 'lucide-vue-next'
-import { useTodos } from '../composables/useTodos'
+import { useTasks } from '../composables/useTasks'
 import { Draggable } from '@fullcalendar/interaction'
 import draggable from 'vuedraggable'
 
-const { todos, addTodo, deleteTodo } = useTodos()
+const { leafTasks, addTask, deleteTask } = useTasks()
 
 const newTodoTitle = ref('')
 const draggableContainer = ref<any>(null)
 let fcDraggableInstance: Draggable | null = null
 
 const activeTodos = computed({
-  get: () => todos.value.filter(t => !t.completed),
+  get: () => leafTasks.value.filter(t => !t.completed),
   set: (val) => {
-    const completed = todos.value.filter(t => t.completed)
-    todos.value = [...val, ...completed]
+    // 仅重排这些可见的叶子任务的 order
+    val.forEach((t, i) => { t.order = i })
   }
 })
 
 const handleCreateTodo = () => {
   if (!newTodoTitle.value.trim()) return
-  addTodo({
+  addTask({
     title: newTodoTitle.value.trim(),
     description: '',
     category: 'other',

@@ -157,26 +157,22 @@ body {
   box-shadow: 0 4px 12px 0 var(--shadow-color);
 }
 
-/* Inputs & Interactive Components */
+/* Form-control font/color inheritance only.
+   Box-model (border / padding / box-shadow) is intentionally NOT set globally:
+   Element Plus renders its own <input> inside .el-input__wrapper and handles
+   focus styling on the wrapper, not the inner input. A global input:focus
+   box-shadow here would render inside the wrapper ("shadow in the middle").
+   Raw inputs use scoped classes like .glass-input that fully style themselves. */
 input, select, textarea {
   font-family: var(--font-family);
-  background: var(--el-bg-color-page);
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  padding: 10px 14px;
   color: var(--el-text-color-primary);
-  outline: none;
-  font-size: 0.9rem;
-  transition: all 0.25s ease;
 }
 
-input:focus, select:focus, textarea:focus {
-  border-color: var(--el-color-primary);
-  box-shadow: 0 0 0 3px var(--el-color-primary-light-9);
-  background: var(--el-bg-color);
-}
-
-button {
+/* Base styling for raw/custom <button> elements (nav tabs, icon buttons,
+   FullCalendar header buttons, etc.). Scoped with :not(.el-button) so EP's
+   own .el-button styles (border, radius, font-weight, transitions) apply
+   unimpeded and the :active scale below does not fire on EP buttons. */
+button:not(.el-button) {
   font-family: var(--font-family);
   cursor: pointer;
   border: none;
@@ -190,7 +186,7 @@ button {
   gap: 8px;
 }
 
-button:active {
+button:not(.el-button):active {
   transform: scale(0.96);
 }
 

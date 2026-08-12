@@ -1,7 +1,6 @@
 <template>
   <div
     class="calendar-wrapper glass-panel"
-    :class="{ 'is-mobile-calendar': isMobile }"
     :style="{
       '--slot-height': settings.slotHeight + 'px',
       '--major-line-width': settings.majorLineWidth + 'px',
@@ -15,85 +14,26 @@
     }"
   >
     <FullCalendar ref="fullCalendar" :options="calendarOptions" />
-
-    <!-- ⋮ dropdown menu (anchored under the FC menu button) -->
-    <Teleport to="body">
-      <div v-if="menuOpen" class="fc-menu-backdrop" @click="closeMenu" />
-      <Transition name="fc-menu">
-        <div v-if="menuOpen" class="fc-menu glass-panel" ref="menuRef">
-          <button class="fc-menu-item disabled" disabled title="开发中">
-            <CalendarRange class="fc-menu-icon" />
-            <span>日程管理</span>
-            <span class="fc-menu-tag">开发中</span>
-          </button>
-          <button class="fc-menu-item disabled" disabled title="开发中">
-            <ListChecks class="fc-menu-icon" />
-            <span>待办管理</span>
-            <span class="fc-menu-tag">开发中</span>
-          </button>
-          <div class="fc-menu-divider" />
-          <button class="fc-menu-item" @click="openSettings">
-            <SettingsIcon class="fc-menu-icon" />
-            <span>设置</span>
-          </button>
-        </div>
-      </Transition>
-    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import FullCalendar from '@fullcalendar/vue3'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import dayGridPlugin from '@fullcalendar/daygrid'
-import { CalendarRange, ListChecks, Settings as SettingsIcon } from 'lucide-vue-next'
-import { useTodos } from '../composables/useTodos'
+import { useSchedules } from '../composables/useTasks'
 import { useSettings } from '../composables/useSettings'
 import { useTheme } from '../composables/useTheme'
-import { useMobile } from '../composables/useMobile'
-import { useUI } from '../composables/useUI'
 
-const { tasks, updateTask, addTaskFromTodo } = useTodos()
+const { schedules, updateSchedule, addScheduleFromTask } = useSchedules()
 const { settings } = useSettings()
 const { isDark } = useTheme()
-const { isMobile } = useMobile()
-const { sidebarOpen, toggleSidebar, openSettings, menuOpen, toggleMenu, closeMenu } = useUI()
 
 const fullCalendar = ref<InstanceType<typeof FullCalendar> | null>(null)
-const menuRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
-// Position the ⋮ dropdown menu under the FC menu button when it opens
-watch(menuOpen, async (open) => {
-  if (!open) return
-  await nextTick()
-  const btn = document.querySelector<HTMLElement>('.fc-menu-button')
-  const menu = menuRef.value
-  if (!btn || !menu) return
-  const rect = btn.getBoundingClientRect()
-  const menuWidth = 200
-  // Right-align the menu with the button, keep it on screen
-  const left = Math.max(8, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8))
-  menu.style.position = 'fixed'
-  menu.style.top = `${rect.bottom + 6}px`
-  menu.style.left = `${left}px`
-  menu.style.width = `${menuWidth}px`
-})
-
-watch(isMobile, (newVal) => {
-  if (fullCalendar.value) {
-    const api = fullCalendar.value.getApi()
-    if (newVal) {
-      api.changeView('timeGridDay')
-    } else {
-      api.changeView('timeGridWeek')
-    }
-  }
-})
-
-// Update mode to recalculate colors if needed
 onMounted(() => {
   // Initialize ResizeObserver to fix FullCalendar flex resize issue
   const wrapper = document.querySelector('.calendar-wrapper')
@@ -122,9 +62,9 @@ const colorMap: Record<string, { fill: string; stroke: string; text: string; tex
   cyan: { fill: 'rgba(6, 182, 212, 0.12)', stroke: 'rgba(6, 182, 212, 0.5)', text: '#67e8f9', textLight: '#0369a1' }
 }
 
-// Convert our tasks to FullCalendar event format
+// Convert our schedules to FullCalendar event format
 const calendarEvents = computed(() => {
-  return tasks.value.map(task => {
+  return schedules.value.map(task => {
     const scheme = colorMap[task.color] || colorMap.blue
     const textColor = isDark.value ? scheme.text : scheme.textLight
 
@@ -153,7 +93,7 @@ const handleEventChange = (changeInfo: any) => {
   const startTimeStr = startDate.toTimeString().substring(0, 5)
   const endTimeStr = endDate.toTimeString().substring(0, 5)
 
-  updateTask(id, {
+  updateSchedule(id, {
     date: dateStr,
     startTime: startTimeStr,
     endTime: endTimeStr
@@ -162,18 +102,18 @@ const handleEventChange = (changeInfo: any) => {
 
 const handleEventReceive = (info: any) => {
   const { event } = info
-  const todoId = event.extendedProps.todoId
-  
-  if (todoId) {
+  const taskId = event.extendedProps.taskId
+
+  if (taskId) {
     const startDate = new Date(event.start)
     const endDate = event.end ? new Date(event.end) : new Date(startDate.getTime() + 60 * 60 * 1000)
-    
+
     const dateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`
     const startTimeStr = startDate.toTimeString().substring(0, 5)
     const endTimeStr = endDate.toTimeString().substring(0, 5)
 
-    // Convert the todo memo into a scheduled task
-    addTaskFromTodo(todoId, dateStr, startTimeStr, endTimeStr, event.extendedProps.color || 'blue')
+    // 将叶子任务排期为日程
+    addScheduleFromTask(taskId, dateStr, startTimeStr, endTimeStr, event.extendedProps.color || 'blue')
   }
   
   // Revert the temporary event inserted by FullCalendar
@@ -183,36 +123,16 @@ const handleEventReceive = (info: any) => {
 
 const calendarOptions = computed(() => ({
   plugins: [timeGridPlugin, interactionPlugin, dayGridPlugin],
-  initialView: isMobile.value ? 'timeGridDay' : 'timeGridWeek',
+  initialView: 'timeGridWeek',
   events: calendarEvents.value,
   editable: true,
   selectable: true,
   droppable: true, // Enable dropping from external sources
-  // Custom buttons injected into the toolbar. Icons are rendered via CSS mask
-  // (see the <style> block) because FC customButtons only accept text, not HTML.
-  customButtons: {
-    menu: {
-      text: ' ',
-      hint: '更多',
-      click: () => toggleMenu()
-    },
-    toggleSidebar: {
-      text: ' ',
-      hint: '切换备忘录侧边栏',
-      click: () => toggleSidebar()
-    }
+  headerToolbar: {
+    left: 'prev,next today',
+    center: 'title',
+    right: 'dayGridMonth,timeGridWeek,timeGridDay'
   },
-  headerToolbar: isMobile.value
-    ? {
-        left: 'prev,next',
-        center: 'title',
-        right: 'menu toggleSidebar today'
-      }
-    : {
-        left: 'prev,next today',
-        center: 'title',
-        right: 'dayGridMonth,timeGridWeek,timeGridDay menu toggleSidebar'
-      },
   slotLabelFormat: {
     hour: '2-digit' as const,
     minute: '2-digit' as const,
@@ -401,142 +321,5 @@ const calendarOptions = computed(() => ({
 .fc .fc-timegrid-now-indicator-arrow {
   border-color: var(--now-indicator-color, #ef4444) transparent transparent !important;
   opacity: var(--now-indicator-opacity, 0.8);
-}
-
-/* ===== Custom toolbar buttons (icon via CSS mask) ===== */
-/* FC customButtons only accept text, not HTML, so we hide the text and paint
-   the icon via a mask on ::before. The class is fc-{buttonName}-button. */
-.fc .fc-toggleSidebar-button,
-.fc .fc-menu-button {
-  font-size: 0 !important;   /* hide the placeholder text */
-  width: 38px !important;
-  height: 38px !important;
-  padding: 0 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-.fc .fc-toggleSidebar-button::before,
-.fc .fc-menu-button::before {
-  content: '';
-  display: block;
-  width: 18px;
-  height: 18px;
-  background-color: currentColor;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
-}
-
-/* Sidebar toggle — PanelLeft icon */
-.fc .fc-toggleSidebar-button::before {
-  -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxyZWN0IHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgeD0iMyIgeT0iMyIgcng9IjIiLz48cGF0aCBkPSJNOSAzdjE4Ii8+PC9zdmc+");
-  mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxyZWN0IHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgeD0iMyIgeT0iMyIgcng9IjIiLz48cGF0aCBkPSJNOSAzdjE4Ii8+PC9zdmc+");
-}
-
-/* Menu button — EllipsisVertical icon */
-.fc .fc-menu-button::before {
-  -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjUiIHI9IjEiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjE5IiByPSIxIi8+PC9zdmc+");
-  mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjUiIHI9IjEiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjE5IiByPSIxIi8+PC9zdmc+");
-}
-
-/* ===== ⋮ Dropdown menu ===== */
-.fc-menu-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-dropdown);
-  /* transparent click-catcher; doesn't block visually */
-}
-
-.fc-menu {
-  z-index: calc(var(--z-dropdown) + 1);
-  border-radius: 12px !important;
-  padding: 6px;
-  box-shadow: var(--shadow-glass) !important;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-family: var(--font-family);
-}
-
-.fc-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 12px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-primary);
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s ease;
-  text-align: left;
-}
-
-.fc-menu-item:hover:not(.disabled) {
-  background: var(--card-hover-bg);
-}
-
-.fc-menu-item.disabled {
-  color: var(--text-muted);
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.fc-menu-icon {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-
-.fc-menu-tag {
-  margin-left: auto;
-  font-size: 0.7rem;
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: var(--border-glass);
-  color: var(--text-muted);
-}
-
-.fc-menu-divider {
-  height: 1px;
-  background: var(--border-glass);
-  margin: 4px 0;
-}
-
-/* Menu open/close transition */
-.fc-menu-enter-active,
-.fc-menu-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-.fc-menu-enter-from,
-.fc-menu-leave-to {
-  opacity: 0;
-  transform: translateY(-6px);
-}
-</style>
-
-<style scoped>
-/* Mobile adjustments for toolbar to save screen space */
-.is-mobile-calendar :deep(.fc-header-toolbar) {
-  margin-bottom: 8px !important;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.is-mobile-calendar :deep(.fc-toolbar-title) {
-  font-size: 1rem !important;
-}
-
-.is-mobile-calendar :deep(.fc-button) {
-  padding: 4px 8px !important;
-  font-size: 0.8rem !important;
 }
 </style>

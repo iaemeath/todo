@@ -3,60 +3,48 @@ import { ref } from 'vue'
 /**
  * Global UI state (singleton pattern, same as useSettings / useTheme).
  *
- * Holds cross-component view state: which overlay panel is open, whether the
- * memo sidebar is pushed in, etc. This lets the FullCalendar customButton
- * click handlers (defined in CalendarArea) toggle state owned by App.vue
- * without props/emit plumbing.
+ * Centralises view navigation: the top nav bar drives `currentView` and the
+ * App.vue content area switches on it. Legacy overlay refs are kept for
+ * backward compatibility but are no longer the primary navigation mechanism.
  */
-// Memo sidebar (push mode)
+
+export type AppView = 'home' | 'task' | 'schedule' | 'settings'
+
+const currentView = ref<AppView>('home')
+
+// Legacy state — still consumed by some components, will be phased out.
 const sidebarOpen = ref(true)
-
-// Settings modal
 const settingsOpen = ref(false)
-
-// ⋮ dropdown menu in the calendar header
 const menuOpen = ref(false)
-
-// Reserved for the next phase (full-screen management pages)
 const scheduleManageOpen = ref(false)
 const todoManageOpen = ref(false)
 
+const switchView = (view: AppView) => {
+  currentView.value = view
+  menuOpen.value = false
+}
+
+// --- Legacy helpers (kept for components that still reference them) ---
+const toggleSidebar = () => { sidebarOpen.value = !sidebarOpen.value }
+
+const openSettings = () => { switchView('settings') }
+const closeSettings = () => { settingsOpen.value = false }
+
+const toggleMenu = () => { menuOpen.value = !menuOpen.value }
+const closeMenu = () => { menuOpen.value = false }
+
+const openScheduleManage = () => { switchView('schedule') }
+const closeScheduleManage = () => { scheduleManageOpen.value = false }
+
+const openTodoManage = () => { switchView('task') }
+const closeTodoManage = () => { todoManageOpen.value = false }
+
 export function useUI() {
-  const toggleSidebar = () => {
-    sidebarOpen.value = !sidebarOpen.value
-    // Opening the sidebar should close competing overlays
-    menuOpen.value = false
-  }
-
-  const openSettings = () => {
-    settingsOpen.value = true
-    menuOpen.value = false
-  }
-
-  const closeSettings = () => {
-    settingsOpen.value = false
-  }
-
-  const toggleMenu = () => {
-    menuOpen.value = !menuOpen.value
-  }
-
-  const closeMenu = () => {
-    menuOpen.value = false
-  }
-
-  // Reserved for next phase
-  const openScheduleManage = () => {
-    scheduleManageOpen.value = true
-    menuOpen.value = false
-  }
-
-  const openTodoManage = () => {
-    todoManageOpen.value = true
-    menuOpen.value = false
-  }
-
   return {
+    // Primary navigation
+    currentView,
+    switchView,
+    // Legacy (deprecated — prefer currentView / switchView)
     sidebarOpen,
     settingsOpen,
     menuOpen,
@@ -68,6 +56,8 @@ export function useUI() {
     toggleMenu,
     closeMenu,
     openScheduleManage,
-    openTodoManage
+    closeScheduleManage,
+    openTodoManage,
+    closeTodoManage
   }
 }
