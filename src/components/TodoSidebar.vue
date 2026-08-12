@@ -1,24 +1,10 @@
 <template>
-  <aside class="todo-sidebar glass-panel" :class="{ 'is-collapsed': isCollapsed }">
-    
-    <!-- Collapsed View -->
-    <div v-if="isCollapsed" class="collapsed-view">
-      <button class="btn-icon" @click="isCollapsed = false" title="展开备忘录">
-        <PanelLeftOpen class="icon-sm text-primary" />
-      </button>
-    </div>
+  <aside class="todo-sidebar glass-panel">
 
-    <!-- Expanded View -->
-    <div v-else class="expanded-view">
       <div class="sidebar-header">
         <div style="display: flex; align-items: center; gap: 8px;">
           <h2>备忘录 (待办)</h2>
           <span class="count-badge">{{ activeTodos.length }}</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 4px;">
-          <button class="btn-icon" @click="isCollapsed = true" title="收起备忘录">
-            <PanelRightClose class="icon-sm text-secondary" />
-          </button>
         </div>
       </div>
 
@@ -76,20 +62,18 @@
         <p class="empty-state">目前没有待办事项</p>
       </template>
     </draggable>
-    </div>
   </aside>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Plus, GripVertical, Trash2, PanelRightClose, PanelLeftOpen } from 'lucide-vue-next'
+import { Plus, GripVertical, Trash2 } from 'lucide-vue-next'
 import { useTodos } from '../composables/useTodos'
 import { Draggable } from '@fullcalendar/interaction'
 import draggable from 'vuedraggable'
 
 const { todos, addTodo, deleteTodo } = useTodos()
 
-const isCollapsed = ref(false)
 const newTodoTitle = ref('')
 const draggableContainer = ref<any>(null)
 let fcDraggableInstance: Draggable | null = null
@@ -135,38 +119,16 @@ onUnmounted(() => {
 
 <style scoped>
 .todo-sidebar {
-  width: 320px;
-  background: var(--bg-glass-solid);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
-  border: 1px solid var(--border-glass);
-  border-radius: 16px;
+  width: 340px;
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: var(--shadow-glass);
-  transition: width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: var(--el-box-shadow-light);
+  transition: width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
   flex-shrink: 0;
-}
-
-.todo-sidebar.is-collapsed {
-  width: 64px;
-}
-
-.collapsed-view {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 24px 0;
-  gap: 20px;
-  height: 100%;
-}
-
-.expanded-view {
-  display: flex;
-  flex-direction: column;
-  width: 320px;
-  height: 100%;
 }
 
 .sidebar-header {
@@ -174,26 +136,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--border-glass);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.btn-icon {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.btn-icon:hover {
-  background: var(--card-hover-bg);
-  color: var(--text-primary);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  background: var(--el-fill-color-light);
 }
 
 .sidebar-header h2 {
@@ -223,17 +167,17 @@ onUnmounted(() => {
   flex: 1;
   padding: 10px 12px;
   border-radius: 8px;
-  border: 1px solid var(--border-glass);
-  background: var(--input-bg);
-  color: var(--text-primary);
+  border: 1px solid var(--el-border-color);
+  background: var(--el-bg-color-page);
+  color: var(--el-text-color-primary);
   font-size: 0.9rem;
   outline: none;
   transition: all 0.2s;
 }
 
 .glass-input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px var(--color-primary-alpha);
+  border-color: var(--el-color-primary);
+  box-shadow: 0 0 0 2px var(--el-color-primary-light-9);
 }
 
 .btn-add {
@@ -288,7 +232,7 @@ onUnmounted(() => {
   align-items: center;
   padding: 12px;
   border-radius: 12px;
-  background: var(--card-bg);
+  background: var(--bg-card);
   border: 1px solid var(--border-glass);
   gap: 12px;
   cursor: grab;

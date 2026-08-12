@@ -437,7 +437,7 @@ const closeSheet = () => {
   position: fixed;
   bottom: 40px;
   right: 40px;
-  z-index: 9999;
+  z-index: var(--z-overlay);
   width: 64px;
   height: 64px;
 }
@@ -447,18 +447,17 @@ const closeSheet = () => {
   bottom: calc(100% + 16px);
   right: 0;
   padding: 12px 20px;
-  border-radius: 12px;
-  background: var(--bg-glass-solid);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
-  box-shadow: var(--shadow-glass);
+  border-radius: 8px;
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-light);
+  box-shadow: var(--el-box-shadow-light);
   font-size: 0.9rem;
   font-weight: 500;
   max-width: 300px;
   width: max-content;
   word-wrap: break-word;
-  color: var(--text-primary);
-  border-left: 4px solid var(--color-primary);
+  color: var(--el-text-color-primary);
+  border-left: 4px solid var(--el-color-primary);
   pointer-events: none;
 }
 
@@ -562,7 +561,7 @@ const closeSheet = () => {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
-  z-index: 99999;
+  z-index: var(--z-sheet);
   display: flex;
   align-items: flex-end;
 }
@@ -580,7 +579,7 @@ const closeSheet = () => {
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-html.dark .mobile-bottom-sheet {
+[data-theme="dark"] .mobile-bottom-sheet {
   background: var(--bg-card);
   border-top: 1px solid var(--border-color);
 }

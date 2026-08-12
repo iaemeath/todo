@@ -4,11 +4,11 @@
   /* Fonts */
   --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 
-  /* Common Brand Colors */
-  --color-primary: hsl(262, 80%, 50%);
-  --color-primary-light: hsl(262, 80%, 65%);
-  --color-primary-dark: hsl(262, 80%, 40%);
-  --color-primary-alpha: rgba(124, 58, 237, 0.15);
+  /* Common Brand Colors — lavender/indigo (hue 230) */
+  --color-primary: hsl(230, 80%, 70%);       /* #758af0 — buttons, text accent */
+  --color-primary-light: hsl(230, 80%, 80%); /* #a3b1f5 — hover, borders (≈ #a5b4fc) */
+  --color-primary-dark: hsl(230, 80%, 65%);  /* #5e76ed — active state */
+  --color-primary-alpha: rgba(117, 138, 240, 0.16);
 
   --color-success: hsl(142, 70%, 45%);
   --color-success-alpha: rgba(34, 197, 94, 0.15);
@@ -39,6 +39,56 @@
   --card-hover-bg: rgba(255, 255, 255, 0.6);
   --input-bg: rgba(255, 255, 255, 0.6);
   --input-focus-border: var(--color-primary-light);
+
+  /* Solid panel tokens (extracted from SettingsModal local scope) */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-card: #f1f5f9;
+  --border-solid: #e2e8f0;
+  --color-primary-border: rgba(117, 138, 240, 0.5);
+
+  /* Monospace font */
+  --font-mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  /* z-index layering system */
+  --z-base: 1;
+  --z-dropdown: 9500;
+  --z-nav: 9000;
+  --z-overlay: 10000;
+  --z-modal: 10100;
+  --z-sheet: 99999;
+
+  /* Aliases for legacy style.css variable names (compat) */
+  --accent: var(--color-primary);
+  --accent-bg: var(--color-primary-alpha);
+  --accent-border: var(--color-primary-border);
+  --text: var(--text-secondary);
+  --text-h: var(--text-primary);
+  --bg: var(--bg-app);
+  --border: var(--border-solid);
+  --shadow: var(--shadow-glass);
+  --sans: var(--font-family);
+  --heading: var(--font-family);
+  --mono: var(--font-mono);
+
+  /* ===== Element Plus token bridge ===== */
+  /* Map EP's CSS variables to our design tokens so EP components pick up the
+     project's purple primary color, font family, etc. automatically. */
+  --el-color-primary: var(--color-primary);
+  --el-color-primary-light-3: var(--color-primary-light);
+  --el-color-primary-light-5: var(--color-primary-light);
+  --el-color-primary-light-7: var(--color-primary-light);
+  --el-color-primary-light-8: var(--color-primary-light);
+  --el-color-primary-light-9: var(--color-primary-alpha);
+  --el-color-primary-dark-2: var(--color-primary-dark);
+  --el-color-success: var(--color-success);
+  --el-color-warning: var(--color-warning);
+  --el-color-danger: var(--color-danger);
+  --el-color-info: var(--color-info);
+  --el-font-family: var(--font-family);
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 6px;
+  --el-border-radius-round: 16px;
 }
 
 [data-theme="dark"] {
@@ -59,6 +109,13 @@
   --card-hover-bg: rgba(255, 255, 255, 0.04);
   --input-bg: rgba(255, 255, 255, 0.03);
   --input-focus-border: var(--color-primary-light);
+
+  /* Solid panel tokens — dark */
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-card: #010409;
+  --border-solid: #30363d;
+  --color-primary-border: rgba(163, 177, 245, 0.5);
 }
 
 /* Base Styles */
@@ -70,62 +127,53 @@
 
 body {
   font-family: var(--font-family);
-  background-color: var(--bg-app);
-  background-image: var(--bg-gradient);
-  background-attachment: fixed;
-  color: var(--text-primary);
+  background-color: var(--el-bg-color-page);
+  color: var(--el-text-color-primary);
   min-height: 100vh;
-  transition: background-color 0.4s ease, background-image 0.4s ease, color 0.4s ease;
+  transition: background-color 0.4s ease, color 0.4s ease;
   overflow: hidden;
 }
 
-/* Glassmorphism Panel Base Utility */
+/* Panel base utility (formerly glassmorphism, now flat solid style) */
 .glass-panel {
-  background: var(--bg-glass);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
-  border: 1px solid var(--border-glass);
-  border-radius: 20px;
-  box-shadow: var(--shadow-glass);
-  box-shadow: var(--shadow-glass), var(--shadow-inset);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 12px;
+  box-shadow: var(--el-box-shadow-light);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .glass-card {
-  background: var(--bg-glass-solid);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
-  border: 1px solid var(--border-glass-subtle);
-  border-radius: 16px;
-  box-shadow: var(--shadow-glass);
-  box-shadow: 0 4px 16px 0 var(--shadow-color);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--el-bg-color-page);
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 10px;
+  box-shadow: 0 1px 4px 0 var(--shadow-color);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-card:hover {
   transform: translateY(-2px);
-  background: var(--card-hover-bg);
-  box-shadow: 0 12px 24px 0 var(--shadow-color);
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: var(--el-color-primary-light-7);
+  box-shadow: 0 4px 12px 0 var(--shadow-color);
 }
 
 /* Inputs & Interactive Components */
 input, select, textarea {
   font-family: var(--font-family);
-  background: var(--input-bg);
-  border: 1px solid var(--border-glass);
-  border-radius: 12px;
+  background: var(--el-bg-color-page);
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
   padding: 10px 14px;
-  color: var(--text-primary);
+  color: var(--el-text-color-primary);
   outline: none;
   font-size: 0.9rem;
   transition: all 0.25s ease;
 }
 
 input:focus, select:focus, textarea:focus {
-  border-color: var(--input-focus-border);
-  box-shadow: 0 0 0 3px var(--color-primary-alpha);
-  background: var(--bg-glass-solid);
+  border-color: var(--el-color-primary);
+  box-shadow: 0 0 0 3px var(--el-color-primary-light-9);
+  background: var(--el-bg-color);
 }
 
 button {

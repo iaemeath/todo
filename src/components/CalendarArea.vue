@@ -1,5 +1,5 @@
 <template>
-  <div 
+  <div
     class="calendar-wrapper glass-panel"
     :class="{ 'is-mobile-calendar': isMobile }"
     :style="{
@@ -12,27 +12,72 @@
     }"
   >
     <FullCalendar ref="fullCalendar" :options="calendarOptions" />
+
+    <!-- ⋮ dropdown menu (anchored under the FC menu button) -->
+    <Teleport to="body">
+      <div v-if="menuOpen" class="fc-menu-backdrop" @click="closeMenu" />
+      <Transition name="fc-menu">
+        <div v-if="menuOpen" class="fc-menu glass-panel" ref="menuRef">
+          <button class="fc-menu-item disabled" disabled title="开发中">
+            <CalendarRange class="fc-menu-icon" />
+            <span>日程管理</span>
+            <span class="fc-menu-tag">开发中</span>
+          </button>
+          <button class="fc-menu-item disabled" disabled title="开发中">
+            <ListChecks class="fc-menu-icon" />
+            <span>待办管理</span>
+            <span class="fc-menu-tag">开发中</span>
+          </button>
+          <div class="fc-menu-divider" />
+          <button class="fc-menu-item" @click="openSettings">
+            <SettingsIcon class="fc-menu-icon" />
+            <span>设置</span>
+          </button>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import FullCalendar from '@fullcalendar/vue3'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import dayGridPlugin from '@fullcalendar/daygrid'
+import { CalendarRange, ListChecks, Settings as SettingsIcon } from 'lucide-vue-next'
 import { useTodos } from '../composables/useTodos'
 import { useSettings } from '../composables/useSettings'
 import { useTheme } from '../composables/useTheme'
 import { useMobile } from '../composables/useMobile'
+import { useUI } from '../composables/useUI'
 
 const { tasks, updateTask, addTaskFromTodo } = useTodos()
 const { settings } = useSettings()
 const { isDark } = useTheme()
 const { isMobile } = useMobile()
+const { sidebarOpen, toggleSidebar, openSettings, menuOpen, toggleMenu, closeMenu } = useUI()
 
 const fullCalendar = ref<InstanceType<typeof FullCalendar> | null>(null)
+const menuRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
+
+// Position the ⋮ dropdown menu under the FC menu button when it opens
+watch(menuOpen, async (open) => {
+  if (!open) return
+  await nextTick()
+  const btn = document.querySelector<HTMLElement>('.fc-menu-button')
+  const menu = menuRef.value
+  if (!btn || !menu) return
+  const rect = btn.getBoundingClientRect()
+  const menuWidth = 200
+  // Right-align the menu with the button, keep it on screen
+  const left = Math.max(8, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8))
+  menu.style.position = 'fixed'
+  menu.style.top = `${rect.bottom + 6}px`
+  menu.style.left = `${left}px`
+  menu.style.width = `${menuWidth}px`
+})
 
 watch(isMobile, (newVal) => {
   if (fullCalendar.value) {
@@ -140,16 +185,30 @@ const calendarOptions = computed(() => ({
   editable: true,
   selectable: true,
   droppable: true, // Enable dropping from external sources
-  headerToolbar: isMobile.value 
+  // Custom buttons injected into the toolbar. Icons are rendered via CSS mask
+  // (see the <style> block) because FC customButtons only accept text, not HTML.
+  customButtons: {
+    menu: {
+      text: ' ',
+      hint: '更多',
+      click: () => toggleMenu()
+    },
+    toggleSidebar: {
+      text: ' ',
+      hint: '切换备忘录侧边栏',
+      click: () => toggleSidebar()
+    }
+  },
+  headerToolbar: isMobile.value
     ? {
         left: 'prev,next',
         center: 'title',
-        right: 'today'
+        right: 'menu toggleSidebar today'
       }
     : {
         left: 'prev,next today',
         center: 'title',
-        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        right: 'dayGridMonth,timeGridWeek,timeGridDay menu toggleSidebar'
       },
   slotLabelFormat: {
     hour: '2-digit' as const,
@@ -259,7 +318,7 @@ const calendarOptions = computed(() => ({
   top: 0;
   left: 4px;               /* 贴左对齐 */
   transform: translateY(-50%);  /* 让文字中心对准刻度线 */
-  background: var(--bg-glass-solid);
+  background: var(--el-bg-color);
   padding: 0 4px;
   border-radius: 3px;
   z-index: 2;
@@ -281,8 +340,6 @@ const calendarOptions = computed(() => ({
   border-radius: 8px !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
 }
 
 .fc-timegrid-event:hover {
@@ -302,14 +359,13 @@ const calendarOptions = computed(() => ({
 
 /* Toolbar Buttons */
 .fc .fc-button-primary {
-  background-color: var(--bg-glass-solid) !important;
-  border-color: var(--border-glass) !important;
-  color: var(--text-primary) !important;
+  background-color: var(--el-bg-color) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-primary) !important;
   border-radius: 8px !important;
-  backdrop-filter: var(--blur-glass);
   text-transform: capitalize;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
   transition: all 0.2s ease;
 }
 
@@ -328,6 +384,125 @@ const calendarOptions = computed(() => ({
 /* Background Color Override for Day Area */
 .fc .fc-timegrid-col.fc-day-today {
   background-color: rgba(var(--color-primary), 0.02) !important;
+}
+
+/* ===== Custom toolbar buttons (icon via CSS mask) ===== */
+/* FC customButtons only accept text, not HTML, so we hide the text and paint
+   the icon via a mask on ::before. The class is fc-{buttonName}-button. */
+.fc .fc-toggleSidebar-button,
+.fc .fc-menu-button {
+  font-size: 0 !important;   /* hide the placeholder text */
+  width: 38px !important;
+  height: 38px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.fc .fc-toggleSidebar-button::before,
+.fc .fc-menu-button::before {
+  content: '';
+  display: block;
+  width: 18px;
+  height: 18px;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+/* Sidebar toggle — PanelLeft icon */
+.fc .fc-toggleSidebar-button::before {
+  -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxyZWN0IHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgeD0iMyIgeT0iMyIgcng9IjIiLz48cGF0aCBkPSJNOSAzdjE4Ii8+PC9zdmc+");
+  mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxyZWN0IHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgeD0iMyIgeT0iMyIgcng9IjIiLz48cGF0aCBkPSJNOSAzdjE4Ii8+PC9zdmc+");
+}
+
+/* Menu button — EllipsisVertical icon */
+.fc .fc-menu-button::before {
+  -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjUiIHI9IjEiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjE5IiByPSIxIi8+PC9zdmc+");
+  mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjUiIHI9IjEiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjE5IiByPSIxIi8+PC9zdmc+");
+}
+
+/* ===== ⋮ Dropdown menu ===== */
+.fc-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dropdown);
+  /* transparent click-catcher; doesn't block visually */
+}
+
+.fc-menu {
+  z-index: calc(var(--z-dropdown) + 1);
+  border-radius: 12px !important;
+  padding: 6px;
+  box-shadow: var(--shadow-glass) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--font-family);
+}
+
+.fc-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  text-align: left;
+}
+
+.fc-menu-item:hover:not(.disabled) {
+  background: var(--card-hover-bg);
+}
+
+.fc-menu-item.disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.fc-menu-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.fc-menu-tag {
+  margin-left: auto;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--border-glass);
+  color: var(--text-muted);
+}
+
+.fc-menu-divider {
+  height: 1px;
+  background: var(--border-glass);
+  margin: 4px 0;
+}
+
+/* Menu open/close transition */
+.fc-menu-enter-active,
+.fc-menu-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.fc-menu-enter-from,
+.fc-menu-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 </style>
 

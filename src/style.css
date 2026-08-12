@@ -1,45 +1,21 @@
+/*
+ * Base element styles & mobile responsive overrides.
+ *
+ * Design tokens (colors, fonts, spacing) are defined ONCE in theme.css.
+ * This file only holds element resets and component rules that don't fit in
+ * a scoped <style> block. Legacy variable names (--accent, --text, --bg, ...)
+ * are aliased in theme.css for backwards compatibility.
+ */
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
+  font: 18px/145% var(--font-family);
   letter-spacing: 0.18px;
   color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
+  color: var(--text-primary);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
 }
 
 body {
@@ -52,9 +28,9 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--heading);
+  font-family: var(--font-family);
   font-weight: 500;
-  color: var(--text-h);
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -63,14 +39,14 @@ p {
 }
 
 code {
-  font-family: var(--mono);
+  font-family: var(--font-mono);
   display: inline-flex;
   border-radius: 4px;
-  color: var(--text-h);
+  color: var(--text-primary);
   font-size: 15px;
   line-height: 135%;
   padding: 4px 8px;
-  background: var(--code-bg);
+  background: var(--bg-card);
 }
 
 #app {
@@ -103,7 +79,7 @@ code {
   left: 50%;
   transform: translateX(-50%);
   width: 85%;
-  z-index: 9000;
+  z-index: var(--z-nav);
   box-shadow: 0 8px 32px rgba(0,0,0,0.2);
 }
 
@@ -114,7 +90,7 @@ code {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  color: var(--text);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -124,8 +100,8 @@ code {
 }
 
 .nav-btn.active {
-  color: var(--accent);
-  background: var(--accent-bg);
+  color: var(--color-primary);
+  background: var(--color-primary-alpha);
 }
 
 .nav-icon {
@@ -149,10 +125,4 @@ code {
 .mobile-layout .voice-assistant-fab {
   bottom: 100px !important; /* Float above nav bar */
   right: 20px !important;
-}
-
-.mobile-layout .setting-modal-content {
-  width: 95vw !important;
-  max-width: 95vw !important;
-  max-height: 90vh !important;
 }

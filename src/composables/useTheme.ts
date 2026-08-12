@@ -18,6 +18,8 @@ const loadTheme = () => {
 const applyTheme = (dark: boolean) => {
   if (typeof document !== 'undefined') {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+    // Element Plus dark mode listens for the `dark` class on <html>
+    document.documentElement.classList.toggle('dark', dark)
   }
 }
 

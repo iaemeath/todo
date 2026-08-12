@@ -3,12 +3,17 @@ import { ref, onMounted } from 'vue'
 import CalendarArea from './components/CalendarArea.vue'
 import TodoSidebar from './components/TodoSidebar.vue'
 import VoiceAssistant from './components/VoiceAssistant.vue'
+import SettingsModal from './components/SettingsModal.vue'
 import { Calendar as CalendarIcon, List as ListIcon } from 'lucide-vue-next'
 import { useTheme } from './composables/useTheme'
 import { useMobile } from './composables/useMobile'
+import { useUI } from './composables/useUI'
 
 const { loadTheme } = useTheme()
 const { isMobile } = useMobile()
+const { sidebarOpen, settingsOpen, closeSettings } = useUI()
+
+// Mobile-only: which tab is shown (calendar vs todo list)
 const activeTab = ref<'calendar' | 'todos'>('calendar')
 
 onMounted(() => {
@@ -20,8 +25,10 @@ onMounted(() => {
   <div class="app-layout" :class="{ 'mobile-layout': isMobile }">
     <main class="main-workspace">
       <CalendarArea v-show="!isMobile || activeTab === 'calendar'" />
-      <TodoSidebar 
-        v-show="!isMobile || activeTab === 'todos'" 
+      <!-- Desktop: memo sidebar in push mode, driven by useUI.sidebarOpen -->
+      <TodoSidebar
+        v-if="!isMobile"
+        v-show="sidebarOpen"
       />
     </main>
 
@@ -38,6 +45,10 @@ onMounted(() => {
     </nav>
 
     <VoiceAssistant />
+    <SettingsModal
+      :isOpen="settingsOpen"
+      @close="closeSettings"
+    />
   </div>
 </template>
 
@@ -48,10 +59,8 @@ onMounted(() => {
 html, body {
   margin: 0;
   padding: 0;
-  background-color: var(--bg-app);
-  background-image: var(--bg-gradient);
-  background-attachment: fixed;
-  color: var(--text-primary);
+  background-color: var(--el-bg-color-page);
+  color: var(--el-text-color-primary);
   font-family: var(--font-family);
   height: 100vh;
   overflow: hidden;
