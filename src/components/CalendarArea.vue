@@ -8,7 +8,10 @@
       '--major-line-opacity': settings.majorLineOpacity,
       '--minor-line-width': settings.minorLineWidth + 'px',
       '--minor-line-opacity': settings.minorLineOpacity,
-      '--minor-line-style': settings.showMinorLines ? 'solid' : 'none'
+      '--minor-line-style': settings.showMinorLines ? 'solid' : 'none',
+      '--now-indicator-color': settings.nowIndicatorColor,
+      '--now-indicator-height': settings.nowIndicatorHeight + 'px',
+      '--now-indicator-opacity': settings.nowIndicatorOpacity
     }"
   >
     <FullCalendar ref="fullCalendar" :options="calendarOptions" />
@@ -384,6 +387,20 @@ const calendarOptions = computed(() => ({
 /* Background Color Override for Day Area */
 .fc .fc-timegrid-col.fc-day-today {
   background-color: rgba(var(--color-primary), 0.02) !important;
+}
+
+/* Current-time indicator (the red line + arrow).
+   FC uses --fc-now-indicator-color; we layer height/opacity on top via
+   custom properties set from settings. */
+.fc .fc-timegrid-now-indicator-line {
+  border-top-width: var(--now-indicator-height, 2px) !important;
+  border-top-color: var(--now-indicator-color, #ef4444) !important;
+  opacity: var(--now-indicator-opacity, 0.8);
+}
+
+.fc .fc-timegrid-now-indicator-arrow {
+  border-color: var(--now-indicator-color, #ef4444) transparent transparent !important;
+  opacity: var(--now-indicator-opacity, 0.8);
 }
 
 /* ===== Custom toolbar buttons (icon via CSS mask) ===== */

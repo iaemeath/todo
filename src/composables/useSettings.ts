@@ -18,6 +18,9 @@ export interface Settings {
   minorLineOpacity: number
   startHour: number
   endHour: number
+  nowIndicatorColor: string
+  nowIndicatorHeight: number
+  nowIndicatorOpacity: number
 }
 
 const defaultSettings: Settings = {
@@ -35,7 +38,10 @@ const defaultSettings: Settings = {
   minorLineWidth: 1.0,
   minorLineOpacity: 0.15,
   startHour: 5,
-  endHour: 24
+  endHour: 24,
+  nowIndicatorColor: '#ef4444',
+  nowIndicatorHeight: 2,
+  nowIndicatorOpacity: 0.8
 }
 
 const settings = ref<Settings>({ ...defaultSettings })

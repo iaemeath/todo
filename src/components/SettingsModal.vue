@@ -90,6 +90,20 @@
               </el-form-item>
             </template>
           </el-card>
+
+          <!-- 当前时刻指示线 -->
+          <el-card shadow="never" class="setting-card">
+            <template #header><span class="card-title">当前时刻指示线</span></template>
+            <el-form-item label="线条颜色">
+              <el-color-picker v-model="form.nowIndicatorColor" show-alpha />
+            </el-form-item>
+            <el-form-item :label="`线条粗细: ${form.nowIndicatorHeight}px`">
+              <el-slider v-model="form.nowIndicatorHeight" :min="1" :max="6" :step="0.5" />
+            </el-form-item>
+            <el-form-item :label="`透明度: ${Math.round(form.nowIndicatorOpacity * 100)}%`">
+              <el-slider v-model="form.nowIndicatorOpacity" :min="0.1" :max="1" :step="0.05" />
+            </el-form-item>
+          </el-card>
         </el-form>
       </el-tab-pane>
 
@@ -454,7 +468,10 @@ watch(
     form.value.minorLineWidth,
     form.value.minorLineOpacity,
     form.value.startHour,
-    form.value.endHour
+    form.value.endHour,
+    form.value.nowIndicatorColor,
+    form.value.nowIndicatorHeight,
+    form.value.nowIndicatorOpacity
   ],
   () => {
     updateSettings({
@@ -466,7 +483,10 @@ watch(
       minorLineWidth: form.value.minorLineWidth,
       minorLineOpacity: form.value.minorLineOpacity,
       startHour: form.value.startHour,
-      endHour: form.value.endHour
+      endHour: form.value.endHour,
+      nowIndicatorColor: form.value.nowIndicatorColor,
+      nowIndicatorHeight: form.value.nowIndicatorHeight,
+      nowIndicatorOpacity: form.value.nowIndicatorOpacity
     })
   }
 )
