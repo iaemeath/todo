@@ -48,12 +48,14 @@
           <el-tag size="small" :type="priorityTagType(row.priority)" effect="plain">{{ priorityLabel(row.priority) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="280" fixed="right">
+      <el-table-column label="操作" width="360" fixed="right">
         <template #default="{ row }">
-          <el-button v-if="canAddChild(row.id)" text size="small" type="primary" :icon="Plus" @click="openCreateDialog(row as Task)">加子任务</el-button>
-          <el-button v-if="isLeaf(row.id)" text size="small" type="primary" :icon="Calendar" @click="openScheduleDialog(row as Task)">排期</el-button>
-          <el-button text size="small" type="primary" :icon="Edit" @click="openEditDialog(row as Task)">编辑</el-button>
-          <el-button text size="small" type="danger" :icon="Delete" @click="handleDelete(row as Task)">删除</el-button>
+          <div class="row-actions">
+            <el-button v-if="canAddChild(row.id)" text size="small" type="primary" :icon="Plus" @click="openCreateDialog(row as Task)">加子任务</el-button>
+            <el-button v-if="isLeaf(row.id)" text size="small" type="primary" :icon="Calendar" @click="openScheduleDialog(row as Task)">排期</el-button>
+            <el-button text size="small" type="primary" :icon="Edit" @click="openEditDialog(row as Task)">编辑</el-button>
+            <el-button text size="small" type="danger" :icon="Delete" @click="handleDelete(row as Task)">删除</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -325,6 +327,15 @@ const confirmSchedule = () => {
 .manage-page :deep(.el-table .el-table__cell) {
   padding-top: 5px;
   padding-bottom: 5px;
+}
+
+/* 操作列按钮：inline-flex 防换行 + 收紧间距（覆盖 EP 默认 12px margin）*/
+.row-actions {
+  display: inline-flex;
+  gap: 4px;
+}
+.row-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
 }
 
 .manage-toolbar {

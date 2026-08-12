@@ -42,10 +42,12 @@
           <span v-else class="text-muted">—</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="160" fixed="right">
+      <el-table-column label="操作" width="190" fixed="right">
         <template #default="{ row }">
-          <el-button text size="small" type="primary" :icon="Edit" @click="openEditDialog(row as Schedule)">编辑</el-button>
-          <el-button text size="small" type="danger" :icon="Delete" @click="handleDelete(row as Schedule)">删除</el-button>
+          <div class="row-actions">
+            <el-button text size="small" type="primary" :icon="Edit" @click="openEditDialog(row as Schedule)">编辑</el-button>
+            <el-button text size="small" type="danger" :icon="Delete" @click="handleDelete(row as Schedule)">删除</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -266,6 +268,15 @@ const confirmFromTodo = () => {
 .manage-page :deep(.el-table .el-table__cell) {
   padding-top: 5px;
   padding-bottom: 5px;
+}
+
+/* 操作列按钮：inline-flex 防换行 + 收紧间距（覆盖 EP 默认 12px margin）*/
+.row-actions {
+  display: inline-flex;
+  gap: 4px;
+}
+.row-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
 }
 
 .manage-toolbar {
