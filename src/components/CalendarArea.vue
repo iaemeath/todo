@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import FullCalendar from '@fullcalendar/vue3'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
@@ -125,13 +125,15 @@ const handleEventReceive = (info: any) => {
 
 const calendarOptions = computed(() => ({
   plugins: [timeGridPlugin, interactionPlugin, dayGridPlugin],
-  initialView: 'timeGridWeek',
+  initialView: isMobile.value ? 'timeGridDay' : 'timeGridWeek',
+  // 移动端日视图：title 显示当天日期（带星期）
+  ...(isMobile.value ? { titleFormat: { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' } as const } : {}),
   events: calendarEvents.value,
   editable: true,
   selectable: true,
   droppable: true, // Enable dropping from external sources
   headerToolbar: isMobile.value
-    ? { left: 'prev,next today', center: 'title', right: 'timeGridWeek,timeGridDay' }
+    ? { left: '', center: 'title', right: '' }
     : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
   slotLabelFormat: {
     hour: '2-digit' as const,
@@ -151,6 +153,8 @@ const calendarOptions = computed(() => ({
   
   firstDay: 1, // Start week on Monday
   dayHeaderContent: (arg: any) => {
+    // 移动端日视图：title 已显示当天日期，隐藏列头避免重复（只保留一行表头）
+    if (isMobile.value) return ''
     return `${arg.date.getMonth() + 1}月${arg.date.getDate()}日`
   },
   
@@ -163,6 +167,12 @@ const calendarOptions = computed(() => ({
   },
   locale: 'zh-cn'
 }))
+
+// 设备切换时同步默认视图（initialView 仅首次渲染生效，resize 切换设备需用 API changeView）
+watch(isMobile, (m) => {
+  const api = fullCalendar.value?.getApi()
+  if (api) api.changeView(m ? 'timeGridDay' : 'timeGridWeek')
+})
 </script>
 
 <style>
