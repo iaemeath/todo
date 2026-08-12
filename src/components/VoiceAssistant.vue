@@ -1,42 +1,14 @@
 <template>
-  <div class="voice-assistant-fab" :style="isMobile ? { bottom: '24px', right: '24px', left: 'auto', top: 'auto' } : fabStyle">
-    <!-- Desktop Toast -->
+  <div class="voice-assistant-fab" :style="fabStyle">
     <Transition name="toast-slide">
-      <div v-if="!isMobile && toastMessage" class="voice-toast glass-panel" :class="toastType">
+      <div v-if="toastMessage" class="voice-toast glass-panel" :class="toastType">
         {{ toastMessage }}
       </div>
     </Transition>
 
-    <!-- Mobile Bottom Sheet -->
-    <Teleport to="body">
-      <Transition name="sheet-slide">
-        <div v-if="isMobile && (state !== 'idle' || toastMessage)" class="mobile-bottom-sheet-overlay" @click.self="closeSheet">
-          <div class="mobile-bottom-sheet">
-            <div class="sheet-handle"></div>
-            <div class="sheet-content">
-               <div class="sheet-status">
-                 <Mic v-if="state === 'idle' || state === 'listening'" class="sheet-icon" :class="{'pulse': state==='listening'}" />
-                 <Loader2 v-else-if="state === 'processing'" class="sheet-icon spin" />
-                 <Check v-else-if="state === 'success'" class="sheet-icon text-success" />
-                 <AlertCircle v-else-if="state === 'error'" class="sheet-icon text-danger" />
-                 <h3>{{ tooltip }}</h3>
-               </div>
-               <div class="sheet-message" v-if="toastMessage || accumulatedText">
-                 <p>{{ toastMessage || accumulatedText }}</p>
-               </div>
-               
-               <button class="sheet-close-btn" @click="closeSheet" :disabled="state === 'processing'">
-                 {{ state === 'listening' ? '停止倾听' : '关闭' }}
-               </button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
-
     <!-- Main FAB -->
     <button 
-      v-show="!isMobile || (isMobile && state === 'idle' && !toastMessage)"
+      v-show="state === 'idle' && !toastMessage"
       class="fab-btn"
       :class="[state, { 'is-pulsing': state === 'listening', 'is-dragging': isDraggingState }]"
       @mousedown="startDrag"
@@ -62,11 +34,9 @@ import Fuse from 'fuse.js'
 import { parseVoiceCommand, type VoiceIntent } from '../services/llmService'
 import { useTasks, useSchedules } from '../composables/useTasks'
 import { useSettings } from '../composables/useSettings'
-import { useMobile } from '../composables/useMobile'
 
 type VoiceState = 'idle' | 'listening' | 'processing' | 'success' | 'error'
 
-const { isMobile } = useMobile()
 const state = ref<VoiceState>('idle')
 const toastMessage = ref('')
 const toastType = ref<'info' | 'success' | 'error'>('info')
@@ -423,15 +393,6 @@ const toggleVoice = () => {
   }
 }
 
-const closeSheet = () => {
-  if (state.value === 'processing') return
-  if (state.value === 'listening') {
-    toggleVoice()
-  } else {
-    state.value = 'idle'
-    toastMessage.value = ''
-  }
-}
 </script>
 
 <style scoped>
@@ -558,127 +519,4 @@ const closeSheet = () => {
   100% { transform: scale(1.6); opacity: 0; border-width: 1px; }
 }
 
-/* Mobile Bottom Sheet */
-.mobile-bottom-sheet-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  z-index: var(--z-sheet);
-  display: flex;
-  align-items: flex-end;
-}
-
-.mobile-bottom-sheet {
-  width: 100%;
-  background: var(--bg-primary);
-  border-top-left-radius: 20px;
-  border-top-right-radius: 20px;
-  padding: 16px 24px 32px;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-[data-theme="dark"] .mobile-bottom-sheet {
-  background: var(--bg-card);
-  border-top: 1px solid var(--border-color);
-}
-
-.sheet-handle {
-  width: 40px;
-  height: 4px;
-  background: var(--border-color);
-  border-radius: 2px;
-  margin-bottom: 24px;
-}
-
-.sheet-content {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-.sheet-status {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-.sheet-icon {
-  width: 48px;
-  height: 48px;
-  color: var(--color-primary);
-}
-
-.sheet-icon.pulse {
-  animation: pulse-icon 1.5s infinite;
-}
-
-@keyframes pulse-icon {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.1); opacity: 0.8; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-.sheet-status h3 {
-  margin: 0;
-  font-size: 1.2rem;
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.sheet-message {
-  width: 100%;
-  padding: 16px;
-  background: var(--bg-secondary);
-  border-radius: 12px;
-  text-align: center;
-  min-height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.sheet-message p {
-  margin: 0;
-  font-size: 1rem;
-  color: var(--text-secondary);
-  word-break: break-all;
-}
-
-.sheet-close-btn {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  border: none;
-  background: var(--color-primary);
-  color: white;
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-top: 8px;
-}
-
-.sheet-close-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.sheet-slide-enter-active,
-.sheet-slide-leave-active {
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.sheet-slide-enter-from,
-.sheet-slide-leave-to {
-  opacity: 0;
-}
-.sheet-slide-enter-from .mobile-bottom-sheet,
-.sheet-slide-leave-to .mobile-bottom-sheet {
-  transform: translateY(100%);
-}
 </style>

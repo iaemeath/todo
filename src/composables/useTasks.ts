@@ -36,18 +36,6 @@ const LS_SCHEDULES = 'canvas_schedules'
 const LS_SCHEMA = 'canvas_schema_version'
 const MAX_LEVEL = 3
 
-// ===== Helper Utilities =====
-export const timeStrToMins = (timeStr: string): number => {
-  const [h, m] = timeStr.split(':').map(Number)
-  return h * 60 + m
-}
-
-export const minsToTimeStr = (mins: number): string => {
-  const h = Math.floor(mins / 60)
-  const m = mins % 60
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-}
-
 // Generate unique ID
 export const generateId = (): string => {
   return 'task-' + Math.random().toString(36).substring(2, 9)

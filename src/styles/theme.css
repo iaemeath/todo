@@ -58,19 +58,6 @@
   --z-modal: 10100;
   --z-sheet: 99999;
 
-  /* Aliases for legacy style.css variable names (compat) */
-  --accent: var(--color-primary);
-  --accent-bg: var(--color-primary-alpha);
-  --accent-border: var(--color-primary-border);
-  --text: var(--text-secondary);
-  --text-h: var(--text-primary);
-  --bg: var(--bg-app);
-  --border: var(--border-solid);
-  --shadow: var(--shadow-glass);
-  --sans: var(--font-family);
-  --heading: var(--font-family);
-  --mono: var(--font-mono);
-
   /* ===== Element Plus token bridge ===== */
   /* Map EP's CSS variables to our design tokens so EP components pick up the
      project's purple primary color, font family, etc. automatically. */
