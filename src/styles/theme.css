@@ -23,29 +23,16 @@
   --color-info-alpha: rgba(14, 165, 233, 0.15);
 
   /* Light Theme Variables */
-  --bg-gradient: radial-gradient(circle at 10% 20%, rgba(243, 239, 253, 0.7) 0%, rgba(229, 240, 253, 0.7) 90.7%);
-  --bg-app: #f5f7fb;
-  --bg-glass: rgba(255, 255, 255, 0.45);
-  --bg-glass-solid: rgba(255, 255, 255, 0.75);
   --border-glass: rgba(0, 0, 0, 0.08);
   --border-glass-subtle: rgba(0, 0, 0, 0.04);
   --text-primary: #1e1e2f;
   --text-secondary: #64748b;
   --text-muted: #94a3b8;
   --shadow-color: rgba(31, 38, 135, 0.08);
-  --shadow-glass: 0 8px 32px 0 var(--shadow-color);
-  --shadow-inset: inset 0 2px 4px 0 rgba(255, 255, 255, 0.40);
-  --blur-glass: blur(16px);
   --card-hover-bg: rgba(255, 255, 255, 0.6);
-  --input-bg: rgba(255, 255, 255, 0.6);
-  --input-focus-border: var(--color-primary-light);
 
-  /* Solid panel tokens (extracted from SettingsModal local scope) */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8fafc;
+  /* Solid panel token */
   --bg-card: #f1f5f9;
-  --border-solid: #e2e8f0;
-  --color-primary-border: rgba(117, 138, 240, 0.5);
 
   /* Monospace font */
   --font-mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
@@ -56,7 +43,6 @@
   --z-nav: 9000;
   --z-overlay: 10000;
   --z-modal: 10100;
-  --z-sheet: 99999;
 
   /* ===== Element Plus token bridge ===== */
   /* Map EP's CSS variables to our design tokens so EP components pick up the
@@ -80,29 +66,16 @@
 
 [data-theme="dark"] {
   /* Dark Theme Variables */
-  --bg-gradient: radial-gradient(circle at 10% 20%, rgba(17, 12, 28, 0.85) 0%, rgba(8, 15, 30, 0.85) 90.7%);
-  --bg-app: #09090e;
-  --bg-glass: rgba(15, 15, 27, 0.5);
-  --bg-glass-solid: rgba(20, 20, 35, 0.85);
   --border-glass: rgba(255, 255, 255, 0.07);
   --border-glass-subtle: rgba(255, 255, 255, 0.04);
   --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
   --shadow-color: rgba(0, 0, 0, 0.35);
-  --shadow-glass: 0 8px 32px 0 var(--shadow-color);
-  --shadow-inset: inset 0 1px 1px 0 rgba(255, 255, 255, 0.05);
-  --blur-glass: blur(20px);
   --card-hover-bg: rgba(255, 255, 255, 0.04);
-  --input-bg: rgba(255, 255, 255, 0.03);
-  --input-focus-border: var(--color-primary-light);
 
-  /* Solid panel tokens — dark */
-  --bg-primary: #0d1117;
-  --bg-secondary: #161b22;
+  /* Solid panel token — dark */
   --bg-card: #010409;
-  --border-solid: #30363d;
-  --color-primary-border: rgba(163, 177, 245, 0.5);
 }
 
 /* Base Styles */
