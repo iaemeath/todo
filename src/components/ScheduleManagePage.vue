@@ -15,7 +15,7 @@
     </div>
 
     <!-- Table -->
-    <el-table :data="filteredSchedules" stripe border style="width: 100%;" empty-text="暂无日程">
+    <el-table :data="filteredSchedules" size="small" stripe border style="width: 100%;" empty-text="暂无日程">
       <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
       <el-table-column label="日期" width="130">
         <template #default="{ row }">
@@ -273,7 +273,7 @@ const confirmFromTodo = () => {
 /* 操作列按钮：inline-flex 防换行 + 收紧间距（覆盖 EP 默认 12px margin）*/
 .row-actions {
   display: inline-flex;
-  gap: 4px;
+  gap: 2px;
 }
 .row-actions :deep(.el-button + .el-button) {
   margin-left: 0;

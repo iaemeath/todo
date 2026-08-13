@@ -17,6 +17,7 @@
       row-key="id"
       :tree-props="{ children: 'children' }"
       default-expand-all
+      size="small"
       stripe
       border
       style="width: 100%;"
@@ -48,7 +49,7 @@
           <el-tag size="small" :type="priorityTagType(row.priority)" effect="plain">{{ priorityLabel(row.priority) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="250" fixed="right">
+      <el-table-column label="操作" width="240" fixed="right">
         <template #default="{ row }">
           <div class="row-actions">
             <el-button v-if="canAddChild(row.id)" text size="small" type="primary" :icon="Plus" @click="openCreateDialog(row as Task)">加子任务</el-button>
@@ -339,7 +340,7 @@ const confirmSchedule = () => {
 }
 /* 收紧 text small 按钮水平内边距 */
 .row-actions :deep(.el-button) {
-  padding-left: 6px;
+  padding-left: 0;
   padding-right: 6px;
 }
 

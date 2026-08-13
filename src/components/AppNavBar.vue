@@ -2,12 +2,12 @@
   <header class="app-navbar">
     <!-- 左侧：移动端在设置页时显示「‹ 设置」返回按钮，其余显示 logo -->
     <button
-      v-if="isMobile && currentView === 'settings'"
+      v-if="isMobile && currentView !== 'home'"
       class="nav-back"
       @click="switchView('home')"
     >
       <el-icon><ArrowLeft /></el-icon>
-      <span>{{ settingsTitle }}</span>
+      <span>{{ navTitle }}</span>
     </button>
     <div v-else class="nav-logo">
       <el-icon class="logo-icon"><Calendar /></el-icon>
@@ -41,15 +41,18 @@
         <span>设置</span>
       </button>
 
-      <!-- 移动端：仅在主页时显示设置图标（主页图标不显示，靠设置页返回按钮回主页） -->
-      <button
-        v-if="isMobile && currentView === 'home'"
-        class="nav-tab icon-only"
-        @click="switchView('settings')"
-        title="设置"
-      >
-        <el-icon><Setting /></el-icon>
-      </button>
+      <!-- 移动端：主页时显示 任务管理 / 日程管理 / 设置 图标 -->
+      <template v-if="isMobile && currentView === 'home'">
+        <button class="nav-tab icon-only" @click="switchView('task')" title="任务管理">
+          <el-icon><List /></el-icon>
+        </button>
+        <button class="nav-tab icon-only" @click="switchView('schedule')" title="日程管理">
+          <el-icon><Clock /></el-icon>
+        </button>
+        <button class="nav-tab icon-only" @click="switchView('settings')" title="设置">
+          <el-icon><Setting /></el-icon>
+        </button>
+      </template>
     </div>
   </header>
 </template>
@@ -65,6 +68,14 @@ const { currentView, switchView, isMobile, settingsSection } = useUI()
 const settingsTitle = computed(() => {
   const map: Record<string, string> = { list: '设置', view: '视觉与外观', ai: 'AI 助理配置', usage: 'API 消耗记录' }
   return map[settingsSection.value] || '设置'
+})
+
+// 移动端非主页时顶部返回按钮标题：设置页随子页变化，任务/日程用固定名
+const navTitle = computed(() => {
+  if (currentView.value === 'settings') return settingsTitle.value
+  if (currentView.value === 'task') return '任务管理'
+  if (currentView.value === 'schedule') return '日程管理'
+  return ''
 })
 
 // 桌面 tabs（设置单独放右侧）
