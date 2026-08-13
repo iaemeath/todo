@@ -15,7 +15,7 @@
     </div>
 
     <!-- Table -->
-    <el-table :data="filteredSchedules" size="small" stripe border style="width: 100%;" empty-text="暂无日程">
+    <el-table :data="filteredSchedules" stripe border style="width: 100%;" empty-text="暂无日程">
       <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
       <el-table-column label="日期" width="130">
         <template #default="{ row }">
@@ -29,9 +29,9 @@
       </el-table-column>
       <el-table-column label="颜色" width="100">
         <template #default="{ row }">
-          <span class="color-tag" :style="{ background: colorHex(row.color) + '22', color: colorHex(row.color), 'border-color': colorHex(row.color) + '55' }">
+          <el-tag size="small" effect="plain" :style="{ background: colorHex(row.color) + '22', color: colorHex(row.color), 'border-color': colorHex(row.color) + '55' }">
             {{ colorLabel(row.color) }}
-          </span>
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column label="来源" width="160" show-overflow-tooltip>
@@ -306,14 +306,5 @@ const confirmFromTodo = () => {
   height: 14px;
   border-radius: 50%;
   vertical-align: middle;
-}
-
-.color-tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  border: 1px solid;
 }
 </style>

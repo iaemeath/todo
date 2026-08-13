@@ -17,7 +17,6 @@
       row-key="id"
       :tree-props="{ children: 'children' }"
       default-expand-all
-      size="small"
       stripe
       border
       style="width: 100%;"
