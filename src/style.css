@@ -38,17 +38,6 @@ p {
   margin: 0;
 }
 
-code {
-  font-family: var(--font-mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-primary);
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--bg-card);
-}
-
 #app {
   width: 100%;
   margin: 0 auto;

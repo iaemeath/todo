@@ -37,7 +37,7 @@ const LS_SCHEMA = 'canvas_schema_version'
 const MAX_LEVEL = 3
 
 // Generate unique ID
-export const generateId = (): string => {
+const generateId = (): string => {
   return 'task-' + Math.random().toString(36).substring(2, 9)
 }
 
@@ -283,7 +283,6 @@ export function useTasks() {
     updateTask,
     deleteTask,
     setTaskCompleted,
-    getChildren,
     getDescendants,
     getTaskLevel,
     canAddChild,
