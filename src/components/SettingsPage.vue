@@ -16,8 +16,8 @@
       </el-menu-item>
     </el-menu>
 
-    <!-- 移动端：列表入口（未选中时） -->
-    <div v-if="isMobile && !mobileTab" class="mobile-list">
+    <!-- 移动端：列表入口 -->
+    <div v-if="isMobile && settingsSection === 'list'" class="mobile-list">
       <div class="mobile-item" @click="enterMobile('view')">
         <el-icon><Monitor /></el-icon>
         <span>视觉与外观</span>
@@ -35,14 +35,8 @@
       </div>
     </div>
 
-    <!-- 移动端：返回栏（选中面板时） -->
-    <div v-if="isMobile && mobileTab" class="mobile-back" @click="mobileTab = null">
-      <el-icon><ArrowLeft /></el-icon>
-      <span>设置</span>
-    </div>
-
     <!-- 内容区域（桌面 + 移动端共用） -->
-    <div class="settings-content" v-show="!isMobile || !!mobileTab">
+    <div class="settings-content" v-show="!isMobile || settingsSection !== 'list'">
 
       <!-- ========== 视觉与外观 ========== -->
       <div v-show="currentTab === 'view'">
@@ -322,7 +316,7 @@
 
 <script setup lang="ts">
 import { ref, watch, computed, onMounted } from 'vue'
-import { Monitor, ChatDotRound, DataLine, Delete, Search, Download, CircleCheckFilled, Moon, Sunny, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { Monitor, ChatDotRound, DataLine, Delete, Search, Download, CircleCheckFilled, Moon, Sunny, ArrowRight } from '@element-plus/icons-vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { prebuiltAppConfig, hasModelInCache, deleteModelAllInfoInCache, CreateMLCEngine } from '@mlc-ai/web-llm'
 import { useSettings } from '../composables/useSettings'
@@ -331,12 +325,12 @@ import { useUsage } from '../composables/useUsage'
 import { useUI } from '../composables/useUI'
 
 const activeTab = ref<'view' | 'ai' | 'usage'>('view')
-const { isMobile } = useUI()
-// 移动端：null=列表入口；选中后为对应 tab
-const mobileTab = ref<'view' | 'ai' | 'usage' | null>(null)
-// 桌面用 activeTab，移动端用 mobileTab，content 统一读 currentTab
-const currentTab = computed(() => isMobile.value ? (mobileTab.value || 'view') : activeTab.value)
-const enterMobile = (tab: 'view' | 'ai' | 'usage') => { mobileTab.value = tab }
+const { isMobile, settingsSection, setSettingsSection } = useUI()
+// 桌面用 activeTab，移动端用 settingsSection（'list'=选项列表），content 统一读 currentTab
+const currentTab = computed(() => isMobile.value
+  ? (settingsSection.value === 'list' ? 'view' : settingsSection.value as 'view' | 'ai' | 'usage')
+  : activeTab.value)
+const enterMobile = (tab: 'view' | 'ai' | 'usage') => { setSettingsSection(tab) }
 const { settings, updateSettings } = useSettings()
 const { isDark, toggleTheme } = useTheme()
 const { usageHistory, clearHistory } = useUsage()
@@ -539,19 +533,6 @@ const save = () => {
 .mobile-item .arrow {
   margin-left: auto;
   color: var(--el-text-color-secondary);
-}
-
-/* 移动端：返回栏 */
-.mobile-back {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  cursor: pointer;
-  border-bottom: 1px solid var(--el-border-color-light);
-  font-weight: 600;
-  flex-shrink: 0;
-  color: var(--el-text-color-primary);
 }
 
 /* 控件宽度约束：slider / select / input 不要全宽 */

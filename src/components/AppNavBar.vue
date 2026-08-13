@@ -7,7 +7,7 @@
       @click="switchView('home')"
     >
       <el-icon><ArrowLeft /></el-icon>
-      <span>设置</span>
+      <span>{{ settingsTitle }}</span>
     </button>
     <div v-else class="nav-logo">
       <el-icon class="logo-icon"><Calendar /></el-icon>
@@ -55,10 +55,17 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Calendar, List, Clock, Setting, ArrowLeft } from '@element-plus/icons-vue'
 import { useUI, type AppView } from '../composables/useUI'
 
-const { currentView, switchView, isMobile } = useUI()
+const { currentView, switchView, isMobile, settingsSection } = useUI()
+
+// 设置页顶部返回按钮文字：随当前子页变化
+const settingsTitle = computed(() => {
+  const map: Record<string, string> = { list: '设置', view: '视觉与外观', ai: 'AI 助理配置', usage: 'API 消耗记录' }
+  return map[settingsSection.value] || '设置'
+})
 
 // 桌面 tabs（设置单独放右侧）
 const tabs: { key: AppView; label: string; icon: any }[] = [
