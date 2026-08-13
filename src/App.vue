@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { Calendar, List } from '@element-plus/icons-vue'
+import { onMounted } from 'vue'
 import AppNavBar from './components/AppNavBar.vue'
 import CalendarArea from './components/CalendarArea.vue'
 import TodoSidebar from './components/TodoSidebar.vue'
@@ -10,14 +9,9 @@ import ScheduleManagePage from './components/ScheduleManagePage.vue'
 import SettingsPage from './components/SettingsPage.vue'
 import { useTheme } from './composables/useTheme'
 import { useUI } from './composables/useUI'
-import { useTasks } from './composables/useTasks'
 
 const { loadTheme } = useTheme()
 const { currentView, isMobile } = useUI()
-const { leafTasks } = useTasks()
-
-// 移动端主页子 Tab：日历 / 待办
-const homeTab = ref<'calendar' | 'todo'>('calendar')
 
 onMounted(() => {
   loadTheme()
@@ -31,37 +25,9 @@ onMounted(() => {
     <main class="content-area">
       <!-- 主页 -->
       <div v-if="currentView === 'home'" class="home-view" :class="{ 'home-view--mobile': isMobile }">
-        <!-- 桌面：日历(左) + 待办(右) 并排 -->
-        <template v-if="!isMobile">
-          <CalendarArea />
-          <TodoSidebar />
-        </template>
-
-        <!-- 移动端：子 Tab 切换，同一时刻只看一个面板 -->
-        <template v-else>
-          <div class="home-subtabs">
-            <button
-              class="subtab"
-              :class="{ active: homeTab === 'calendar' }"
-              @click="homeTab = 'calendar'"
-            >
-              <el-icon><Calendar /></el-icon>
-              <span>日历</span>
-            </button>
-            <button
-              class="subtab"
-              :class="{ active: homeTab === 'todo' }"
-              @click="homeTab = 'todo'"
-            >
-              <el-icon><List /></el-icon>
-              <span>待办 ({{ leafTasks.length }})</span>
-            </button>
-          </div>
-          <div class="home-pane">
-            <CalendarArea v-show="homeTab === 'calendar'" />
-            <TodoSidebar v-show="homeTab === 'todo'" />
-          </div>
-        </template>
+        <!-- 桌面：日历(左) + 待办(右) 并排；移动端：日历全屏（待办走抽屉→任务管理） -->
+        <CalendarArea />
+        <TodoSidebar v-if="!isMobile" />
       </div>
 
       <!-- 任务管理 -->
@@ -126,45 +92,8 @@ html, body {
   flex-shrink: 0;
 }
 
-/* 移动端：主页改为纵向，顶部子 Tab + 下方面板 */
+/* 移动端：日历占满整屏 */
 .home-view--mobile {
-  flex-direction: column;
-  gap: 12px;
-}
-
-.home-subtabs {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.subtab {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px;
-  border-radius: 8px;
-  background: var(--el-fill-color-light);
-  color: var(--el-text-color-regular);
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.subtab.active {
-  background: var(--el-color-primary-light-9);
-  color: var(--el-color-primary);
-  font-weight: 600;
-}
-
-.home-pane {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
   flex-direction: column;
 }
 
