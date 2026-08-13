@@ -42,7 +42,7 @@
           <span v-else class="text-muted">—</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" :width="isMobile ? 90 : 190" fixed="right">
+      <el-table-column label="操作" :width="isMobile ? 80 : 190" fixed="right">
         <template #default="{ row }">
           <div class="row-actions">
             <el-button text size="small" type="primary" :icon="Edit" @click="openEditDialog(row as Schedule)"><span v-if="!isMobile">编辑</span></el-button>

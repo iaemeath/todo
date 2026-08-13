@@ -48,7 +48,7 @@
           <el-tag size="small" :type="priorityTagType(row.priority)" effect="plain">{{ priorityLabel(row.priority) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" :width="isMobile ? 140 : 240" fixed="right">
+      <el-table-column label="操作" :width="isMobile ? 88 : 240" fixed="right">
         <template #default="{ row }">
           <div class="row-actions">
             <el-button v-if="canAddChild(row.id)" text size="small" type="primary" :icon="Plus" @click="openCreateDialog(row as Task)"><span v-if="!isMobile">加子任务</span></el-button>
@@ -344,6 +344,13 @@ const confirmSchedule = () => {
 .row-actions :deep(.el-button) {
   padding-left: 0;
   padding-right: 6px;
+}
+/* 移动端：纯图标按钮进一步收紧内边距 */
+@media (max-width: 768px) {
+  .row-actions :deep(.el-button) {
+    padding-left: 0;
+    padding-right: 2px;
+  }
 }
 
 .manage-toolbar {

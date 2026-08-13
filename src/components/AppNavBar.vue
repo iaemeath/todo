@@ -82,11 +82,11 @@ const navTitle = computed(() => {
   display: flex;
   align-items: center;
   height: 56px;
-  padding: 0 24px;
+  padding: 0 16px 0 20px;
   background: var(--el-bg-color);
   border-bottom: 1px solid var(--el-border-color-light);
   flex-shrink: 0;
-  gap: 32px;
+  /* gap: 32px; */
 }
 
 .nav-logo {
