@@ -45,8 +45,8 @@
       <el-table-column label="操作" width="190" fixed="right">
         <template #default="{ row }">
           <div class="row-actions">
-            <el-button text size="small" type="primary" :icon="Edit" @click="openEditDialog(row as Schedule)">编辑</el-button>
-            <el-button text size="small" type="danger" :icon="Delete" @click="handleDelete(row as Schedule)">删除</el-button>
+            <el-button text size="small" type="primary" :icon="Edit" @click="openEditDialog(row as Schedule)"><span v-if="!isMobile">编辑</span></el-button>
+            <el-button text size="small" type="danger" :icon="Delete" @click="handleDelete(row as Schedule)"><span v-if="!isMobile">删除</span></el-button>
           </div>
         </template>
       </el-table-column>
@@ -139,7 +139,9 @@ import Fuse from 'fuse.js'
 import { Plus, Search, Delete, Edit, Link } from '@element-plus/icons-vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { useSchedules, useTasks, type Schedule } from '../composables/useTasks'
+import { useUI } from '../composables/useUI'
 
+const { isMobile } = useUI()
 const { schedules, addSchedule, updateSchedule, deleteSchedule, addScheduleFromTask } = useSchedules()
 const { tasks, leafTasks } = useTasks()
 

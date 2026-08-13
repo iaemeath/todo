@@ -51,10 +51,10 @@
       <el-table-column label="操作" width="240" fixed="right">
         <template #default="{ row }">
           <div class="row-actions">
-            <el-button v-if="canAddChild(row.id)" text size="small" type="primary" :icon="Plus" @click="openCreateDialog(row as Task)">加子任务</el-button>
-            <el-button v-if="isLeaf(row.id)" text size="small" type="primary" :icon="Calendar" @click="openScheduleDialog(row as Task)">排期</el-button>
-            <el-button text size="small" type="primary" :icon="Edit" @click="openEditDialog(row as Task)">编辑</el-button>
-            <el-button text size="small" type="danger" :icon="Delete" @click="handleDelete(row as Task)">删除</el-button>
+            <el-button v-if="canAddChild(row.id)" text size="small" type="primary" :icon="Plus" @click="openCreateDialog(row as Task)"><span v-if="!isMobile">加子任务</span></el-button>
+            <el-button v-if="isLeaf(row.id)" text size="small" type="primary" :icon="Calendar" @click="openScheduleDialog(row as Task)"><span v-if="!isMobile">排期</span></el-button>
+            <el-button text size="small" type="primary" :icon="Edit" @click="openEditDialog(row as Task)"><span v-if="!isMobile">编辑</span></el-button>
+            <el-button text size="small" type="danger" :icon="Delete" @click="handleDelete(row as Task)"><span v-if="!isMobile">删除</span></el-button>
           </div>
         </template>
       </el-table-column>
@@ -134,6 +134,9 @@ import Fuse from 'fuse.js'
 import { Plus, Search, Delete, Edit, Calendar } from '@element-plus/icons-vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { useTasks, useSchedules, type Task } from '../composables/useTasks'
+import { useUI } from '../composables/useUI'
+
+const { isMobile } = useUI()
 
 const {
   tasks,
