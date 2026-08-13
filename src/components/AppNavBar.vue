@@ -79,9 +79,10 @@ const navItems: { key: AppView; label: string; icon: any }[] = [
   { key: 'settings', label: '设置', icon: Setting }
 ]
 
-// 桌面 tabs = 前 3 项（设置单独放右侧）；抽屉 = 全部 4 项
+// 桌面 tabs = 前 3 项（设置单独放右侧）
 const tabs = navItems.slice(0, 3)
-const drawerItems = navItems
+// 移动端抽屉：只保留 主页 + 设置（任务/日程管理在移动端暂不开放）
+const drawerItems = navItems.filter(i => i.key === 'home' || i.key === 'settings')
 </script>
 
 <style scoped>

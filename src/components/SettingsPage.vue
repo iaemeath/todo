@@ -1,27 +1,51 @@
 <template>
-  <div class="settings-page">
-    <div class="settings-layout">
-      <!-- 左侧菜单栏 -->
-      <el-menu :default-active="activeTab" class="settings-menu" @select="(i) => activeTab = i as typeof activeTab">
-        <el-menu-item index="view">
-          <el-icon><Monitor /></el-icon>
-          <span>视觉与外观</span>
-        </el-menu-item>
-        <el-menu-item index="ai">
-          <el-icon><ChatDotRound /></el-icon>
-          <span>AI 助理配置</span>
-        </el-menu-item>
-        <el-menu-item index="usage">
-          <el-icon><DataLine /></el-icon>
-          <span>API 消耗记录</span>
-        </el-menu-item>
-      </el-menu>
+  <div class="settings-page" :class="{ 'is-mobile': isMobile }">
+    <!-- 桌面：左侧菜单栏 -->
+    <el-menu v-if="!isMobile" :default-active="activeTab" class="settings-menu" @select="(i) => activeTab = i as typeof activeTab">
+      <el-menu-item index="view">
+        <el-icon><Monitor /></el-icon>
+        <span>视觉与外观</span>
+      </el-menu-item>
+      <el-menu-item index="ai">
+        <el-icon><ChatDotRound /></el-icon>
+        <span>AI 助理配置</span>
+      </el-menu-item>
+      <el-menu-item index="usage">
+        <el-icon><DataLine /></el-icon>
+        <span>API 消耗记录</span>
+      </el-menu-item>
+    </el-menu>
 
-      <!-- 右侧内容区域 -->
-      <div class="settings-content">
+    <!-- 移动端：列表入口（未选中时） -->
+    <div v-if="isMobile && !mobileTab" class="mobile-list">
+      <div class="mobile-item" @click="enterMobile('view')">
+        <el-icon><Monitor /></el-icon>
+        <span>视觉与外观</span>
+        <el-icon class="arrow"><ArrowRight /></el-icon>
+      </div>
+      <div class="mobile-item" @click="enterMobile('ai')">
+        <el-icon><ChatDotRound /></el-icon>
+        <span>AI 助理配置</span>
+        <el-icon class="arrow"><ArrowRight /></el-icon>
+      </div>
+      <div class="mobile-item" @click="enterMobile('usage')">
+        <el-icon><DataLine /></el-icon>
+        <span>API 消耗记录</span>
+        <el-icon class="arrow"><ArrowRight /></el-icon>
+      </div>
+    </div>
 
-        <!-- ========== 视觉与外观 ========== -->
-        <div v-show="activeTab === 'view'">
+    <!-- 移动端：返回栏（选中面板时） -->
+    <div v-if="isMobile && mobileTab" class="mobile-back" @click="mobileTab = null">
+      <el-icon><ArrowLeft /></el-icon>
+      <span>设置</span>
+    </div>
+
+    <!-- 内容区域（桌面 + 移动端共用） -->
+    <div class="settings-content" v-show="!isMobile || !!mobileTab">
+
+      <!-- ========== 视觉与外观 ========== -->
+      <div v-show="currentTab === 'view'">
           <el-form label-position="top" class="settings-form">
             <!-- 界面主题 -->
             <el-card shadow="never" class="setting-card">
@@ -114,7 +138,7 @@
         </div>
 
         <!-- ========== AI 助理配置 ========== -->
-        <div v-show="activeTab === 'ai'">
+        <div v-show="currentTab === 'ai'">
           <el-form label-position="top" class="settings-form">
             <!-- 引擎模式 -->
             <el-card shadow="never" class="setting-card">
@@ -232,7 +256,7 @@
         </div>
 
         <!-- ========== API 消耗记录 ========== -->
-        <div v-show="activeTab === 'usage'">
+        <div v-show="currentTab === 'usage'">
           <div class="usage-header">
             <div>
               <h3 class="pane-title">API 消耗记录</h3>
@@ -293,20 +317,26 @@
         </div>
 
       </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, computed, onMounted } from 'vue'
-import { Monitor, ChatDotRound, DataLine, Delete, Search, Download, CircleCheckFilled, Moon, Sunny } from '@element-plus/icons-vue'
+import { Monitor, ChatDotRound, DataLine, Delete, Search, Download, CircleCheckFilled, Moon, Sunny, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { prebuiltAppConfig, hasModelInCache, deleteModelAllInfoInCache, CreateMLCEngine } from '@mlc-ai/web-llm'
 import { useSettings } from '../composables/useSettings'
 import { useTheme } from '../composables/useTheme'
 import { useUsage } from '../composables/useUsage'
+import { useUI } from '../composables/useUI'
 
 const activeTab = ref<'view' | 'ai' | 'usage'>('view')
+const { isMobile } = useUI()
+// 移动端：null=列表入口；选中后为对应 tab
+const mobileTab = ref<'view' | 'ai' | 'usage' | null>(null)
+// 桌面用 activeTab，移动端用 mobileTab，content 统一读 currentTab
+const currentTab = computed(() => isMobile.value ? (mobileTab.value || 'view') : activeTab.value)
+const enterMobile = (tab: 'view' | 'ai' | 'usage') => { mobileTab.value = tab }
 const { settings, updateSettings } = useSettings()
 const { isDark, toggleTheme } = useTheme()
 const { usageHistory, clearHistory } = useUsage()
@@ -355,12 +385,12 @@ const checkCaches = async () => {
   }
 }
 
-watch(() => activeTab.value, (newVal) => {
+watch(currentTab, (newVal) => {
   if (newVal === 'ai') checkCaches()
 })
 
 onMounted(() => {
-  if (activeTab.value === 'ai') checkCaches()
+  if (currentTab.value === 'ai') checkCaches()
 })
 
 const deleteModelCache = async (modelId: string) => {
@@ -452,18 +482,19 @@ const save = () => {
 <style scoped>
 .settings-page {
   height: 100%;
-  overflow-y: auto;
-}
-
-/* 上下 → 左右布局：左侧菜单 + 右侧内容 */
-.settings-layout {
-  display: flex;
-  gap: 0;
-  height: 100%;
   min-height: 0;
 }
+/* 桌面：左右布局（菜单 + 内容） */
+.settings-page:not(.is-mobile) {
+  display: flex;
+}
+/* 移动端：纵向流 */
+.settings-page.is-mobile {
+  display: flex;
+  flex-direction: column;
+}
 
-/* 左侧菜单栏 */
+/* 左侧菜单栏（桌面） */
 .settings-menu {
   flex-shrink: 0;
   width: 200px;
@@ -475,12 +506,52 @@ const save = () => {
   width: 200px;
 }
 
-/* 右侧内容区域 */
+/* 内容区域（桌面 + 移动端共用） */
 .settings-content {
   flex: 1;
   padding: 20px 32px;
   overflow-y: auto;
   min-width: 0;
+}
+.settings-page.is-mobile .settings-content {
+  padding: 16px;
+}
+
+/* 移动端：列表入口 */
+.mobile-list {
+  display: flex;
+  flex-direction: column;
+}
+.mobile-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  font-size: 1rem;
+  color: var(--el-text-color-primary);
+  transition: background 0.2s;
+}
+.mobile-item:hover {
+  background: var(--el-fill-color-light);
+}
+.mobile-item .arrow {
+  margin-left: auto;
+  color: var(--el-text-color-secondary);
+}
+
+/* 移动端：返回栏 */
+.mobile-back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--el-border-color-light);
+  font-weight: 600;
+  flex-shrink: 0;
+  color: var(--el-text-color-primary);
 }
 
 /* 控件宽度约束：slider / select / input 不要全宽 */
