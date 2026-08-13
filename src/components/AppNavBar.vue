@@ -1,6 +1,15 @@
 <template>
   <header class="app-navbar">
-    <div class="nav-logo">
+    <!-- 左侧：移动端在设置页时显示「‹ 设置」返回按钮，其余显示 logo -->
+    <button
+      v-if="isMobile && currentView === 'settings'"
+      class="nav-back"
+      @click="switchView('home')"
+    >
+      <el-icon><ArrowLeft /></el-icon>
+      <span>设置</span>
+    </button>
+    <div v-else class="nav-logo">
       <el-icon class="logo-icon"><Calendar /></el-icon>
       <span class="logo-text">Antigravity</span>
     </div>
@@ -32,31 +41,21 @@
         <span>设置</span>
       </button>
 
-      <!-- 移动端：主页 + 设置 两个图标（无文字、无抽屉） -->
-      <template v-if="isMobile">
-        <button
-          class="nav-tab icon-only"
-          :class="{ active: currentView === 'home' }"
-          @click="switchView('home')"
-          title="主页"
-        >
-          <el-icon><Calendar /></el-icon>
-        </button>
-        <button
-          class="nav-tab icon-only"
-          :class="{ active: currentView === 'settings' }"
-          @click="switchView('settings')"
-          title="设置"
-        >
-          <el-icon><Setting /></el-icon>
-        </button>
-      </template>
+      <!-- 移动端：仅在主页时显示设置图标（主页图标不显示，靠设置页返回按钮回主页） -->
+      <button
+        v-if="isMobile && currentView === 'home'"
+        class="nav-tab icon-only"
+        @click="switchView('settings')"
+        title="设置"
+      >
+        <el-icon><Setting /></el-icon>
+      </button>
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
-import { Calendar, List, Clock, Setting } from '@element-plus/icons-vue'
+import { Calendar, List, Clock, Setting, ArrowLeft } from '@element-plus/icons-vue'
 import { useUI, type AppView } from '../composables/useUI'
 
 const { currentView, switchView, isMobile } = useUI()
@@ -94,6 +93,20 @@ const tabs: { key: AppView; label: string; icon: any }[] = [
 .logo-icon {
   font-size: 1.3rem;
   color: var(--el-color-primary);
+}
+
+/* 移动端设置页：返回按钮（替代 logo） */
+.nav-back {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: var(--el-text-color-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 0;
 }
 
 .nav-tabs {
