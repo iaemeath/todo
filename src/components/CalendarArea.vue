@@ -14,6 +14,24 @@
     }"
   >
     <FullCalendar ref="fullCalendar" :options="calendarOptions" />
+    <button
+      v-if="!isMobile && !todoVisible"
+      class="reopen-todo-btn"
+      @click="setTodoVisible(true)"
+      title="展开待办栏"
+    >
+      <PanelRight :size="16" />
+      <span>待办</span>
+    </button>
+    <!-- 移动端：打开待办浮层 -->
+    <button
+      v-if="isMobile && !todoVisible"
+      class="mobile-todo-fab"
+      @click="setTodoVisible(true)"
+      title="打开待办"
+    >
+      <PanelRight :size="22" />
+    </button>
   </div>
 </template>
 
@@ -27,11 +45,12 @@ import { useSchedules } from '../composables/useTasks'
 import { useSettings } from '../composables/useSettings'
 import { useTheme } from '../composables/useTheme'
 import { useUI } from '../composables/useUI'
+import { PanelRight } from 'lucide-vue-next'
 
 const { schedules, updateSchedule, addScheduleFromTask } = useSchedules()
 const { settings } = useSettings()
 const { isDark } = useTheme()
-const { isMobile } = useUI()
+const { isMobile, todoVisible, setTodoVisible } = useUI()
 
 const fullCalendar = ref<InstanceType<typeof FullCalendar> | null>(null)
 let resizeObserver: ResizeObserver | null = null
@@ -121,6 +140,8 @@ const handleEventReceive = (info: any) => {
   // Revert the temporary event inserted by FullCalendar
   // because Vue will reactively provide the new event via `calendarEvents`
   info.revert()
+  // 仅移动端：拖入成功后关闭待办浮层（web 端保持侧栏不动）
+  if (isMobile.value) setTodoVisible(false)
 }
 
 const calendarOptions = computed(() => ({
@@ -187,6 +208,61 @@ watch(isMobile, (m) => {
   padding: 16px;
   box-sizing: border-box;
   overflow: hidden;
+  position: relative;
+}
+
+/* 待办栏收起后，日历右上角的展开入口 */
+.reopen-todo-btn {
+  position: absolute;
+  top: 66px;
+  right: 15px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  background: var(--el-bg-color);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px var(--shadow-color);
+  transition: all 0.2s ease;
+}
+.reopen-todo-btn:hover {
+  border-color: var(--color-primary-light);
+  color: var(--color-primary);
+  background: var(--card-hover-bg);
+}
+
+/* 移动端：打开待办浮层的悬浮按钮（.calendar-wrapper 前缀提高特异性，
+   覆盖全局 button:not(.el-button) 的圆角/缩放，确保圆形） */
+.calendar-wrapper .mobile-todo-fab {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 10;
+  width: 52px;
+  height: 52px;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 4px 16px var(--color-primary-alpha);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.calendar-wrapper .mobile-todo-fab:hover {
+  transform: scale(1.06);
+  box-shadow: 0 6px 20px var(--color-primary-alpha);
+}
+.calendar-wrapper .mobile-todo-fab:active {
+  transform: scale(0.94);
 }
 
 /* 移动端：隐藏空白的列头行（day 视图列头无内容，容器仍占位 → 干脆隐藏） */

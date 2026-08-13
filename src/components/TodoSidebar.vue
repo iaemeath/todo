@@ -4,8 +4,10 @@
       <div class="sidebar-header">
         <div style="display: flex; align-items: center; gap: 8px;">
           <h2>待办</h2>
-          <span class="count-badge">{{ activeTodos.length }}</span>
         </div>
+        <button class="btn-collapse" @click="closeSidebar" title="收起待办栏">
+          <PanelRightClose class="icon-sm" />
+        </button>
       </div>
 
       <!-- Add Todo Input -->
@@ -39,8 +41,9 @@
           </div>
           
           <!-- FullCalendar Draggable Target -->
-          <div 
-            class="todo-content draggable-event" 
+          <div
+            class="todo-content draggable-event"
+            @pointerdown="onTodoPointerDown"
             title="往左侧拖拽进行排期"
             :data-event="JSON.stringify({
               title: todo.title,
@@ -67,12 +70,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Plus, GripVertical, Trash2 } from 'lucide-vue-next'
+import { Plus, GripVertical, Trash2, PanelRightClose } from 'lucide-vue-next'
 import { useTasks } from '../composables/useTasks'
+import { useUI } from '../composables/useUI'
 import { Draggable } from '@fullcalendar/interaction'
 import draggable from 'vuedraggable'
 
 const { leafTasks, addTask, deleteTask } = useTasks()
+const { isMobile, setTodoVisible, mobileTodoDragging, setMobileTodoDragging } = useUI()
 
 const newTodoTitle = ref('')
 const draggableContainer = ref<any>(null)
@@ -97,6 +102,21 @@ const handleCreateTodo = () => {
   newTodoTitle.value = ''
 }
 
+// 移动端：开始拖待办时隐藏浮层（DOM 保留，供 FullCalendar 继续拖拽）
+const onTodoPointerDown = () => {
+  if (isMobile.value) setMobileTodoDragging(true)
+}
+// 拖拽结束（document pointerup/pointercancel/dragend）：无论成功失败都关闭待办，
+// 避免失败后浮层卡在透明态、FAB 无法重现（成功落点由 eventReceive 也会关）
+const onDragEnd = () => {
+  if (mobileTodoDragging.value) {
+    setMobileTodoDragging(false)
+    setTodoVisible(false)
+  }
+}
+// 关闭待办（web 收起侧栏 = 移动关浮层，同一状态）
+const closeSidebar = () => setTodoVisible(false)
+
 onMounted(() => {
   // Use $el to get the DOM element from the vuedraggable component
   const containerEl = draggableContainer.value?.$el
@@ -108,12 +128,19 @@ onMounted(() => {
       }
     })
   }
+  // 兜底：拖拽结束（含取消 pointercancel）关闭浮层，避免失败后卡死
+  document.addEventListener('pointerup', onDragEnd)
+  document.addEventListener('pointercancel', onDragEnd)
+  document.addEventListener('dragend', onDragEnd)
 })
 
 onUnmounted(() => {
   if (fcDraggableInstance) {
     fcDraggableInstance.destroy()
   }
+  document.removeEventListener('pointerup', onDragEnd)
+  document.removeEventListener('pointercancel', onDragEnd)
+  document.removeEventListener('dragend', onDragEnd)
 })
 </script>
 
@@ -157,15 +184,6 @@ onUnmounted(() => {
   color: var(--text-primary);
 }
 
-.count-badge {
-  background: var(--color-primary-alpha);
-  color: var(--color-primary);
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
 .add-todo-form {
   padding: 16px;
   display: flex;
@@ -174,6 +192,7 @@ onUnmounted(() => {
 }
 
 .glass-input {
+  width: 70%;
   flex: 1;
   padding: 10px 12px;
   border-radius: 8px;
@@ -268,6 +287,8 @@ onUnmounted(() => {
 .todo-content {
   flex: 1;
   overflow: hidden;
+  /* 移动端：让 FullCalendar 接管触摸拖拽，阻止浏览器滚动抢占 touch 事件 */
+  touch-action: none;
 }
 
 .todo-title {
@@ -296,5 +317,23 @@ onUnmounted(() => {
 .btn-delete:hover {
   background: rgba(244, 63, 94, 0.1);
   color: var(--color-danger);
+}
+
+.btn-collapse {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-collapse:hover {
+  background: var(--color-primary-alpha);
+  color: var(--color-primary);
 }
 </style>

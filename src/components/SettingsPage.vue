@@ -595,7 +595,7 @@ const save = () => {
 
 .engine-radio-group {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 12px;
 }
 

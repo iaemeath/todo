@@ -6,9 +6,19 @@
       <el-select v-model="filterCategory" placeholder="分类" clearable style="width: 140px;">
         <el-option v-for="c in categoryOptions" :key="c.value" :label="c.label" :value="c.value" />
       </el-select>
-      <el-checkbox v-model="onlyIncomplete">只看未完成</el-checkbox>
-      <el-button type="primary" :icon="Plus" @click="openCreateDialog()">新增任务</el-button>
-      <span class="toolbar-count">共 {{ flatCount }} 条</span>
+      <div class="view-tabs">
+        <span class="view-tab-indicator" :class="{ right: viewMode === 'done' }"></span>
+        <button
+          v-for="opt in viewOptions"
+          :key="opt.value"
+          class="view-tab"
+          :class="{ active: viewMode === opt.value }"
+          @click="viewMode = opt.value"
+        >
+          <span class="view-tab-label">{{ opt.label }}</span>
+        </button>
+      </div>
+      <el-button type="primary" :icon="Plus" @click="openCreateDialog()"><span v-if="!isMobile">新增任务</span></el-button>
     </div>
 
     <!-- Table (tree) -->
@@ -20,7 +30,7 @@
       stripe
       border
       style="width: 100%;"
-      empty-text="暂无任务"
+      :empty-text="viewMode === 'active' ? '暂无未完成任务' : '暂无已完成任务'"
     >
       <el-table-column prop="title" label="标题" min-width="240" show-overflow-tooltip />
       <el-table-column label="完成" width="70" align="center">
@@ -61,7 +71,7 @@
     </el-table>
 
     <!-- Create / Edit dialog -->
-    <el-dialog v-model="formDialogVisible" :title="dialogTitle" width="480px" destroy-on-close>
+    <el-dialog v-model="formDialogVisible" :title="dialogTitle" :width="isMobile ? '92vw' : '480px'" destroy-on-close>
       <el-form label-position="top">
         <el-form-item label="标题">
           <el-input v-model="form.title" placeholder="请输入标题" />
@@ -93,7 +103,7 @@
     </el-dialog>
 
     <!-- Schedule dialog (排期: create a Schedule from this leaf task) -->
-    <el-dialog v-model="scheduleDialogVisible" title="排期到日历" width="420px" destroy-on-close>
+    <el-dialog v-model="scheduleDialogVisible" title="排期到日历" :width="isMobile ? '92vw' : '480px'" destroy-on-close>
       <p class="schedule-hint">将任务「<strong>{{ schedulingTask?.title }}</strong>」排入日历日程。</p>
       <el-form label-position="top">
         <el-form-item label="日期">
@@ -145,6 +155,7 @@ const {
   updateTask,
   deleteTask,
   setTaskCompleted,
+  getDescendants,
   getTaskLevel,
   canAddChild,
   isLeaf
@@ -193,20 +204,43 @@ const levelTagType = (level: number) => {
   return (map[level] || 'info') as 'primary' | 'warning' | 'info'
 }
 
-// ---- Search & filter ----
+// ---- View mode & filter ----
+// 视图按 L1（顶级任务）的 completed 归类：done = 已完成的 L1，active = 未完成的 L1。
+// 子任务（L2/L3）的完成状态不参与视图归类，子树跟随所属 L1 整体呈现。
+type ViewMode = 'active' | 'done'
+const viewMode = ref<ViewMode>('active')
+
+const viewOptions = computed<{ value: ViewMode; label: string }[]>(() => [
+  { value: 'active', label: '未完成' },
+  { value: 'done', label: '已完成' }
+])
+
 const searchQuery = ref('')
 const filterCategory = ref('')
-const onlyIncomplete = ref(false)
 
-const hasFilter = computed(() => !!searchQuery.value.trim() || !!filterCategory.value || onlyIncomplete.value)
+const hasFilter = computed(() => !!searchQuery.value.trim() || !!filterCategory.value)
 
 const fuse = computed(() => new Fuse(tasks.value, { keys: ['title', 'description'], threshold: 0.4 }))
 
-// 扁平过滤结果（搜索/筛选时使用）
+// 当前视图的顶级任务（L1）
+const viewRoots = computed(() =>
+  tasks.value.filter(t => t.parentId === null && t.completed === (viewMode.value === 'done'))
+)
+
+// 当前视图可见的全部任务 = 这些 L1 + 其全部子孙
+const visibleTasks = computed(() => {
+  const ids = new Set<string>()
+  for (const r of viewRoots.value) {
+    ids.add(r.id)
+    getDescendants(r.id).forEach(d => ids.add(d.id))
+  }
+  return tasks.value.filter(t => ids.has(t.id))
+})
+
+// 扁平过滤结果（搜索/筛选时，在当前可见任务范围内）
 const filteredFlat = computed(() => {
-  let list = tasks.value.slice()
+  let list = visibleTasks.value.slice()
   if (filterCategory.value) list = list.filter(t => t.category === filterCategory.value)
-  if (onlyIncomplete.value) list = list.filter(t => !t.completed)
   if (searchQuery.value.trim()) {
     const matchedIds = new Set(fuse.value.search(searchQuery.value.trim()).map(r => r.item.id))
     list = list.filter(t => matchedIds.has(t.id))
@@ -214,19 +248,19 @@ const filteredFlat = computed(() => {
   return list
 })
 
-// 树形结构（无筛选时使用）
+// 树形结构（无筛选时使用，基于当前可见任务）
 type TaskNode = Task & { children: TaskNode[] }
 const taskTree = computed<TaskNode[]>(() => {
+  const visIds = new Set(visibleTasks.value.map(t => t.id))
   const build = (parentId: string | null): TaskNode[] =>
     tasks.value
-      .filter(t => t.parentId === parentId)
+      .filter(t => t.parentId === parentId && visIds.has(t.id))
       .sort((a, b) => a.order - b.order)
       .map(t => ({ ...t, children: build(t.id) }))
   return build(null)
 })
 
 const displayData = computed(() => (hasFilter.value ? filteredFlat.value : taskTree.value))
-const flatCount = computed(() => tasks.value.length)
 
 // ---- Create / Edit ----
 const formDialogVisible = ref(false)
@@ -360,10 +394,68 @@ const confirmSchedule = () => {
   flex-shrink: 0;
 }
 
-.toolbar-count {
-  margin-left: auto;
+/* 视图切换：胶囊分段器（segmented control） */
+.view-tabs {
+  position: relative;
+  display: inline-flex;
+  padding: 3px;
+  background: var(--el-fill-color-light);
+  border: 1px solid var(--border-glass);
+  border-radius: 9999px;
+}
+.view-tab-indicator {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  height: calc(100% - 6px);
+  background: var(--color-primary);
+  border-radius: 9999px;
+  box-shadow: 0 2px 8px var(--color-primary-alpha);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
+  pointer-events: none;
+}
+.view-tab-indicator.right {
+  transform: translateX(100%);
+}
+.view-tab {
+  position: relative;
+  z-index: 1;
+  min-width: 92px;
+  padding: 5px 14px;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--text-secondary);
   font-size: 0.85rem;
-  color: var(--el-text-color-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: color 0.25s ease;
+}
+.view-tab:hover {
+  color: var(--text-primary);
+}
+.view-tab.active {
+  color: #fff;
+}
+/* 覆盖全局 button:not(.el-button) 的 :active 缩放，反馈交给滑动指示块 */
+.view-tab:active {
+  transform: none;
+}
+
+/* 移动端：胶囊紧凑化（断点与 isMobile 768px 一致） */
+@media (max-width: 768px) {
+  .view-tab {
+    min-width: 56px;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+  }
 }
 
 .text-secondary {

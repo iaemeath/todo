@@ -241,8 +241,10 @@ export function useTasks() {
 
   /**
    * 设置完成状态，自动联动：
-   * - 完成 → 下推所有子孙完成；上推：若兄弟全部完成则父也完成（递归）
-   * - 取消完成 → 上推所有祖先为未完成
+   * - 完成 → 下推所有子孙完成（整体完成时子任务理应都完成）
+   * - 取消完成 → 上推所有祖先为未完成（子未完成，父不应算完成）
+   * 注意：不再「子全完成→父自动完成」。父任务是否完成只由用户手动勾选决定，
+   * 这样「未完成/已完成」视图可严格按各任务自身 completed 归类。
    */
   const setTaskCompleted = (id: string, value: boolean) => {
     const task = tasks.value.find((t) => t.id === id)
@@ -251,18 +253,6 @@ export function useTasks() {
 
     if (value) {
       for (const d of getDescendants(id)) d.completed = true
-      let cur = task
-      while (cur.parentId) {
-        const parent = tasks.value.find((t) => t.id === cur.parentId)
-        if (!parent) break
-        const siblings = tasks.value.filter((t) => t.parentId === parent.id)
-        if (siblings.length > 0 && siblings.every((s) => s.completed)) {
-          parent.completed = true
-          cur = parent
-        } else {
-          break
-        }
-      }
     } else {
       for (const a of getAncestors(id)) a.completed = false
     }
@@ -294,6 +284,7 @@ export function useTasks() {
     deleteTask,
     setTaskCompleted,
     getChildren,
+    getDescendants,
     getTaskLevel,
     canAddChild,
     isLeaf

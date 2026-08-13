@@ -9,9 +9,8 @@
           <span style="margin-left: 8px;">{{ c.label }}</span>
         </el-option>
       </el-select>
-      <el-button :icon="Link" @click="openFromTodoDialog">从待办新增</el-button>
-      <el-button type="primary" :icon="Plus" @click="openCreateDialog">新增日程</el-button>
-      <span class="toolbar-count">共 {{ filteredSchedules.length }} 条</span>
+      <el-button :icon="Link" @click="openFromTodoDialog"><span v-if="!isMobile">从待办新增</span></el-button>
+      <el-button type="primary" :icon="Plus" @click="openCreateDialog"><span v-if="!isMobile">新增日程</span></el-button>
     </div>
 
     <!-- Table -->
@@ -53,7 +52,7 @@
     </el-table>
 
     <!-- Create / Edit dialog -->
-    <el-dialog v-model="formDialogVisible" :title="editingId ? '编辑日程' : '新增日程'" width="480px" destroy-on-close>
+    <el-dialog v-model="formDialogVisible" :title="editingId ? '编辑日程' : '新增日程'" :width="isMobile ? '92vw' : '480px'" destroy-on-close>
       <el-form label-position="top">
         <el-form-item label="标题">
           <el-input v-model="form.title" placeholder="请输入日程标题" />
@@ -89,7 +88,7 @@
     </el-dialog>
 
     <!-- From-todo dialog (从待办新增) -->
-    <el-dialog v-model="fromTodoDialogVisible" title="从待办新增日程" width="480px" destroy-on-close>
+    <el-dialog v-model="fromTodoDialogVisible" title="从待办新增日程" :width="isMobile ? '92vw' : '480px'" destroy-on-close>
       <el-form label-position="top">
         <el-form-item label="选择待办">
           <el-select v-model="fromTodoForm.taskId" filterable placeholder="搜索并选择待办..." style="width: 100%;">
@@ -268,8 +267,8 @@ const confirmFromTodo = () => {
 
 /* 收紧表格行高（配合操作按钮 size="small"）*/
 .manage-page :deep(.el-table .el-table__cell) {
-  padding-top: 5px;
-  padding-bottom: 5px;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 /* 操作列按钮：inline-flex 防换行 + 收紧间距（覆盖 EP 默认 12px margin）*/
@@ -286,12 +285,6 @@ const confirmFromTodo = () => {
   align-items: center;
   gap: 16px;
   flex-shrink: 0;
-}
-
-.toolbar-count {
-  font-size: 0.85rem;
-  color: var(--el-text-color-secondary);
-  margin-left: auto;
 }
 
 .text-secondary {
