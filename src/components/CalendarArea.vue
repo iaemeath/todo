@@ -189,6 +189,13 @@ watch(isMobile, (m) => {
   overflow: hidden;
 }
 
+/* 移动端：隐藏空白的列头行（day 视图列头无内容，容器仍占位 → 干脆隐藏） */
+@media (max-width: 768px) {
+  .fc .fc-col-header {
+    display: none !important;
+  }
+}
+
 /* Base FullCalendar Overrides */
 .fc-theme-standard .fc-scrollgrid {
   border: 1px solid var(--border-glass) !important;
