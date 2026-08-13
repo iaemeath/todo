@@ -32,57 +32,41 @@
         <span>设置</span>
       </button>
 
-      <!-- 移动端：汉堡按钮 -->
-      <button
-        v-if="isMobile"
-        class="nav-tab hamburger"
-        :class="{ active: drawerOpen }"
-        @click="toggleDrawer"
-        title="菜单"
-      >
-        <el-icon class="tab-icon"><Menu /></el-icon>
-      </button>
+      <!-- 移动端：主页 + 设置 两个图标（无文字、无抽屉） -->
+      <template v-if="isMobile">
+        <button
+          class="nav-tab icon-only"
+          :class="{ active: currentView === 'home' }"
+          @click="switchView('home')"
+          title="主页"
+        >
+          <el-icon><Calendar /></el-icon>
+        </button>
+        <button
+          class="nav-tab icon-only"
+          :class="{ active: currentView === 'settings' }"
+          @click="switchView('settings')"
+          title="设置"
+        >
+          <el-icon><Setting /></el-icon>
+        </button>
+      </template>
     </div>
   </header>
-
-  <!-- 移动端：左滑抽屉菜单 -->
-  <Teleport to="body">
-    <Transition name="drawer-slide">
-      <div v-if="isMobile && drawerOpen" class="drawer-overlay" @click.self="closeDrawer">
-        <aside class="app-drawer">
-          <button
-            v-for="item in drawerItems"
-            :key="item.key"
-            class="drawer-item"
-            :class="{ active: currentView === item.key }"
-            @click="switchView(item.key)"
-          >
-            <el-icon class="drawer-icon"><component :is="item.icon" /></el-icon>
-            <span>{{ item.label }}</span>
-          </button>
-        </aside>
-      </div>
-    </Transition>
-  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { Calendar, List, Clock, Setting, Menu } from '@element-plus/icons-vue'
+import { Calendar, List, Clock, Setting } from '@element-plus/icons-vue'
 import { useUI, type AppView } from '../composables/useUI'
 
-const { currentView, switchView, isMobile, drawerOpen, toggleDrawer, closeDrawer } = useUI()
+const { currentView, switchView, isMobile } = useUI()
 
-const navItems: { key: AppView; label: string; icon: any }[] = [
+// 桌面 tabs（设置单独放右侧）
+const tabs: { key: AppView; label: string; icon: any }[] = [
   { key: 'home', label: '主页', icon: Calendar },
   { key: 'task', label: '任务管理', icon: List },
-  { key: 'schedule', label: '日程管理', icon: Clock },
-  { key: 'settings', label: '设置', icon: Setting }
+  { key: 'schedule', label: '日程管理', icon: Clock }
 ]
-
-// 桌面 tabs = 前 3 项（设置单独放右侧）
-const tabs = navItems.slice(0, 3)
-// 移动端抽屉：只保留 主页 + 设置（任务/日程管理在移动端暂不开放）
-const drawerItems = navItems.filter(i => i.key === 'home' || i.key === 'settings')
 </script>
 
 <style scoped>
@@ -119,6 +103,14 @@ const drawerItems = navItems.filter(i => i.key === 'home' || i.key === 'settings
   flex: 1;
 }
 
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
 .nav-tab {
   display: flex;
   align-items: center;
@@ -149,99 +141,20 @@ const drawerItems = navItems.filter(i => i.key === 'home' || i.key === 'settings
   font-size: 1.05rem;
 }
 
-.nav-actions {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
+/* 移动端：纯图标按钮 */
+.nav-tab.icon-only {
+  padding: 8px 10px;
+  font-size: 1.25rem;
 }
 
-/* 移动端：navbar 收紧内边距 */
+/* 移动端：navbar 收紧 */
 @media (max-width: 768px) {
   .app-navbar {
-    padding: 0 16px;
-    gap: 12px;
+    padding: 0 12px;
+    gap: 8px;
   }
   .logo-text {
     font-size: 1rem;
   }
-  .hamburger {
-    padding: 8px 10px;
-  }
-}
-
-/* ===== 移动端抽屉 ===== */
-.drawer-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  z-index: var(--z-overlay);
-  display: flex;
-  align-items: stretch;
-}
-
-.app-drawer {
-  width: 260px;
-  max-width: 80vw;
-  background: var(--el-bg-color);
-  border-right: 1px solid var(--el-border-color-light);
-  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
-  padding: 16px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  overflow-y: auto;
-}
-
-.drawer-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--el-text-color-regular);
-  font-size: 1rem;
-  font-weight: 500;
-  width: 100%;
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.drawer-item:hover {
-  background: var(--el-fill-color-light);
-  color: var(--el-text-color-primary);
-}
-
-.drawer-item.active {
-  background: var(--el-color-primary-light-9);
-  color: var(--el-color-primary);
-  font-weight: 600;
-}
-
-.drawer-icon {
-  font-size: 1.2rem;
-}
-
-/* 抽屉滑入/滑出过渡：遮罩淡入 + 面板从左滑入 */
-.drawer-slide-enter-active,
-.drawer-slide-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.drawer-slide-enter-active .app-drawer,
-.drawer-slide-leave-active .app-drawer {
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.drawer-slide-enter-from,
-.drawer-slide-leave-to {
-  opacity: 0;
-}
-
-.drawer-slide-enter-from .app-drawer,
-.drawer-slide-leave-to .app-drawer {
-  transform: translateX(-100%);
 }
 </style>
