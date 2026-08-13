@@ -1,6 +1,6 @@
 <template>
   <header class="app-navbar">
-    <!-- 左侧：移动端在设置页时显示「‹ 设置」返回按钮，其余显示 logo -->
+    <!-- 左侧：移动端非主页显示「‹ 标题」返回按钮；否则 logo（点击回主页） -->
     <button
       v-if="isMobile && currentView !== 'home'"
       class="nav-back"
@@ -9,39 +9,27 @@
       <el-icon><ArrowLeft /></el-icon>
       <span>{{ navTitle }}</span>
     </button>
-    <div v-else class="nav-logo">
+    <div v-else class="nav-logo" @click="switchView('home')" title="返回主页">
       <el-icon class="logo-icon"><Calendar /></el-icon>
       <span class="logo-text">Antigravity</span>
     </div>
 
-    <!-- 桌面端：中间 tabs -->
+    <!-- 桌面端：任务/日程/设置 toggle（再点一次当前页 → 回主页；主页由 logo 充当） -->
     <nav v-if="!isMobile" class="nav-tabs">
       <button
-        v-for="tab in tabs"
-        :key="tab.key"
+        v-for="item in navItems"
+        :key="item.key"
         class="nav-tab"
-        :class="{ active: currentView === tab.key }"
-        @click="switchView(tab.key)"
+        :class="{ active: currentView === item.key }"
+        @click="toggleView(item.key)"
       >
-        <el-icon class="tab-icon"><component :is="tab.icon" /></el-icon>
-        <span>{{ tab.label }}</span>
+        <el-icon class="tab-icon"><component :is="item.icon" /></el-icon>
+        <span>{{ item.label }}</span>
       </button>
     </nav>
 
+    <!-- 移动端：主页时显示 任务/日程/设置 三图标 -->
     <div class="nav-actions">
-      <!-- 桌面端：设置按钮 -->
-      <button
-        v-if="!isMobile"
-        class="nav-tab"
-        :class="{ active: currentView === 'settings' }"
-        @click="switchView('settings')"
-        title="设置"
-      >
-        <el-icon class="tab-icon"><Setting /></el-icon>
-        <span>设置</span>
-      </button>
-
-      <!-- 移动端：主页时显示 任务管理 / 日程管理 / 设置 图标 -->
       <template v-if="isMobile && currentView === 'home'">
         <button class="nav-tab icon-only" @click="switchView('task')" title="任务管理">
           <el-icon><List /></el-icon>
@@ -64,26 +52,29 @@ import { useUI, type AppView } from '../composables/useUI'
 
 const { currentView, switchView, isMobile, settingsSection } = useUI()
 
-// 设置页顶部返回按钮文字：随当前子页变化
+// 桌面端导航项（主页由 logo 充当，故只列 任务/日程/设置）
+const navItems: { key: AppView; label: string; icon: any }[] = [
+  { key: 'task', label: '任务管理', icon: List },
+  { key: 'schedule', label: '日程管理', icon: Clock },
+  { key: 'settings', label: '设置', icon: Setting }
+]
+
+// toggle 导航：再点一次当前页 → 回主页
+const toggleView = (view: AppView) => {
+  switchView(currentView.value === view ? 'home' : view)
+}
+
+// 移动端非主页返回按钮标题
 const settingsTitle = computed(() => {
   const map: Record<string, string> = { list: '设置', view: '视觉与外观', ai: 'AI 助理配置', usage: 'API 消耗记录' }
   return map[settingsSection.value] || '设置'
 })
-
-// 移动端非主页时顶部返回按钮标题：设置页随子页变化，任务/日程用固定名
 const navTitle = computed(() => {
   if (currentView.value === 'settings') return settingsTitle.value
   if (currentView.value === 'task') return '任务管理'
   if (currentView.value === 'schedule') return '日程管理'
   return ''
 })
-
-// 桌面 tabs（设置单独放右侧）
-const tabs: { key: AppView; label: string; icon: any }[] = [
-  { key: 'home', label: '主页', icon: Calendar },
-  { key: 'task', label: '任务管理', icon: List },
-  { key: 'schedule', label: '日程管理', icon: Clock }
-]
 </script>
 
 <style scoped>
@@ -106,6 +97,12 @@ const tabs: { key: AppView; label: string; icon: any }[] = [
   font-size: 1.1rem;
   color: var(--el-text-color-primary);
   flex-shrink: 0;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.nav-logo:hover {
+  color: var(--el-color-primary);
 }
 
 .logo-icon {
@@ -113,7 +110,7 @@ const tabs: { key: AppView; label: string; icon: any }[] = [
   color: var(--el-color-primary);
 }
 
-/* 移动端设置页：返回按钮（替代 logo） */
+/* 移动端非主页：返回按钮 */
 .nav-back {
   display: flex;
   align-items: center;
