@@ -127,6 +127,7 @@ const navTitle = computed(() => {
 .nav-tabs {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 4px;
   flex: 1;
 }
