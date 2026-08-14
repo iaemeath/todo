@@ -1,5 +1,6 @@
 import { ref, watch } from 'vue'
 import { defineStore } from 'pinia'
+import { useUIStore } from './ui'
 
 const LOCAL_STORAGE_SETTINGS = 'canvas_settings'
 
@@ -45,6 +46,17 @@ export const defaultSettings: Settings = {
   nowIndicatorHeight: 2
 }
 
+/**
+ * 移动端首次安装的外观默认值：紧凑行高 + 极简网格。
+ * 仅在无任何已存储设置时生效；用户保存过设置后以存储值为准。
+ */
+const mobileAppearanceDefaults: Partial<Settings> = {
+  slotHeight: 30,
+  majorLineWidth: 1,
+  majorLineOpacity: 0.25,
+  showMinorLines: false
+}
+
 export const useSettingsStore = defineStore('settings', () => {
   const settings = ref<Settings>({ ...defaultSettings })
 
@@ -58,6 +70,9 @@ export const useSettingsStore = defineStore('settings', () => {
       } catch (e) {
         console.error('Failed to parse settings', e)
       }
+    } else {
+      // 首次安装：移动端用紧凑网格默认值
+      settings.value = { ...defaultSettings, ...(useUIStore().isMobile ? mobileAppearanceDefaults : {}) }
     }
   }
 

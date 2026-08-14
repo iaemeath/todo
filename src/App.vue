@@ -16,7 +16,9 @@ const ScheduleManagePage = defineAsyncComponent(() => import('./components/Sched
 const SettingsPage = defineAsyncComponent(() => import('./components/SettingsPage.vue'))
 
 const { loadTheme } = useThemeStore()
-const { currentView, isMobile, todoVisible, mobileTodoDragging } = storeToRefs(useUIStore())
+const uiStore = useUIStore()
+const { currentView, isMobile, todoVisible, mobileTodoDragging } = storeToRefs(uiStore)
+const { setTodoVisible } = uiStore // action 直接解构
 
 onMounted(() => {
   loadTheme()
@@ -34,16 +36,19 @@ onMounted(() => {
           <!-- 桌面：日历(左) + 待办(右) 并排；移动端：日历全屏（待办走抽屉→任务管理） -->
           <CalendarArea />
           <TodoSidebar v-if="!isMobile && todoVisible" />
-          <!-- 移动端待办浮层（全屏覆盖日历） -->
-          <Transition name="overlay-slide">
+          <!-- 移动端待办浮层：底罩捕获浮层外点击关闭；拖拽中穿透以免拦截往日历拖放排期 -->
+          <template v-if="isMobile && todoVisible">
             <div
-              v-if="isMobile && todoVisible"
-              class="mobile-todo-overlay"
+              class="mobile-todo-backdrop"
               :class="{ dragging: mobileTodoDragging }"
-            >
-              <TodoSidebar />
-            </div>
-          </Transition>
+              @click="setTodoVisible(false)"
+            ></div>
+            <Transition name="overlay-slide">
+              <div class="mobile-todo-overlay" :class="{ dragging: mobileTodoDragging }">
+                <TodoSidebar />
+              </div>
+            </Transition>
+          </template>
         </div>
 
         <!-- 任务管理 -->
@@ -98,6 +103,18 @@ html, body {
   height: 100%;
   overflow: hidden;
   position: relative; /* 为移动端待办浮层 absolute 定位 */
+}
+
+/* 移动端待办浮层底罩：捕获浮层外（日历区）点击 → 关闭浮层。
+   透明不改变视觉；位于浮层(20)之下、日历之上 */
+.mobile-todo-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 19;
+}
+/* 拖拽待办到日历排期时穿透，避免拦截 FullCalendar 的拖放命中 */
+.mobile-todo-backdrop.dragging {
+  pointer-events: none;
 }
 
 /* 移动端待办浮层：占屏宽 60%，贴右、从右侧滑出覆盖日历右半 */
