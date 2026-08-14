@@ -9,7 +9,7 @@
           <span style="margin-left: 8px;">{{ c.label }}</span>
         </el-option>
       </el-select>
-      <el-button :icon="Link" @click="openFromTodoDialog"><span v-if="!isMobile">从待办新增</span></el-button>
+      <el-button type="primary" :icon="Link" @click="openFromTodoDialog"><span v-if="!isMobile">从待办新增</span></el-button>
       <el-button type="primary" :icon="Plus" @click="openCreateDialog"><span v-if="!isMobile">新增日程</span></el-button>
     </div>
 
