@@ -4,9 +4,6 @@
 /** 日程颜色标识（业务层只存这个 key，不存 hex） */
 export type EventColor = 'violet' | 'blue' | 'emerald' | 'amber' | 'rose' | 'cyan'
 
-/** 默认颜色 */
-export const DEFAULT_EVENT_COLOR: EventColor = 'blue'
-
 /** 每种颜色的视觉派生（日历事件渲染用） */
 export interface ColorScheme {
   fill: string

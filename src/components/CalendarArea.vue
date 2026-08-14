@@ -599,12 +599,6 @@ watch(isMobile, (m) => {
   color: #fff;
 }
 
-/* 月选择器：文字短（2026年8月），比 daterange 窄 */
-.calendar-month-picker.el-input {
-  width: 150px;
-  --el-date-editor-width: 150px;
-}
-
 /* 日历主体填满工具条以下剩余空间 */
 .calendar-wrapper .fc {
   flex: 1;
@@ -654,13 +648,10 @@ watch(isMobile, (m) => {
   font-weight: 700;
 }
 
-/* 单值选择器（移动端单日 / 桌面月模式），type=date|month 的 el-input 结构，样式统一 */
-.calendar-day-picker.el-input,
-.calendar-month-picker.el-input {
+/* 单值选择器（移动端单日 / 桌面月模式），type=date|month 的 el-input 结构，样式统一。
+   宽度规则：月选择器带 calendar-title-picker 类，宽度由上方 daterange 的 250px 规则统一生效 */
+.calendar-day-picker.el-input {
   --el-date-editor-width: 178px;
-}
-.calendar-month-picker.el-input {
-  --el-date-editor-width: 150px; /* 月文字短（2026年8月） */
 }
 .calendar-day-picker .el-input__wrapper,
 .calendar-month-picker .el-input__wrapper {
@@ -756,8 +747,6 @@ watch(isMobile, (m) => {
     display: none !important;
   }
 }
-
-/* 移动端：隐藏空白的列头行（day 视图列头无内容，容器仍占位 → 干脆隐藏） */
 
 /* Base FullCalendar Overrides */
 .fc-theme-standard .fc-scrollgrid {
