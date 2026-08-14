@@ -20,8 +20,7 @@
       @click="setTodoVisible(true)"
       title="展开待办栏"
     >
-      <PanelRight :size="16" />
-      <span>待办</span>
+      <PanelRight :size="24" />
     </button>
     <!-- 移动端：打开待办浮层 -->
     <button
@@ -30,7 +29,7 @@
       @click="setTodoVisible(true)"
       title="打开待办"
     >
-      <PanelRight :size="22" />
+      <PanelRight :size="24" />
     </button>
 
     <!-- 日程新增/编辑弹窗（web 右击、移动双击事件打开编辑） -->
@@ -355,15 +354,15 @@ watch(isMobile, (m) => {
 }
 
 /* 待办栏收起后，日历右上角的展开入口 */
-.reopen-todo-btn {
+.calendar-wrapper .reopen-todo-btn {
   position: absolute;
-  top: 66px;
-  right: 15px;
+  top: 17px;
+  right: 5px;
   z-index: 5;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 8px 5px;
   border: 1px solid var(--border-glass);
   border-radius: 8px;
   background: var(--el-bg-color);
@@ -384,16 +383,15 @@ watch(isMobile, (m) => {
    覆盖全局 button:not(.el-button) 的圆角/缩放，确保圆形） */
 .calendar-wrapper .mobile-todo-fab {
   position: absolute;
-  top: 14px;
+  top: 5px;
   right: 14px;
   z-index: 10;
   width: 52px;
   height: 52px;
   border: none;
-  border-radius: 50%;
-  background: var(--color-primary);
-  color: #fff;
-  box-shadow: 0 4px 16px var(--color-primary-alpha);
+  background: transparent;
+  color: var(--color-primary);
+  box-shadow: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -527,7 +525,11 @@ watch(isMobile, (m) => {
   box-shadow: 0 1px 4px rgba(0,0,0,0.04);
   transition: all 0.2s ease;
 }
-
+/* 只给右侧（月/周/日）视图切换组加右边距，给收起态的 reopen 按钮腾位。
+   FC 工具栏按 left→center→right 渲染，右侧组恒为最后一个 chunk。 */
+.fc-toolbar-chunk:last-child .fc-button-group {
+  margin-right: 28px;
+}
 .fc .fc-button-primary:hover {
   background-color: var(--card-hover-bg) !important;
   border-color: var(--color-primary-light) !important;
