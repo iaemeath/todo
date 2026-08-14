@@ -9,8 +9,7 @@
       '--minor-line-opacity': settings.minorLineOpacity,
       '--minor-line-style': settings.showMinorLines ? 'solid' : 'none',
       '--now-indicator-color': settings.nowIndicatorColor,
-      '--now-indicator-height': settings.nowIndicatorHeight + 'px',
-      '--now-indicator-opacity': settings.nowIndicatorOpacity
+      '--now-indicator-height': settings.nowIndicatorHeight + 'px'
     }"
   >
     <FullCalendar ref="fullCalendar" :options="calendarOptions" />
@@ -548,16 +547,14 @@ watch(isMobile, (m) => {
 }
 
 /* Current-time indicator (the red line + arrow).
-   FC uses --fc-now-indicator-color; we layer height/opacity on top via
-   custom properties set from settings. */
+   Color carries its own alpha (rgba from the color picker), so no separate
+   opacity property is needed. */
 .fc .fc-timegrid-now-indicator-line {
   border-top-width: var(--now-indicator-height, 2px) !important;
-  border-top-color: var(--now-indicator-color, #ef4444) !important;
-  opacity: var(--now-indicator-opacity, 0.8);
+  border-top-color: var(--now-indicator-color, rgba(239, 68, 68, 0.8)) !important;
 }
 
 .fc .fc-timegrid-now-indicator-arrow {
-  border-color: var(--now-indicator-color, #ef4444) transparent transparent !important;
-  opacity: var(--now-indicator-opacity, 0.8);
+  border-color: var(--now-indicator-color, rgba(239, 68, 68, 0.8)) transparent transparent !important;
 }
 </style>

@@ -9,6 +9,8 @@ import ScheduleManagePage from './components/ScheduleManagePage.vue'
 import SettingsPage from './components/SettingsPage.vue'
 import { useTheme } from './composables/useTheme'
 import { useUI } from './composables/useUI'
+import { ElConfigProvider } from 'element-plus'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 
 const { loadTheme } = useTheme()
 const { currentView, isMobile, todoVisible, mobileTodoDragging } = useUI()
@@ -19,39 +21,41 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="app-layout">
-    <AppNavBar />
+  <el-config-provider :locale="zhCn">
+    <div class="app-layout">
+      <AppNavBar />
 
-    <main class="content-area">
-      <!-- 主页 -->
-      <div v-if="currentView === 'home'" class="home-view" :class="{ 'home-view--mobile': isMobile }">
-        <!-- 桌面：日历(左) + 待办(右) 并排；移动端：日历全屏（待办走抽屉→任务管理） -->
-        <CalendarArea />
-        <TodoSidebar v-if="!isMobile && todoVisible" />
-        <!-- 移动端待办浮层（全屏覆盖日历） -->
-        <Transition name="overlay-slide">
-          <div
-            v-if="isMobile && todoVisible"
-            class="mobile-todo-overlay"
-            :class="{ dragging: mobileTodoDragging }"
-          >
-            <TodoSidebar />
-          </div>
-        </Transition>
-      </div>
+      <main class="content-area">
+        <!-- 主页 -->
+        <div v-if="currentView === 'home'" class="home-view" :class="{ 'home-view--mobile': isMobile }">
+          <!-- 桌面：日历(左) + 待办(右) 并排；移动端：日历全屏（待办走抽屉→任务管理） -->
+          <CalendarArea />
+          <TodoSidebar v-if="!isMobile && todoVisible" />
+          <!-- 移动端待办浮层（全屏覆盖日历） -->
+          <Transition name="overlay-slide">
+            <div
+              v-if="isMobile && todoVisible"
+              class="mobile-todo-overlay"
+              :class="{ dragging: mobileTodoDragging }"
+            >
+              <TodoSidebar />
+            </div>
+          </Transition>
+        </div>
 
-      <!-- 任务管理 -->
-      <TaskManagePage v-else-if="currentView === 'task'" />
+        <!-- 任务管理 -->
+        <TaskManagePage v-else-if="currentView === 'task'" />
 
-      <!-- 日程管理 -->
-      <ScheduleManagePage v-else-if="currentView === 'schedule'" />
+        <!-- 日程管理 -->
+        <ScheduleManagePage v-else-if="currentView === 'schedule'" />
 
-      <!-- 设置 -->
-      <SettingsPage v-else-if="currentView === 'settings'" />
-    </main>
+        <!-- 设置 -->
+        <SettingsPage v-else-if="currentView === 'settings'" />
+      </main>
 
-    <VoiceAssistant />
-  </div>
+      <VoiceAssistant />
+    </div>
+  </el-config-provider>
 </template>
 
 <style>

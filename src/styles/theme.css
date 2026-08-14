@@ -4,11 +4,13 @@
   /* Fonts */
   --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 
-  /* Common Brand Colors — lavender/indigo (hue 230) */
-  --color-primary: hsl(230, 80%, 70%);       /* #758af0 — buttons, text accent */
-  --color-primary-light: hsl(230, 80%, 80%); /* #a3b1f5 — hover, borders (≈ #a5b4fc) */
-  --color-primary-dark: hsl(230, 80%, 65%);  /* #5e76ed — active state */
-  --color-primary-alpha: rgba(117, 138, 240, 0.16);
+  /* Common Brand Colors — primary is user-configurable (injected at runtime onto
+     :root by useTheme). Derived tones use color-mix so they follow the user's
+     pick automatically; variable names are unchanged, so no business code changes. */
+  --color-primary: #758af0;                                                        /* fallback; overridden at runtime */
+  --color-primary-light: color-mix(in srgb, var(--color-primary), white 18%);      /* hover, borders */
+  --color-primary-dark: color-mix(in srgb, var(--color-primary), black 12%);       /* active state */
+  --color-primary-alpha: color-mix(in srgb, var(--color-primary) 16%, transparent);
 
   --color-success: hsl(142, 70%, 45%);
   --color-success-alpha: rgba(34, 197, 94, 0.15);
