@@ -76,12 +76,18 @@ import FullCalendar from '@fullcalendar/vue3'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import dayGridPlugin from '@fullcalendar/daygrid'
+import type { CalendarOptions, DateSelectArg, DayHeaderContentArg, EventChangeArg, EventClickArg, EventMountArg } from '@fullcalendar/core'
+
+// FC v6 core 未直接导出 dateClick/eventReceive 回调的 Arg 类型，从 CalendarOptions 推导
+type DateClickArg = Parameters<NonNullable<CalendarOptions['dateClick']>>[0]
+type EventReceiveArg = Parameters<NonNullable<CalendarOptions['eventReceive']>>[0]
 import { useSchedules } from '../composables/useTasks'
 import { useSettings } from '../composables/useSettings'
 import { useTheme } from '../composables/useTheme'
 import { useUI } from '../composables/useUI'
 import { PanelRight } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
+import { colorOptions, colorScheme } from '../constants/colors'
 
 const { schedules, updateSchedule, addScheduleFromTask, addSchedule, deleteSchedule } = useSchedules()
 const { settings } = useSettings()
@@ -110,29 +116,10 @@ onBeforeUnmount(() => {
   }
 })
 
-const colorMap: Record<string, { fill: string; stroke: string; text: string; textLight: string }> = {
-  violet: { fill: 'rgba(139, 92, 246, 0.12)', stroke: 'rgba(139, 92, 246, 0.5)', text: '#a78bfa', textLight: '#6d28d9' },
-  blue: { fill: 'rgba(59, 130, 246, 0.12)', stroke: 'rgba(59, 130, 246, 0.5)', text: '#93c5fd', textLight: '#1d4ed8' },
-  emerald: { fill: 'rgba(16, 185, 129, 0.12)', stroke: 'rgba(16, 185, 129, 0.5)', text: '#6ee7b7', textLight: '#047857' },
-  amber: { fill: 'rgba(245, 158, 11, 0.12)', stroke: 'rgba(245, 158, 11, 0.5)', text: '#fde047', textLight: '#b45309' },
-  rose: { fill: 'rgba(244, 63, 94, 0.12)', stroke: 'rgba(244, 63, 94, 0.5)', text: '#fda4af', textLight: '#be123c' },
-  cyan: { fill: 'rgba(6, 182, 212, 0.12)', stroke: 'rgba(6, 182, 212, 0.5)', text: '#67e8f9', textLight: '#0369a1' }
-}
-
-// 新增日程颜色选项（与 colorMap 6 色一致）
-const colorOptions = [
-  { value: 'violet', label: '紫色', hex: '#8b5cf6' },
-  { value: 'blue', label: '蓝色', hex: '#3b82f6' },
-  { value: 'emerald', label: '绿色', hex: '#10b981' },
-  { value: 'amber', label: '琥珀', hex: '#f59e0b' },
-  { value: 'rose', label: '玫红', hex: '#f43f5e' },
-  { value: 'cyan', label: '青色', hex: '#06b6d4' }
-]
-
 // Convert our schedules to FullCalendar event format
 const calendarEvents = computed(() => {
   return schedules.value.map(task => {
-    const scheme = colorMap[task.color] || colorMap.blue
+    const scheme = colorScheme(task.color)
     const textColor = isDark.value ? scheme.text : scheme.textLight
 
     return {
@@ -148,13 +135,13 @@ const calendarEvents = computed(() => {
   })
 })
 
-const handleEventChange = (changeInfo: any) => {
+const handleEventChange = (changeInfo: EventChangeArg) => {
   const event = changeInfo.event
   const id = event.id
   
   // Format dates back to our custom format
-  const startDate = new Date(event.start)
-  const endDate = event.end ? new Date(event.end) : new Date(startDate.getTime() + 60 * 60 * 1000)
+  const startDate = new Date(event.start as Date)
+  const endDate = event.end ? new Date(event.end as Date) : new Date(startDate.getTime() + 60 * 60 * 1000)
   
   const dateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`
   const startTimeStr = startDate.toTimeString().substring(0, 5)
@@ -167,13 +154,13 @@ const handleEventChange = (changeInfo: any) => {
   })
 }
 
-const handleEventReceive = (info: any) => {
+const handleEventReceive = (info: EventReceiveArg) => {
   const { event } = info
   const taskId = event.extendedProps.taskId
 
   if (taskId) {
-    const startDate = new Date(event.start)
-    const endDate = event.end ? new Date(event.end) : new Date(startDate.getTime() + 60 * 60 * 1000)
+    const startDate = new Date(event.start as Date)
+    const endDate = event.end ? new Date(event.end as Date) : new Date(startDate.getTime() + 60 * 60 * 1000)
 
     const dateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`
     const startTimeStr = startDate.toTimeString().substring(0, 5)
@@ -217,7 +204,7 @@ const openEditDialog = (eventId: string) => {
 // 移动端：轻触事件，两次快速轻触同一事件（<350ms）视为双击 → 编辑。
 // FC 无原生双击回调，基于 eventClick 自判定；滚动是滑动不会触发 eventClick，无双击误判。
 let lastEventTap = { id: '', time: 0 }
-const handleEventClick = (info: any) => {
+const handleEventClick = (info: EventClickArg) => {
   if (!isMobile.value) return // web 端走右键菜单，不用 eventClick
   const id = info.event.id
   const now = Date.now()
@@ -230,7 +217,7 @@ const handleEventClick = (info: any) => {
 }
 
 // web 端：右击事件 → 编辑弹窗（FC 无原生 contextmenu 回调，事件挂载时绑原生监听）
-const handleEventDidMount = (info: any) => {
+const handleEventDidMount = (info: EventMountArg) => {
   info.el.addEventListener('contextmenu', (e: MouseEvent) => {
     e.preventDefault()
     if (isMobile.value) return // 移动端走双击入口（部分浏览器长按会触发 contextmenu，忽略）
@@ -239,14 +226,14 @@ const handleEventDidMount = (info: any) => {
 }
 
 // 单击时间格：默认时长 1h
-const handleDateClick = (info: any) => {
+const handleDateClick = (info: DateClickArg) => {
   const d = new Date(info.date)
   const end = new Date(d.getTime() + 60 * 60 * 1000)
   openNewScheduleDialog(fmtDate(d), fmtTime(d), fmtTime(end))
 }
 
 // 拖选时段：精确起止时间
-const handleSelect = (info: any) => {
+const handleSelect = (info: DateSelectArg) => {
   const start = new Date(info.start)
   const end = new Date(info.end)
   openNewScheduleDialog(fmtDate(start), fmtTime(start), fmtTime(end))
@@ -306,7 +293,7 @@ const calendarOptions = computed(() => ({
   eventDidMount: handleEventDidMount, // web 端：右击事件编辑
   
   firstDay: 1, // Start week on Monday
-  dayHeaderContent: (arg: any) => {
+  dayHeaderContent: (arg: DayHeaderContentArg) => {
     // 移动端日视图：title 已显示当天日期，隐藏列头避免重复（只保留一行表头）
     if (isMobile.value) return ''
     return `${arg.date.getMonth() + 1}月${arg.date.getDate()}日`

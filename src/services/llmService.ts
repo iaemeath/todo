@@ -1,12 +1,23 @@
 import { useSettings } from '../composables/useSettings'
+import { EVENT_COLOR_KEYS } from '../constants/colors'
 import { useUsage } from '../composables/useUsage'
+
+/** 语音解析出的操作载荷（add/edit event 或 add todo） */
+export interface VoicePayload {
+  title?: string
+  date?: string         // YYYY-MM-DD
+  startTime?: string    // HH:MM
+  endTime?: string      // HH:MM
+  color?: string        // EventColor key（violet/blue/...）
+  todoText?: string
+}
 
 export interface VoiceIntent {
   action: 'add' | 'edit' | 'delete' | 'unknown'
   target: 'event' | 'todo' | 'unknown'
   targetId?: string
-  searchQuery?: string 
-  payload?: any
+  searchQuery?: string
+  payload?: VoicePayload
 }
 
 export interface ContextData {
@@ -53,7 +64,7 @@ export async function parseVoiceCommand(text: string, forceCloud: boolean = fals
     "date": "YYYY-MM-DD (推断出的具体日期, 仅 add 或 edit event 时需要)",
     "startTime": "HH:MM (24小时制, 仅 add 或 edit event 时需要)",
     "endTime": "HH:MM (24小时制，如果没有指明结束时间，默认时长1小时, 仅 add 或 edit event 时需要)",
-    "color": "从 violet, blue, emerald, amber, rose, cyan 中选择一个符合氛围的颜色 (仅 add 或 edit event 时需要)",
+    "color": "从 ${EVENT_COLOR_KEYS} 中选择一个符合氛围的颜色 (仅 add 或 edit event 时需要)",
     "todoText": "待办事项的具体内容 (仅 add 或 edit todo 时需要)"
   }
 }
@@ -79,7 +90,13 @@ export async function parseVoiceCommand(text: string, forceCloud: boolean = fals
     })
     content = reply.choices[0].message.content || ''
   } else {
-    const response = await fetch(`${settings.value.apiBaseUrl.replace(/\/+$/, '')}/chat/completions`, {
+    const baseUrl = settings.value.apiBaseUrl.replace(/\/+$/, '')
+    // 安全校验：API Key 会以 Bearer 发往该地址，仅允许 https（本地开发可用 http://localhost），
+    // 防止用户误填或被篡改后把 key 明文发往任意 HTTP 域名。
+    if (!/^https:\/\//i.test(baseUrl) && !/^http:\/\/localhost/i.test(baseUrl)) {
+      throw new Error('API 地址必须使用 https://（本地调试可用 http://localhost），请检查设置中的 API 地址。')
+    }
+    const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

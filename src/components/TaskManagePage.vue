@@ -143,6 +143,7 @@ import { ref, computed } from 'vue'
 import Fuse from 'fuse.js'
 import { Plus, Search, Delete, Edit, Calendar } from '@element-plus/icons-vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
+import { colorOptions, type EventColor } from '../constants/colors'
 import { useTasks, useSchedules, type Task } from '../composables/useTasks'
 import { useUI } from '../composables/useUI'
 
@@ -165,7 +166,6 @@ const { addScheduleFromTask } = useSchedules()
 // ---- Options ----
 type Category = 'work' | 'personal' | 'fitness' | 'ideas' | 'shopping' | 'other'
 type Priority = 'high' | 'medium' | 'low'
-type EventColor = 'violet' | 'blue' | 'emerald' | 'amber' | 'rose' | 'cyan'
 
 const categoryOptions: { value: Category; label: string }[] = [
   { value: 'work', label: '工作' },
@@ -179,14 +179,6 @@ const priorityOptions: { value: Priority; label: string }[] = [
   { value: 'high', label: '高' },
   { value: 'medium', label: '中' },
   { value: 'low', label: '低' }
-]
-const colorOptions: { value: EventColor; label: string; hex: string }[] = [
-  { value: 'violet', label: '紫色', hex: '#8b5cf6' },
-  { value: 'blue', label: '蓝色', hex: '#3b82f6' },
-  { value: 'emerald', label: '绿色', hex: '#10b981' },
-  { value: 'amber', label: '琥珀', hex: '#f59e0b' },
-  { value: 'rose', label: '玫红', hex: '#f43f5e' },
-  { value: 'cyan', label: '青色', hex: '#06b6d4' }
 ]
 
 const categoryLabel = (v: string) => categoryOptions.find(c => c.value === v)?.label ?? v

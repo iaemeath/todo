@@ -137,6 +137,7 @@ import { ref, computed } from 'vue'
 import Fuse from 'fuse.js'
 import { Plus, Search, Delete, Edit, Link } from '@element-plus/icons-vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
+import { colorOptions, colorHex, colorLabel, type EventColor } from '../constants/colors'
 import { useSchedules, useTasks, type Schedule } from '../composables/useTasks'
 import { useUI } from '../composables/useUI'
 
@@ -145,19 +146,6 @@ const { schedules, addSchedule, updateSchedule, deleteSchedule, addScheduleFromT
 const { tasks, leafTasks } = useTasks()
 
 // ---- Options ----
-type EventColor = 'violet' | 'blue' | 'emerald' | 'amber' | 'rose' | 'cyan'
-
-const colorOptions: { value: EventColor; label: string; hex: string }[] = [
-  { value: 'violet', label: '紫色', hex: '#8b5cf6' },
-  { value: 'blue', label: '蓝色', hex: '#3b82f6' },
-  { value: 'emerald', label: '绿色', hex: '#10b981' },
-  { value: 'amber', label: '琥珀', hex: '#f59e0b' },
-  { value: 'rose', label: '玫红', hex: '#f43f5e' },
-  { value: 'cyan', label: '青色', hex: '#06b6d4' }
-]
-const colorHex = (v: string) => colorOptions.find(c => c.value === v)?.hex ?? '#3b82f6'
-const colorLabel = (v: string) => colorOptions.find(c => c.value === v)?.label ?? v
-
 const formatDate = (dateStr: string) => {
   const d = new Date(dateStr)
   return `${d.getMonth() + 1}/${d.getDate()}`

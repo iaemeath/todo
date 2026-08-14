@@ -1,0 +1,89 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { Delete } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUsage } from '../composables/useUsage'
+
+const { usageHistory, clearHistory } = useUsage()
+
+const totalTokensAllTime = computed(() => {
+  return usageHistory.value.reduce((acc, curr) => acc + curr.totalTokens, 0)
+})
+
+const formatDate = (dateStr: string) => {
+  const d = new Date(dateStr)
+  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+const handleClearHistory = async () => {
+  try {
+    await ElMessageBox.confirm('确定要清空所有 API 消耗记录吗？此操作不可撤销。', '清空记录', {
+      type: 'warning', confirmButtonText: '清空', cancelButtonText: '取消'
+    })
+    clearHistory()
+    ElMessage.success('消耗记录已清空')
+  } catch {
+    // cancelled
+  }
+}
+</script>
+
+<template>
+  <div class="usage-header">
+    <div>
+      <h3 class="pane-title">API 消耗记录</h3>
+      <p class="pane-desc">追踪云端大模型的 Token 消耗量。</p>
+    </div>
+    <el-button type="danger" plain :icon="Delete" @click="handleClearHistory">清空记录</el-button>
+  </div>
+
+  <el-row :gutter="16" class="usage-stats">
+    <el-col :span="12">
+      <el-card shadow="hover" body-class="stat-card-body">
+        <div class="stat-label">总计 Token 消耗</div>
+        <div class="stat-value primary">{{ totalTokensAllTime.toLocaleString() }}</div>
+      </el-card>
+    </el-col>
+    <el-col :span="12">
+      <el-card shadow="hover" body-class="stat-card-body">
+        <div class="stat-label">请求总次数</div>
+        <div class="stat-value">{{ usageHistory.length }}</div>
+      </el-card>
+    </el-col>
+  </el-row>
+
+  <el-table :data="usageHistory" stripe style="width: 100%;" empty-text="暂无消耗记录">
+    <el-table-column type="expand">
+      <template #default="{ row }">
+        <div class="usage-details">
+          <div class="detail-block">
+            <div class="detail-title">🗣️ 语音指令 (User)</div>
+            <div class="detail-text">{{ row.requestContent || '无' }}</div>
+          </div>
+          <div class="detail-block">
+            <div class="detail-title">📝 原始报文 (Raw Prompt)</div>
+            <pre class="detail-text json-view">{{ row.rawPrompt || '无' }}</pre>
+          </div>
+          <div class="detail-block">
+            <div class="detail-title">🤖 AI 解析结果 (Assistant)</div>
+            <pre class="detail-text json-view">{{ row.responseContent || '无' }}</pre>
+          </div>
+        </div>
+      </template>
+    </el-table-column>
+    <el-table-column label="调用时间" width="130">
+      <template #default="{ row }">{{ formatDate(row.date) }}</template>
+    </el-table-column>
+    <el-table-column prop="model" label="模型名称" min-width="160" />
+    <el-table-column label="Prompt / Completion" min-width="160">
+      <template #default="{ row }">
+        <span class="text-secondary">{{ row.promptTokens }} / {{ row.completionTokens }}</span>
+      </template>
+    </el-table-column>
+    <el-table-column label="总 Tokens" width="120">
+      <template #default="{ row }">
+        <span class="text-primary-bold">{{ row.totalTokens }}</span>
+      </template>
+    </el-table-column>
+  </el-table>
+</template>
