@@ -9,7 +9,7 @@ import { defineStore } from 'pinia'
  */
 
 export type AppView = 'home' | 'task' | 'schedule' | 'settings'
-export type SettingsSection = 'list' | 'view' | 'ai' | 'usage'
+export type SettingsSection = 'list' | 'view' | 'ai' | 'usage' | 'data'
 
 const MOBILE_BREAKPOINT = 768
 const LS_TODO_VISIBLE = 'todo_visible'

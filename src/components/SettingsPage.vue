@@ -14,6 +14,10 @@
         <el-icon><DataLine /></el-icon>
         <span>API 消耗记录</span>
       </el-menu-item>
+      <el-menu-item index="data">
+        <el-icon><FolderOpened /></el-icon>
+        <span>数据管理</span>
+      </el-menu-item>
     </el-menu>
 
     <!-- 移动端：列表入口 -->
@@ -33,6 +37,11 @@
         <span>API 消耗记录</span>
         <el-icon class="arrow"><ArrowRight /></el-icon>
       </div>
+      <div class="mobile-item" @click="enterMobile('data')">
+        <el-icon><FolderOpened /></el-icon>
+        <span>数据管理</span>
+        <el-icon class="arrow"><ArrowRight /></el-icon>
+      </div>
     </div>
 
     <!-- 内容区域（桌面 + 移动端共用） -->
@@ -40,28 +49,30 @@
       <ViewSettingsTab v-show="currentTab === 'view'" :form="form" />
       <AiSettingsTab v-show="currentTab === 'ai'" :form="form" :active="currentTab === 'ai'" />
       <UsageTab v-show="currentTab === 'usage'" />
+      <DataManageTab v-show="currentTab === 'data'" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import { Monitor, ChatDotRound, DataLine, ArrowRight } from '@element-plus/icons-vue'
+import { Monitor, ChatDotRound, DataLine, ArrowRight, FolderOpened } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
 import { useSettingsStore, useUIStore } from '../stores'
 import ViewSettingsTab from './ViewSettingsTab.vue'
 import AiSettingsTab from './AiSettingsTab.vue'
 import UsageTab from './UsageTab.vue'
+import DataManageTab from './DataManageTab.vue'
 
-const activeTab = ref<'view' | 'ai' | 'usage'>('view')
+const activeTab = ref<'view' | 'ai' | 'usage' | 'data'>('view')
 const uiStore = useUIStore()
 const { isMobile, settingsSection } = storeToRefs(uiStore) // state → storeToRefs
 const { setSettingsSection } = uiStore // action 直接解构
 // 桌面用 activeTab，移动端用 settingsSection（'list'=选项列表），content 统一读 currentTab
 const currentTab = computed(() => isMobile.value
-  ? (settingsSection.value === 'list' ? 'view' : settingsSection.value as 'view' | 'ai' | 'usage')
+  ? (settingsSection.value === 'list' ? 'view' : settingsSection.value as 'view' | 'ai' | 'usage' | 'data')
   : activeTab.value)
-const enterMobile = (tab: 'view' | 'ai' | 'usage') => { setSettingsSection(tab) }
+const enterMobile = (tab: 'view' | 'ai' | 'usage' | 'data') => { setSettingsSection(tab) }
 const settingsStore = useSettingsStore()
 const { settings } = storeToRefs(settingsStore) // state → storeToRefs
 const { updateSettings } = settingsStore // action 直接解构
