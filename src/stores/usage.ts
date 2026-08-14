@@ -1,4 +1,5 @@
 import { ref, watch } from 'vue'
+import { defineStore } from 'pinia'
 
 const LOCAL_STORAGE_USAGE = 'canvas_api_usage'
 
@@ -14,27 +15,27 @@ export interface UsageRecord {
   rawPrompt?: string
 }
 
-const usageHistory = ref<UsageRecord[]>([])
+export const useUsageStore = defineStore('usage', () => {
+  const usageHistory = ref<UsageRecord[]>([])
 
-const loadUsage = () => {
-  if (typeof window === 'undefined') return
-  const stored = localStorage.getItem(LOCAL_STORAGE_USAGE)
-  if (stored) {
-    try {
-      usageHistory.value = JSON.parse(stored)
-    } catch (e) {
-      console.error('Failed to parse usage', e)
+  const load = () => {
+    if (typeof window === 'undefined') return
+    const stored = localStorage.getItem(LOCAL_STORAGE_USAGE)
+    if (stored) {
+      try {
+        usageHistory.value = JSON.parse(stored)
+      } catch (e) {
+        console.error('Failed to parse usage', e)
+      }
     }
   }
-}
 
-loadUsage()
+  load()
 
-watch(usageHistory, (newUsage) => {
-  localStorage.setItem(LOCAL_STORAGE_USAGE, JSON.stringify(newUsage))
-}, { deep: true })
+  watch(usageHistory, (newUsage) => {
+    localStorage.setItem(LOCAL_STORAGE_USAGE, JSON.stringify(newUsage))
+  }, { deep: true })
 
-export function useUsage() {
   const addRecord = (record: Omit<UsageRecord, 'id' | 'date'>) => {
     const newRecord: UsageRecord = {
       ...record,
@@ -49,9 +50,5 @@ export function useUsage() {
     usageHistory.value = []
   }
 
-  return {
-    usageHistory,
-    addRecord,
-    clearHistory
-  }
-}
+  return { usageHistory, addRecord, clearHistory }
+})

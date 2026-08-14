@@ -48,9 +48,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Calendar, List, Clock, Setting, ArrowLeft } from '@element-plus/icons-vue'
-import { useUI, type AppView } from '../composables/useUI'
+import { storeToRefs } from 'pinia'
+import { useUIStore, type AppView } from '../stores'
 
-const { currentView, switchView, isMobile, settingsSection } = useUI()
+const uiStore = useUIStore()
+const { currentView, isMobile, settingsSection } = storeToRefs(uiStore) // state → storeToRefs
+const { switchView } = uiStore // action 直接解构
 
 // 桌面端导航项（主页由 logo 充当，故只列 任务/日程/设置）
 const navItems: { key: AppView; label: string; icon: any }[] = [

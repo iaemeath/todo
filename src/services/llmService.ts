@@ -1,6 +1,6 @@
-import { useSettings } from '../composables/useSettings'
+import { storeToRefs } from 'pinia'
+import { useSettingsStore, useUsageStore } from '../stores'
 import { EVENT_COLOR_KEYS } from '../constants/colors'
-import { useUsage } from '../composables/useUsage'
 
 /** 语音解析出的操作载荷（add/edit event 或 add todo） */
 export interface VoicePayload {
@@ -26,7 +26,7 @@ export interface ContextData {
 }
 
 export async function parseVoiceCommand(text: string, forceCloud: boolean = false, contextData?: ContextData): Promise<VoiceIntent> {
-  const { settings } = useSettings()
+  const { settings } = storeToRefs(useSettingsStore())
   const mode = forceCloud ? 'cloud' : settings.value.aiMode
   
   if (mode === 'cloud' && !settings.value.apiKey) {
@@ -118,7 +118,7 @@ export async function parseVoiceCommand(text: string, forceCloud: boolean = fals
     content = data.choices?.[0]?.message?.content || ''
     
     if (data.usage) {
-      const { addRecord } = useUsage()
+      const { addRecord } = useUsageStore()
       addRecord({
         model: settings.value.modelName,
         promptTokens: data.usage.prompt_tokens || 0,

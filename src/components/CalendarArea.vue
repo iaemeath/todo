@@ -81,18 +81,20 @@ import type { CalendarOptions, DateSelectArg, DayHeaderContentArg, EventChangeAr
 // FC v6 core 未直接导出 dateClick/eventReceive 回调的 Arg 类型，从 CalendarOptions 推导
 type DateClickArg = Parameters<NonNullable<CalendarOptions['dateClick']>>[0]
 type EventReceiveArg = Parameters<NonNullable<CalendarOptions['eventReceive']>>[0]
-import { useSchedules } from '../composables/useTasks'
-import { useSettings } from '../composables/useSettings'
-import { useTheme } from '../composables/useTheme'
-import { useUI } from '../composables/useUI'
+import { storeToRefs } from 'pinia'
+import { useTaskStore, useSettingsStore, useThemeStore, useUIStore } from '../stores'
 import { PanelRight } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import { colorOptions, colorScheme } from '../constants/colors'
 
-const { schedules, updateSchedule, addScheduleFromTask, addSchedule, deleteSchedule } = useSchedules()
-const { settings } = useSettings()
-const { isDark } = useTheme()
-const { isMobile, todoVisible, setTodoVisible } = useUI()
+const taskStore = useTaskStore()
+const { schedules } = storeToRefs(taskStore) // state → storeToRefs
+const { updateSchedule, addScheduleFromTask, addSchedule, deleteSchedule } = taskStore // action
+const { settings } = storeToRefs(useSettingsStore())
+const { isDark } = storeToRefs(useThemeStore())
+const uiStore = useUIStore()
+const { isMobile, todoVisible } = storeToRefs(uiStore) // state
+const { setTodoVisible } = uiStore // action
 
 const fullCalendar = ref<InstanceType<typeof FullCalendar> | null>(null)
 let resizeObserver: ResizeObserver | null = null

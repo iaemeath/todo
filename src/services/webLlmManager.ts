@@ -1,5 +1,6 @@
 import type { MLCEngine } from '@mlc-ai/web-llm'
-import { useSettings } from '../composables/useSettings'
+import { storeToRefs } from 'pinia'
+import { useSettingsStore } from '../stores'
 
 // web-llm 体积巨大（6MB+），只在真正需要时动态加载，避免进入主 bundle。
 // import type 仅用于类型标注，编译时擦除，不产生运行时依赖。
@@ -46,7 +47,8 @@ export async function downloadModel(
 
 /** 获取本地推理引擎单例（首次调用时加载模型） */
 export async function getLocalEngine(): Promise<MLCEngine> {
-  const { settings, updateSettings } = useSettings()
+  const settingsStore = useSettingsStore()
+  const { settings } = storeToRefs(settingsStore)
 
   if (engineInstance) {
     return engineInstance
@@ -55,7 +57,7 @@ export async function getLocalEngine(): Promise<MLCEngine> {
   const { CreateMLCEngine } = await loadWebLlm()
   engineInstance = await CreateMLCEngine(settings.value.localModelName, {
     initProgressCallback: (progress: any) => {
-      updateSettings({ webLlmProgress: progress.text })
+      settingsStore.updateSettings({ webLlmProgress: progress.text })
     }
   })
 

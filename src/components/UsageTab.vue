@@ -2,9 +2,11 @@
 import { computed } from 'vue'
 import { Delete } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useUsage } from '../composables/useUsage'
+import { storeToRefs } from 'pinia'
+import { useUsageStore } from '../stores'
 
-const { usageHistory, clearHistory } = useUsage()
+const { usageHistory } = storeToRefs(useUsageStore()) // state → storeToRefs
+const { clearHistory } = useUsageStore() // action 直接解构
 
 const totalTokensAllTime = computed(() => {
   return usageHistory.value.reduce((acc, curr) => acc + curr.totalTokens, 0)

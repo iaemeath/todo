@@ -3,9 +3,9 @@ import { onMounted, defineAsyncComponent } from 'vue'
 import AppNavBar from './components/AppNavBar.vue'
 import CalendarArea from './components/CalendarArea.vue'
 import TodoSidebar from './components/TodoSidebar.vue'
-import { useTheme } from './composables/useTheme'
-import { useUI } from './composables/useUI'
+import { storeToRefs } from 'pinia'
 import { ElConfigProvider } from 'element-plus'
+import { useThemeStore, useUIStore } from './stores'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 
 // 二级页面与语音助手异步加载，避免首屏 bundle 过大
@@ -15,8 +15,8 @@ const TaskManagePage = defineAsyncComponent(() => import('./components/TaskManag
 const ScheduleManagePage = defineAsyncComponent(() => import('./components/ScheduleManagePage.vue'))
 const SettingsPage = defineAsyncComponent(() => import('./components/SettingsPage.vue'))
 
-const { loadTheme } = useTheme()
-const { currentView, isMobile, todoVisible, mobileTodoDragging } = useUI()
+const { loadTheme } = useThemeStore()
+const { currentView, isMobile, todoVisible, mobileTodoDragging } = storeToRefs(useUIStore())
 
 onMounted(() => {
   loadTheme()

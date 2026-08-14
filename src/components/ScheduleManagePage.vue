@@ -138,12 +138,14 @@ import Fuse from 'fuse.js'
 import { Plus, Search, Delete, Edit, Link } from '@element-plus/icons-vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { colorOptions, colorHex, colorLabel, type EventColor } from '../constants/colors'
-import { useSchedules, useTasks, type Schedule } from '../composables/useTasks'
-import { useUI } from '../composables/useUI'
+import { storeToRefs } from 'pinia'
+import { useTaskStore, useUIStore, type Schedule } from '../stores'
 
-const { isMobile } = useUI()
-const { schedules, addSchedule, updateSchedule, deleteSchedule, addScheduleFromTask } = useSchedules()
-const { tasks, leafTasks } = useTasks()
+const { isMobile } = storeToRefs(useUIStore())
+// tasks + schedules 合并于同一 useTaskStore
+const taskStore = useTaskStore()
+const { schedules, tasks, leafTasks } = storeToRefs(taskStore) // state/getter → storeToRefs
+const { addSchedule, updateSchedule, deleteSchedule, addScheduleFromTask } = taskStore // action 直接解构
 
 // ---- Options ----
 const formatDate = (dateStr: string) => {

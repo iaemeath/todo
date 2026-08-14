@@ -1,4 +1,5 @@
 import { ref, watch } from 'vue'
+import { defineStore } from 'pinia'
 
 const LOCAL_STORAGE_SETTINGS = 'canvas_settings'
 
@@ -23,7 +24,7 @@ export interface Settings {
   nowIndicatorHeight: number
 }
 
-const defaultSettings: Settings = {
+export const defaultSettings: Settings = {
   aiMode: 'cloud',
   localModelName: 'Phi-3-mini-4k-instruct-q4f16_1-MLC',
   webLlmProgress: '',
@@ -44,33 +45,32 @@ const defaultSettings: Settings = {
   nowIndicatorHeight: 2
 }
 
-const settings = ref<Settings>({ ...defaultSettings })
+export const useSettingsStore = defineStore('settings', () => {
+  const settings = ref<Settings>({ ...defaultSettings })
 
-const loadSettings = () => {
-  if (typeof window === 'undefined') return
-  const stored = localStorage.getItem(LOCAL_STORAGE_SETTINGS)
-  if (stored) {
-    try {
-      settings.value = { ...defaultSettings, ...JSON.parse(stored) }
-    } catch (e) {
-      console.error('Failed to parse settings', e)
+  // 加载已保存的设置（启动时立即执行）
+  const load = () => {
+    if (typeof window === 'undefined') return
+    const stored = localStorage.getItem(LOCAL_STORAGE_SETTINGS)
+    if (stored) {
+      try {
+        settings.value = { ...defaultSettings, ...JSON.parse(stored) }
+      } catch (e) {
+        console.error('Failed to parse settings', e)
+      }
     }
   }
-}
 
-loadSettings()
+  load()
 
-watch(settings, (newSettings) => {
-  localStorage.setItem(LOCAL_STORAGE_SETTINGS, JSON.stringify(newSettings))
-}, { deep: true })
+  // 持久化：settings 变更即写回 localStorage
+  watch(settings, (newSettings) => {
+    localStorage.setItem(LOCAL_STORAGE_SETTINGS, JSON.stringify(newSettings))
+  }, { deep: true })
 
-export function useSettings() {
   const updateSettings = (updates: Partial<Settings>) => {
     settings.value = { ...settings.value, ...updates }
   }
 
-  return {
-    settings,
-    updateSettings
-  }
-}
+  return { settings, updateSettings }
+})

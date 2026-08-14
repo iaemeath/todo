@@ -32,8 +32,8 @@ import { ref, computed, watch } from 'vue'
 import { Mic, Loader2, Check, AlertCircle } from 'lucide-vue-next'
 import Fuse from 'fuse.js'
 import { parseVoiceCommand, type VoiceIntent } from '../services/llmService'
-import { useTasks, useSchedules } from '../composables/useTasks'
-import { useSettings } from '../composables/useSettings'
+import { storeToRefs } from 'pinia'
+import { useTaskStore, useSettingsStore } from '../stores'
 
 type VoiceState = 'idle' | 'listening' | 'processing' | 'success' | 'error'
 
@@ -45,10 +45,12 @@ let silenceTimer: any = null
 let toastTimer: any = null
 const accumulatedText = ref('')
 
-// 'todo' 意图 → 任务树(tasks)；'event' 意图 → 日程(schedules)
-const { tasks, addTask, updateTask, deleteTask } = useTasks()
-const { schedules, addSchedule, updateSchedule, deleteSchedule } = useSchedules()
-const { settings } = useSettings()
+// 'todo' 意图 → 任务树(tasks)；'event' 意图 → 日程(schedules)。
+// tasks + schedules 合并于同一 useTaskStore。
+const taskStore = useTaskStore()
+const { tasks, schedules } = storeToRefs(taskStore) // state → storeToRefs
+const { addTask, updateTask, deleteTask, addSchedule, updateSchedule, deleteSchedule } = taskStore // action
+const { settings } = storeToRefs(useSettingsStore())
 
 const executeIntent = (intent: VoiceIntent): string => {
   if (intent.action === 'add') {

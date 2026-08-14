@@ -47,20 +47,24 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { Monitor, ChatDotRound, DataLine, ArrowRight } from '@element-plus/icons-vue'
-import { useSettings } from '../composables/useSettings'
-import { useUI } from '../composables/useUI'
+import { storeToRefs } from 'pinia'
+import { useSettingsStore, useUIStore } from '../stores'
 import ViewSettingsTab from './ViewSettingsTab.vue'
 import AiSettingsTab from './AiSettingsTab.vue'
 import UsageTab from './UsageTab.vue'
 
 const activeTab = ref<'view' | 'ai' | 'usage'>('view')
-const { isMobile, settingsSection, setSettingsSection } = useUI()
+const uiStore = useUIStore()
+const { isMobile, settingsSection } = storeToRefs(uiStore) // state → storeToRefs
+const { setSettingsSection } = uiStore // action 直接解构
 // 桌面用 activeTab，移动端用 settingsSection（'list'=选项列表），content 统一读 currentTab
 const currentTab = computed(() => isMobile.value
   ? (settingsSection.value === 'list' ? 'view' : settingsSection.value as 'view' | 'ai' | 'usage')
   : activeTab.value)
 const enterMobile = (tab: 'view' | 'ai' | 'usage') => { setSettingsSection(tab) }
-const { settings, updateSettings } = useSettings()
+const settingsStore = useSettingsStore()
+const { settings } = storeToRefs(settingsStore) // state → storeToRefs
+const { updateSettings } = settingsStore // action 直接解构
 
 // form 是 settings 的编辑缓冲；子组件通过 props 变异其字段，下面的 watch 即时回写
 const form = ref({ ...settings.value })

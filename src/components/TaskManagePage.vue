@@ -144,13 +144,14 @@ import Fuse from 'fuse.js'
 import { Plus, Search, Delete, Edit, Calendar } from '@element-plus/icons-vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { colorOptions, type EventColor } from '../constants/colors'
-import { useTasks, useSchedules, type Task } from '../composables/useTasks'
-import { useUI } from '../composables/useUI'
+import { storeToRefs } from 'pinia'
+import { useTaskStore, useUIStore, type Task } from '../stores'
 
-const { isMobile } = useUI()
+const { isMobile } = storeToRefs(useUIStore())
 
+const taskStore = useTaskStore()
+const { tasks } = storeToRefs(taskStore) // state → storeToRefs
 const {
-  tasks,
   addTask,
   addChildTask,
   updateTask,
@@ -159,9 +160,9 @@ const {
   getDescendants,
   getTaskLevel,
   canAddChild,
-  isLeaf
-} = useTasks()
-const { addScheduleFromTask } = useSchedules()
+  isLeaf,
+  addScheduleFromTask
+} = taskStore // action 直接解构（原 useTasks + useSchedules 合并于此）
 
 // ---- Options ----
 type Category = 'work' | 'personal' | 'fitness' | 'ideas' | 'shopping' | 'other'

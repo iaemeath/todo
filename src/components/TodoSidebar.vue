@@ -71,13 +71,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Plus, GripVertical, Trash2, PanelRightClose } from 'lucide-vue-next'
-import { useTasks } from '../composables/useTasks'
-import { useUI } from '../composables/useUI'
+import { storeToRefs } from 'pinia'
+import { useTaskStore, useUIStore } from '../stores'
 import { Draggable } from '@fullcalendar/interaction'
 import draggable from 'vuedraggable'
 
-const { leafTasks, addTask, deleteTask } = useTasks()
-const { isMobile, setTodoVisible, mobileTodoDragging, setMobileTodoDragging } = useUI()
+const taskStore = useTaskStore()
+const { leafTasks } = storeToRefs(taskStore) // getter → storeToRefs
+const { addTask, deleteTask } = taskStore // action 直接解构
+const uiStore = useUIStore()
+const { isMobile, mobileTodoDragging } = storeToRefs(uiStore) // state
+const { setTodoVisible, setMobileTodoDragging } = uiStore // action
 
 const newTodoTitle = ref('')
 const draggableContainer = ref<any>(null)

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { Moon, Sunny } from '@element-plus/icons-vue'
-import { useTheme } from '../composables/useTheme'
-import type { Settings } from '../composables/useSettings'
+import { storeToRefs } from 'pinia'
+import { useThemeStore, type Settings } from '../stores'
 
 defineProps<{ form: Settings }>()
 
-const { isDark, toggleTheme } = useTheme()
+const themeStore = useThemeStore()
+const { isDark } = storeToRefs(themeStore) // state → storeToRefs
+const { toggleTheme } = themeStore // action 直接解构
 </script>
 
 <template>

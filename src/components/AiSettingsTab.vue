@@ -3,11 +3,10 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { Search, Delete, Download, CircleCheckFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAllModels, hasModelInCache, deleteModelCache as purgeModelCache, downloadModel } from '../services/webLlmManager'
-import { useSettings } from '../composables/useSettings'
-import type { Settings } from '../composables/useSettings'
+import { useSettingsStore, type Settings } from '../stores'
 
 const props = defineProps<{ form: Settings; active: boolean }>()
-const { updateSettings } = useSettings()
+const { updateSettings } = useSettingsStore()
 
 // --- 本地模型管理 ---
 const searchQuery = ref('')
