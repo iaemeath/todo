@@ -41,6 +41,17 @@ const generateId = (): string => {
   return 'task-' + Math.random().toString(36).substring(2, 9)
 }
 
+// 安全解析 localStorage 的 JSON：数据损坏时回退 fallback，避免启动阶段抛异常导致白屏
+function safeParse<T>(raw: string | null, fallback: T): T {
+  if (!raw) return fallback
+  try {
+    return JSON.parse(raw) as T
+  } catch (e) {
+    console.error('[useTasks] localStorage 数据解析失败，回退默认值。', e)
+    return fallback
+  }
+}
+
 // ===== State refs (module-level singletons) =====
 const tasks = ref<Task[]>([])
 const schedules = ref<Schedule[]>([])
@@ -56,7 +67,7 @@ const migrateLegacyData = () => {
   const oldEventsRaw = localStorage.getItem('canvas_tasks') // 旧日历事件
 
   const newTasks: Task[] = oldTodosRaw
-    ? (JSON.parse(oldTodosRaw) as any[]).map((t, i) => ({
+    ? (safeParse<any[]>(oldTodosRaw, [])).map((t, i) => ({
         id: t.id,
         parentId: null,
         title: t.title ?? '',
@@ -69,7 +80,7 @@ const migrateLegacyData = () => {
     : []
 
   const newSchedules: Schedule[] = oldEventsRaw
-    ? (JSON.parse(oldEventsRaw) as any[]).map((t) => ({
+    ? (safeParse<any[]>(oldEventsRaw, [])).map((t) => ({
         id: t.id,
         taskId: t.todoId, // 旧 todoId → 新 taskId
         title: t.title ?? '',
@@ -137,9 +148,9 @@ const loadFromStorage = () => {
   const storedTasks = localStorage.getItem(LS_TASKS)
   const storedSchedules = localStorage.getItem(LS_SCHEDULES)
 
-  tasks.value = storedTasks ? JSON.parse(storedTasks) : []
+  tasks.value = safeParse<Task[]>(storedTasks, [])
 
-  const parsedSchedules = storedSchedules ? JSON.parse(storedSchedules) : []
+  const parsedSchedules = safeParse<Schedule[]>(storedSchedules, [])
   // 过滤掉含 NaN / Infinity 的损坏数据
   schedules.value = parsedSchedules.filter((s: any) => {
     if (!s.startTime || !s.endTime) return false
