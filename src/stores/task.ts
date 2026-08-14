@@ -34,7 +34,6 @@ export interface Schedule {
 // ===== Storage keys =====
 const LS_TASKS = 'canvas_tasks'
 const LS_SCHEDULES = 'canvas_schedules'
-const LS_SCHEMA = 'canvas_schema_version'
 const MAX_LEVEL = 3
 
 // Generate unique ID
@@ -58,47 +57,6 @@ export const useTaskStore = defineStore('task', () => {
   const tasks = ref<Task[]>([])
   const schedules = ref<Schedule[]>([])
 
-  // ===== Migration =====
-  // 旧数据: canvas_todos(清单) + canvas_tasks(日历事件)
-  // 新数据: canvas_tasks(任务树) + canvas_schedules(日历事件)
-  // 关键: 旧 canvas_tasks 键装的是日历事件，不能被新任务树直接覆盖读取，
-  // 因此用 canvas_schema_version 隔离，先读后写。
-  const migrateLegacyData = () => {
-    if (typeof window === 'undefined') return
-    const oldTodosRaw = localStorage.getItem('canvas_todos') // 旧清单
-    const oldEventsRaw = localStorage.getItem('canvas_tasks') // 旧日历事件
-
-    const newTasks: Task[] = oldTodosRaw
-      ? (safeParse<any[]>(oldTodosRaw, [])).map((t, i) => ({
-        id: t.id,
-        parentId: null,
-        title: t.title ?? '',
-        description: t.description ?? '',
-        category: t.category ?? 'other',
-        priority: t.priority ?? 'medium',
-        completed: !!t.completed,
-        order: i
-      }))
-      : []
-
-    const newSchedules: Schedule[] = oldEventsRaw
-      ? (safeParse<any[]>(oldEventsRaw, [])).map((t) => ({
-        id: t.id,
-        taskId: t.todoId, // 旧 todoId → 新 taskId
-        title: t.title ?? '',
-        date: t.date ?? '',
-        startTime: t.startTime ?? '',
-        endTime: t.endTime ?? '',
-        color: t.color ?? 'blue'
-      }))
-      : []
-
-    localStorage.setItem(LS_TASKS, JSON.stringify(newTasks))
-    localStorage.setItem(LS_SCHEDULES, JSON.stringify(newSchedules))
-    localStorage.removeItem('canvas_todos')
-    localStorage.setItem(LS_SCHEMA, '1')
-  }
-
   // ===== Seed (fresh install) =====
   const getTodayDateStr = (offsetDays = 0): string => {
     const d = new Date()
@@ -114,7 +72,7 @@ export const useTaskStore = defineStore('task', () => {
       { id: 'todo-4', parentId: null, title: '超市采购食材', description: '买一些鸡蛋、牛奶、蔬菜和鸡胸肉', category: 'shopping', priority: 'low', completed: false, order: 3 },
       { id: 'todo-5', parentId: null, title: '重构数据模型', description: '任务树 + 独立日程', category: 'work', priority: 'high', completed: false, order: 4 },
       { id: 'todo-6', parentId: 'todo-5', title: '设计任务树结构', description: '', category: 'work', priority: 'high', completed: false, order: 0 },
-      { id: 'todo-7', parentId: 'todo-5', title: '迁移旧数据', description: '', category: 'work', priority: 'medium', completed: false, order: 1 }
+      { id: 'todo-7', parentId: 'todo-5', title: '编写单元测试', description: '', category: 'work', priority: 'medium', completed: false, order: 1 }
     ]
 
     const todayStr = getTodayDateStr(0)
@@ -127,7 +85,6 @@ export const useTaskStore = defineStore('task', () => {
 
     localStorage.setItem(LS_TASKS, JSON.stringify(seedTasks))
     localStorage.setItem(LS_SCHEDULES, JSON.stringify(seedSchedules))
-    localStorage.setItem(LS_SCHEMA, '1')
 
     tasks.value = seedTasks
     schedules.value = seedSchedules
@@ -137,18 +94,14 @@ export const useTaskStore = defineStore('task', () => {
   const loadFromStorage = () => {
     if (typeof window === 'undefined') return
 
-    // 一次性迁移旧数据
-    if (!localStorage.getItem(LS_SCHEMA)) {
-      if (localStorage.getItem('canvas_todos') || localStorage.getItem('canvas_tasks')) {
-        migrateLegacyData()
-      } else {
-        seedInitialData()
-        return
-      }
-    }
-
     const storedTasks = localStorage.getItem(LS_TASKS)
     const storedSchedules = localStorage.getItem(LS_SCHEDULES)
+
+    // 全新安装（无任何数据）→ 种子演示数据
+    if (!storedTasks && !storedSchedules) {
+      seedInitialData()
+      return
+    }
 
     tasks.value = safeParse<Task[]>(storedTasks, [])
 
