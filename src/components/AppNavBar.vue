@@ -69,7 +69,7 @@ const toggleView = (view: AppView) => {
 
 // 移动端非主页返回按钮标题
 const settingsTitle = computed(() => {
-  const map: Record<string, string> = { list: '设置', view: '视觉与外观', ai: 'AI 助理配置', usage: 'API 消耗记录', data: '数据管理' }
+  const map: Record<string, string> = { list: '设置', view: '视觉与外观', ai: 'AI 助理配置', usage: 'API 消耗记录', data: '数据管理', guide: '使用指南' }
   return map[settingsSection.value] || '设置'
 })
 const navTitle = computed(() => {
