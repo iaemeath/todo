@@ -50,7 +50,8 @@ interface GuideSection {
 }
 
 // 内容与实际交互一一对应：来源 CalendarArea.vue（dateClick/select/contextmenu/eventChange/
-// daterange 时间选择器）与 TodoSidebar.vue（排序把手/拖拽排期/删除）及 AppNavBar.vue（导航）
+// 工具条区间导航/滑动手势）与 TodoSidebar.vue（排序把手/拖拽排期/删除）、
+// App.vue（浮层底罩关闭）及 AppNavBar.vue（导航）
 const webSections: GuideSection[] = [
   {
     title: '📅 日历区',
@@ -63,13 +64,11 @@ const webSections: GuideSection[] = [
     ]
   },
   {
-    title: '🕐 顶部中央时间选择器（日期导航）',
+    title: '🕐 顶部工具条（日期导航）',
     entries: [
-      { action: '点开选择日期范围', desc: '唯一的日期导航入口——原工具栏的 ‹ › 今天 与 月 / 周 / 日 按钮已移除，翻页和视图切换全部通过它完成' },
-      { action: '选 1 天', desc: '切换到日视图，只展示所选当天' },
-      { action: '选 2 ~ 7 天', desc: '切换到周视图，展示起始日所在的一周' },
-      { action: '选 7 天以上', desc: '切换到月视图，展示起始日所在的整个月' },
-      { action: '双向同步', desc: '选择器实时回显日历当前展示的日期范围，两者始终保持一致' }
+      { action: '中央日期范围选择器', desc: '所见即所选：选任意 1~14 天的区间，日历精确展示这几天并保留时间轴；超过 14 天自动截断' },
+      { action: '点 ‹ / › 按钮', desc: '整段平移当前区间（如 7 天视图一次平移 7 天）；月视图下则翻上一月 / 下一月' },
+      { action: '点「月」按钮', desc: '切换到月总览：选择器变为月选择器，日历列头显示星期名；再次点击回到之前的区间视图' }
     ]
   },
   {
@@ -98,7 +97,7 @@ const mobileSections: GuideSection[] = [
       { action: '轻点空白时间格', desc: '新增日程，默认时长 1 小时' },
       { action: '双击日程（快速轻点两次）', desc: '打开编辑弹窗：修改标题、日期、起止时间、颜色，或删除日程' },
       { action: '按住日程块拖动', desc: '移动日程到其他时间；拖动日程边缘可调整时长' },
-      { action: '左右滑动翻页', desc: '在日历上快速左滑看下一天、右滑看上一天（周 / 月视图时按周 / 月步进），中央选择器自动跟随' },
+      { action: '左右滑动翻日', desc: '在日历上快速左滑看下一天、右滑看上一天，中央单日选择器自动跟随' },
       { action: '顶部中央时间选择器', desc: '点开面板直接跳转到任意日期' }
     ]
   },
@@ -106,6 +105,7 @@ const mobileSections: GuideSection[] = [
     title: '✅ 待办浮层（右侧滑出）',
     entries: [
       { action: '右上角面板按钮', desc: '打开待办浮层（覆盖约 60% 屏宽）' },
+      { action: '点浮层外区域', desc: '点击浮层外的日历区域即可关闭浮层（拖拽排期时不受影响）' },
       { action: '输入标题 + ➕', desc: '新增待办事项' },
       { action: '按住待办向左拖出浮层', desc: '拖到日历的任意时间格，将待办排期为日程；松手后浮层自动收起' },
       { action: '拖住 ⠿ 把手上下拖', desc: '调整待办的显示顺序' },
