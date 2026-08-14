@@ -19,9 +19,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'Antigravity Todo',
-        short_name: 'Todo',
-        description: 'A powerful AI-driven calendar todo app',
+        name: '拾光',
+        short_name: '拾光',
+        description: '拾光 — AI 驱动的日历待办应用，捡拾时光',
         theme_color: '#758af0',
         icons: [
           {

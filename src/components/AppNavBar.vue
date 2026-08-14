@@ -11,7 +11,7 @@
     </button>
     <div v-else class="nav-logo" @click="switchView('home')" title="返回主页">
       <el-icon class="logo-icon"><Calendar /></el-icon>
-      <span class="logo-text">Antigravity</span>
+      <span class="logo-text">拾光</span>
     </div>
 
     <!-- 桌面端：任务/日程/设置 toggle（再点一次当前页 → 回主页；主页由 logo 充当） -->

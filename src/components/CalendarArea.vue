@@ -320,7 +320,7 @@ watch(isMobile, (m) => {
 
 <style>
 /* 
-  Deep CSS Overrides to make FullCalendar look like our "Antigravity Glassmorphism" Theme 
+  Deep CSS Overrides to make FullCalendar look like our "拾光 Glassmorphism" Theme
   FullCalendar creates global classes, so we don't use 'scoped' for these overrides.
 */
 .calendar-wrapper {

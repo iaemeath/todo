@@ -66,7 +66,7 @@ export const useTaskStore = defineStore('task', () => {
 
   const seedInitialData = () => {
     const seedTasks: Task[] = [
-      { id: 'todo-1', parentId: null, title: '探索 Antigravity 设计规范', description: '研究高颜值暗黑太空玻璃拟物化设计准则', category: 'work', priority: 'high', completed: false, order: 0 },
+      { id: 'todo-1', parentId: null, title: '探索玻璃拟态设计规范', description: '研究高颜值暗黑太空玻璃拟物化设计准则', category: 'work', priority: 'high', completed: false, order: 0 },
       { id: 'todo-2', parentId: null, title: '日程系统测试', description: '验证基于 Canvas 的拖动与拉伸调度交互', category: 'ideas', priority: 'medium', completed: false, order: 1 },
       { id: 'todo-3', parentId: null, title: '傍晚去健身房锻炼', description: '做有氧和力量训练，保持健康状态', category: 'fitness', priority: 'low', completed: false, order: 2 },
       { id: 'todo-4', parentId: null, title: '超市采购食材', description: '买一些鸡蛋、牛奶、蔬菜和鸡胸肉', category: 'shopping', priority: 'low', completed: false, order: 3 },
@@ -78,7 +78,7 @@ export const useTaskStore = defineStore('task', () => {
     const todayStr = getTodayDateStr(0)
     const tomorrowStr = getTodayDateStr(1)
     const seedSchedules: Schedule[] = [
-      { id: 'task-1', taskId: 'todo-1', title: '探索 Antigravity 设计规范', date: todayStr, startTime: '08:30', endTime: '10:00', color: 'blue' },
+      { id: 'task-1', taskId: 'todo-1', title: '探索玻璃拟态设计规范', date: todayStr, startTime: '08:30', endTime: '10:00', color: 'blue' },
       { id: 'task-2', taskId: 'todo-2', title: '日程系统测试', date: todayStr, startTime: '11:00', endTime: '12:15', color: 'rose' },
       { id: 'task-3', taskId: 'todo-3', title: '傍晚去健身房锻炼', date: tomorrowStr, startTime: '18:00', endTime: '19:30', color: 'emerald' }
     ]
