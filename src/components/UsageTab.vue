@@ -29,6 +29,7 @@ const handleClearHistory = async () => {
 </script>
 
 <template>
+  <div>
   <div class="usage-header">
     <div>
       <h3 class="pane-title">API 消耗记录</h3>
@@ -86,4 +87,5 @@ const handleClearHistory = async () => {
       </template>
     </el-table-column>
   </el-table>
+  </div>
 </template>
