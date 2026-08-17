@@ -385,6 +385,9 @@ const handleDatesSet = (info: DatesSetArg) => {
       selectedDay.value = s
     } else {
       selectedRange.value = [s, dayjs(info.view.currentEnd).subtract(1, 'day').toDate()]
+      // 同步 customRange：否则窗口尺寸切换（watch(isMobile) → timeGridWeek）后，
+      // 首次按 ‹/› 会按旧区间跳变；也修正初始 timeGridWeek 与 customRange 不一致
+      customRange = { start: s, end: new Date(info.view.currentEnd) }
     }
   }
 }

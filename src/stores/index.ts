@@ -81,6 +81,42 @@ export function parseBundle(raw: unknown): ExportBundle | null {
 }
 
 /**
+ * 导入数据的逐条净化。parseBundle 只验顶层数组，这里过滤结构非法的条目
+ * （启动时的 safeParse/NaN 过滤只在 boot 路径，导入路径必须同样设防）。
+ */
+const sanitizeTasks = (list: Task[]): Task[] => {
+  const valid = (list as unknown[]).filter((t): t is Task =>
+    !!t && typeof t === 'object' &&
+    typeof (t as Task).id === 'string' && (t as Task).id !== '' &&
+    typeof (t as Task).title === 'string'
+  )
+  const ids = new Set(valid.map((t) => t.id))
+  // 孤儿任务（parentId 悬空）提升为顶级，否则会从任务管理树中消失却混进待办栏
+  return valid.map((t) => ({
+    ...t,
+    parentId: t.parentId && ids.has(t.parentId) ? t.parentId : null
+  }))
+}
+
+const sanitizeSchedules = (list: Schedule[]): Schedule[] => {
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+  const TIME_RE = /^\d{1,2}:\d{2}$/
+  const valid = (list as unknown[]).filter((s): s is Schedule =>
+    !!s && typeof s === 'object' &&
+    typeof (s as Schedule).title === 'string' &&
+    DATE_RE.test(String((s as Schedule).date)) &&
+    TIME_RE.test(String((s as Schedule).startTime)) &&
+    TIME_RE.test(String((s as Schedule).endTime))
+  )
+  // 时间归一为 HH:mm（语音解析可能产出 "9:00" 这类未补零值）
+  return valid.map((s) => ({
+    ...s,
+    startTime: String(s.startTime).padStart(5, '0'),
+    endTime: String(s.endTime).padStart(5, '0')
+  }))
+}
+
+/**
  * 全量覆盖导入：直接写各 store state，
  * 各 store 已有的持久化 watcher 自动落盘，UI 响应式更新，无需刷新页面。
  */
@@ -91,8 +127,8 @@ export function importAllData(bundle: ExportBundle): void {
   const usageStore = useUsageStore()
   const uiStore = useUIStore()
 
-  taskStore.tasks = bundle.tasks
-  taskStore.schedules = bundle.schedules
+  taskStore.tasks = sanitizeTasks(bundle.tasks)
+  taskStore.schedules = sanitizeSchedules(bundle.schedules)
   settingsStore.settings = bundle.settings
   themeStore.isDark = bundle.theme.isDark
   usageStore.usageHistory = bundle.usage

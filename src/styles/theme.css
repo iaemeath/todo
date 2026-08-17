@@ -1,8 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-
 :root {
-  /* Fonts */
-  --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  /* Fonts — 不再外链 Google Fonts（境内阻塞渲染、PWA 离线必失败，实际从未加载成功），
+     直接落 system-ui 栈，视觉无差 */
+  --font-family: system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
 
   /* Common Brand Colors — primary is user-configurable (injected at runtime onto
      :root by useTheme). Derived tones use color-mix so they follow the user's
