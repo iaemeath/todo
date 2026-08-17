@@ -65,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, computed } from 'vue'
 import { Monitor, ChatDotRound, DataLine, ArrowRight, FolderOpened, QuestionFilled } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
 import { useSettingsStore, useUIStore } from '../stores'
@@ -85,35 +85,9 @@ const currentTab = computed(() => isMobile.value
   : activeTab.value)
 const enterMobile = (tab: 'view' | 'ai' | 'usage' | 'data' | 'guide') => { setSettingsSection(tab) }
 const settingsStore = useSettingsStore()
-const { settings } = storeToRefs(settingsStore) // state → storeToRefs
-const { updateSettings } = settingsStore // action 直接解构
-
-// form 是 settings 的编辑缓冲；子组件通过 props 变异其字段，下面的 watch 即时回写
-const form = ref({ ...settings.value })
-
-// 即时预览：外观类设置改动立即回写 settings（日历/主题色等实时响应）
-watch(
-  () => [
-    form.value.slotDuration, form.value.slotHeight,
-    form.value.majorLineWidth, form.value.majorLineOpacity,
-    form.value.showMinorLines, form.value.minorLineWidth, form.value.minorLineOpacity,
-    form.value.startHour, form.value.endHour,
-    form.value.primaryColor,
-    form.value.nowIndicatorColor, form.value.nowIndicatorHeight
-  ],
-  () => {
-    updateSettings({
-      slotDuration: form.value.slotDuration, slotHeight: form.value.slotHeight,
-      majorLineWidth: form.value.majorLineWidth, majorLineOpacity: form.value.majorLineOpacity,
-      showMinorLines: form.value.showMinorLines, minorLineWidth: form.value.minorLineWidth,
-      minorLineOpacity: form.value.minorLineOpacity,
-      startHour: form.value.startHour, endHour: form.value.endHour,
-      primaryColor: form.value.primaryColor,
-      nowIndicatorColor: form.value.nowIndicatorColor,
-      nowIndicatorHeight: form.value.nowIndicatorHeight
-    })
-  }
-)
+// form 直接引用 store 的 settings（子 tab 通过 props 变异其字段，即时生效并持久化）。
+// 不再用挂载时快照：数据导入等外部更新必须实时反映，否则旧值会在下次调节时被回写覆盖。
+const { settings: form } = storeToRefs(settingsStore)
 </script>
 
 <style>

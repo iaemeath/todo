@@ -55,7 +55,7 @@
             <span class="todo-title">{{ todo.title }}</span>
           </div>
 
-          <button class="btn-delete" @click="deleteTask(todo.id)" title="删除待办">
+          <button class="btn-delete" @click="handleDelete(todo)" title="删除待办">
             <Trash2 class="icon-sm" />
           </button>
         </div>
@@ -72,7 +72,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Plus, GripVertical, Trash2, PanelRightClose } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
-import { useTaskStore, useUIStore } from '../stores'
+import { ElMessageBox } from 'element-plus'
+import { useTaskStore, useUIStore, type Task } from '../stores'
 import { Draggable } from '@fullcalendar/interaction'
 import draggable from 'vuedraggable'
 
@@ -90,10 +91,26 @@ let fcDraggableInstance: Draggable | null = null
 const activeTodos = computed({
   get: () => leafTasks.value.filter(t => !t.completed),
   set: (val) => {
-    // 仅重排这些可见的叶子任务的 order
-    val.forEach((t, i) => { t.order = i })
+    // 重排只作用于可见（未完成）叶子；已完成的沉底保持相对顺序。
+    // 若只给可见子集编号 0..n-1，完成→取消完成后 order 会与未重编号的混叠穿插
+    const hidden = leafTasks.value.filter(t => t.completed)
+    ;[...val, ...hidden].forEach((t, i) => { t.order = i })
   }
 })
+
+// 删除待办：与管理页一致，先确认（避免移动端误触，级联删关联日程）
+const handleDelete = async (todo: Task) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除待办「${todo.title}」吗？其子任务和关联日程也会一并删除。`,
+      '删除待办',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+    )
+    deleteTask(todo.id)
+  } catch {
+    // cancelled
+  }
+}
 
 const handleCreateTodo = () => {
   if (!newTodoTitle.value.trim()) return
@@ -106,13 +123,28 @@ const handleCreateTodo = () => {
   newTodoTitle.value = ''
 }
 
-// 移动端：开始拖待办时隐藏浮层（DOM 保留，供 FullCalendar 继续拖拽）
-const onTodoPointerDown = () => {
-  if (isMobile.value) setMobileTodoDragging(true)
+// 移动端：位移超过阈值才视为拖拽（隐藏浮层供 FC 继续拖）。
+// 若按下即置位，轻触/滚动列表也会闪透明并在松手时关掉浮层
+const POINTER_SLOP = 5
+let todoPointerStart: { x: number; y: number } | null = null
+const onTodoPointerDown = (e: PointerEvent) => {
+  if (!isMobile.value) return
+  todoPointerStart = { x: e.clientX, y: e.clientY }
+}
+const onTodoPointerMove = (e: PointerEvent) => {
+  if (!todoPointerStart || mobileTodoDragging.value) return
+  if (
+    Math.abs(e.clientX - todoPointerStart.x) > POINTER_SLOP ||
+    Math.abs(e.clientY - todoPointerStart.y) > POINTER_SLOP
+  ) {
+    setMobileTodoDragging(true)
+  }
 }
 // 拖拽结束（document pointerup/pointercancel/dragend）：无论成功失败都关闭待办，
-// 避免失败后浮层卡在透明态、FAB 无法重现（成功落点由 eventReceive 也会关）
+// 避免失败后浮层卡在透明态、FAB 无法重现（成功落点由 eventReceive 也会关）。
+// 未发生位移（轻触）不算拖拽，浮层保持
 const onDragEnd = () => {
+  todoPointerStart = null
   if (mobileTodoDragging.value) {
     setMobileTodoDragging(false)
     setTodoVisible(false)
@@ -133,6 +165,7 @@ onMounted(() => {
     })
   }
   // 兜底：拖拽结束（含取消 pointercancel）关闭浮层，避免失败后卡死
+  document.addEventListener('pointermove', onTodoPointerMove)
   document.addEventListener('pointerup', onDragEnd)
   document.addEventListener('pointercancel', onDragEnd)
   document.addEventListener('dragend', onDragEnd)
@@ -142,6 +175,7 @@ onUnmounted(() => {
   if (fcDraggableInstance) {
     fcDraggableInstance.destroy()
   }
+  document.removeEventListener('pointermove', onTodoPointerMove)
   document.removeEventListener('pointerup', onDragEnd)
   document.removeEventListener('pointercancel', onDragEnd)
   document.removeEventListener('dragend', onDragEnd)

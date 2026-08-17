@@ -31,9 +31,11 @@
 import { ref, computed, watch } from 'vue'
 import { Mic, Loader2, Check, AlertCircle } from 'lucide-vue-next'
 import Fuse from 'fuse.js'
+import { ElMessageBox } from 'element-plus'
 import { parseVoiceCommand, type VoiceIntent } from '../services/llmService'
 import { storeToRefs } from 'pinia'
 import { useTaskStore, useSettingsStore } from '../stores'
+import { todayLocal } from '../utils/dates'
 
 type VoiceState = 'idle' | 'listening' | 'processing' | 'success' | 'error'
 
@@ -52,7 +54,10 @@ const { tasks, schedules } = storeToRefs(taskStore) // state → storeToRefs
 const { addTask, updateTask, deleteTask, addSchedule, updateSchedule, deleteSchedule } = taskStore // action
 const { settings } = storeToRefs(useSettingsStore())
 
-const executeIntent = (intent: VoiceIntent): string => {
+// 语音删除属模糊匹配（谐音推断 + Fuse），且任务删除会级联子孙与关联日程，必须先确认
+const CANCELLED = '__CANCELLED__'
+
+const executeIntent = async (intent: VoiceIntent): Promise<string> => {
   if (intent.action === 'add') {
     if (intent.target === 'todo') {
       const payload = intent.payload || {}
@@ -67,7 +72,7 @@ const executeIntent = (intent: VoiceIntent): string => {
       const payload = intent.payload || {}
       addSchedule({
         title: payload.title || '新日程',
-        date: payload.date || new Date().toISOString().split('T')[0],
+        date: payload.date || todayLocal(),
         startTime: payload.startTime || '12:00',
         endTime: payload.endTime || '13:00',
         color: payload.color || 'blue'
@@ -102,6 +107,14 @@ const executeIntent = (intent: VoiceIntent): string => {
   }
 
   if (intent.action === 'delete') {
+    const label = intent.target === 'todo' ? '待办' : '日程'
+    const extra = intent.target === 'todo' ? '，其子任务和关联日程也会一并删除' : ''
+    const ok = await ElMessageBox.confirm(
+      `语音指令将删除${label}「${bestMatch.title}」${extra}，确定执行吗？`,
+      '删除确认',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+    ).then(() => true).catch(() => false)
+    if (!ok) throw new Error(CANCELLED)
     if (intent.target === 'todo') {
       deleteTask(bestMatch.id)
       return `已删除待办：${bestMatch.title}`
@@ -271,26 +284,47 @@ const initSpeechRecognition = () => {
     
     try {
       const intent = await parseVoiceCommand(text, false, contextData)
-      const successMsg = executeIntent(intent)
+      const successMsg = await executeIntent(intent)
       state.value = 'success'
       showToast(successMsg, 'success')
-      
+
       setTimeout(() => {
         state.value = 'idle'
       }, 2000)
     } catch (e: any) {
+      // 用户在删除确认弹窗点了取消：静默复位，不算错误
+      if (e?.message === CANCELLED) {
+        state.value = 'idle'
+        toastMessage.value = ''
+        return
+      }
       if (settings.value.aiMode === 'local') {
-        showToast('本地模型似乎不能用，自动切换到云端...', 'info', 5000)
+        // 选本地模式可能就是不想联网，改用云端前先征求同意
+        const useCloud = await ElMessageBox.confirm(
+          '本地模型解析失败，是否改用云端 API 解析本次指令？',
+          '切换云端解析',
+          { type: 'info', confirmButtonText: '用云端解析', cancelButtonText: '取消' }
+        ).then(() => true).catch(() => false)
+        if (!useCloud) {
+          state.value = 'idle'
+          toastMessage.value = ''
+          return
+        }
         try {
           const cloudIntent = await parseVoiceCommand(text, true, contextData)
-          const cloudSuccessMsg = executeIntent(cloudIntent)
+          const cloudSuccessMsg = await executeIntent(cloudIntent)
           state.value = 'success'
           showToast(cloudSuccessMsg, 'success')
-          
+
           setTimeout(() => {
             state.value = 'idle'
           }, 2000)
         } catch (cloudErr: any) {
+          if (cloudErr?.message === CANCELLED) {
+            state.value = 'idle'
+            toastMessage.value = ''
+            return
+          }
           state.value = 'error'
           showToast(cloudErr.message || '云端 AI 解析失败', 'error')
           setTimeout(() => { state.value = 'idle' }, 3000)
@@ -298,7 +332,7 @@ const initSpeechRecognition = () => {
       } else {
         state.value = 'error'
         showToast(e.message || 'AI 解析失败', 'error')
-        
+
         setTimeout(() => {
           state.value = 'idle'
         }, 3000)
