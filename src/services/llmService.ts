@@ -1,6 +1,8 @@
 import { storeToRefs } from 'pinia'
+import dayjs from 'dayjs'
 import { useSettingsStore, useUsageStore } from '../stores'
 import { EVENT_COLOR_KEYS } from '../constants/colors'
+import { todayLocal } from '../utils/dates'
 
 /** 语音解析出的操作载荷（add/edit event 或 add todo） */
 export interface VoicePayload {
@@ -33,10 +35,10 @@ export async function parseVoiceCommand(text: string, forceCloud: boolean = fals
     throw new Error('API Key is not configured for Cloud mode. Please check your settings.')
   }
 
-  const today = new Date()
-  const todayStr = today.toISOString().split('T')[0]
+  // 告知 LLM 的"今天"必须是本地时区（凌晨语音排期否则会差一天）
+  const todayStr = todayLocal()
   const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-  const todayDay = weekDays[today.getDay()]
+  const todayDay = weekDays[dayjs().day()]
 
   let contextStr = ''
   if (contextData) {

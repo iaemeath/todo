@@ -1,5 +1,6 @@
 import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
+import dayjs from 'dayjs'
 
 // ===== Types =====
 
@@ -58,11 +59,9 @@ export const useTaskStore = defineStore('task', () => {
   const schedules = ref<Schedule[]>([])
 
   // ===== Seed (fresh install) =====
-  const getTodayDateStr = (offsetDays = 0): string => {
-    const d = new Date()
-    d.setDate(d.getDate() + offsetDays)
-    return d.toISOString().split('T')[0]
-  }
+  // 本地时区日期（toISOString 是 UTC，凌晨会差一天）
+  const getTodayDateStr = (offsetDays = 0): string =>
+    dayjs().add(offsetDays, 'day').format('YYYY-MM-DD')
 
   const seedInitialData = () => {
     const seedTasks: Task[] = [

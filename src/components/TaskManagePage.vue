@@ -144,6 +144,7 @@ import Fuse from 'fuse.js'
 import { Plus, Search, Delete, Edit, Calendar } from '@element-plus/icons-vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { colorOptions, type EventColor } from '../constants/colors'
+import { todayLocal } from '../utils/dates'
 import { storeToRefs } from 'pinia'
 import { useTaskStore, useUIStore, type Task } from '../stores'
 
@@ -322,12 +323,11 @@ const handleDelete = async (row: Task) => {
 // ---- Schedule (排期，仅叶子任务) ----
 const scheduleDialogVisible = ref(false)
 const schedulingTask = ref<Task | null>(null)
-const todayStr = new Date().toISOString().slice(0, 10)
-const scheduleForm = ref({ date: todayStr, startTime: '09:00', endTime: '10:00', color: 'blue' as EventColor })
+const scheduleForm = ref({ date: todayLocal(), startTime: '09:00', endTime: '10:00', color: 'blue' as EventColor })
 
 const openScheduleDialog = (row: Task) => {
   schedulingTask.value = row
-  scheduleForm.value = { date: todayStr, startTime: '09:00', endTime: '10:00', color: 'blue' }
+  scheduleForm.value = { date: todayLocal(), startTime: '09:00', endTime: '10:00', color: 'blue' }
   scheduleDialogVisible.value = true
 }
 
@@ -336,6 +336,10 @@ const confirmSchedule = () => {
   const { date, startTime, endTime, color } = scheduleForm.value
   if (!date || !startTime || !endTime) {
     ElMessage.warning('请填写完整的日期和时间')
+    return
+  }
+  if (startTime >= endTime) {
+    ElMessage.warning('结束时间必须晚于开始时间')
     return
   }
   addScheduleFromTask(schedulingTask.value.id, date, startTime, endTime, color)

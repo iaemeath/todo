@@ -21,12 +21,12 @@ export const useUIStore = defineStore('ui', () => {
   const settingsSection = ref<SettingsSection>('list')
 
   // 主页待办可见性（web 常驻侧栏 / 移动 60% 浮层，同一状态），持久化保留用户偏好。
-  // 初始化顺序关键：此时 isMobile 尚未被 detect（默认 false），故首次取 !isMobile.value = true（web 默认显示），
-  // 随后 initResize() 才更新 isMobile。保持与原 composable 一致。
   const readTodoVisible = (): boolean => {
     const stored = typeof window !== 'undefined' ? localStorage.getItem(LS_TODO_VISIBLE) : null
     if (stored !== null) return stored === '1'
-    return !isMobile.value // 首次：web 默认显示，移动默认隐藏
+    // 首次：web 默认显示，移动默认隐藏。必须按窗口宽度现判——
+    // 此时 initResize() 尚未执行，isMobile 还是初始值 false，读它会误判移动端。
+    return typeof window === 'undefined' || window.innerWidth > MOBILE_BREAKPOINT
   }
   const todoVisible = ref<boolean>(readTodoVisible())
 

@@ -138,6 +138,7 @@ import Fuse from 'fuse.js'
 import { Plus, Search, Delete, Edit, Link } from '@element-plus/icons-vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { colorOptions, colorHex, colorLabel, type EventColor } from '../constants/colors'
+import { todayLocal } from '../utils/dates'
 import { storeToRefs } from 'pinia'
 import { useTaskStore, useUIStore, type Schedule } from '../stores'
 
@@ -178,12 +179,11 @@ const filteredSchedules = computed(() => {
 // ---- Create / Edit ----
 const formDialogVisible = ref(false)
 const editingId = ref<string | null>(null)
-const todayStr = new Date().toISOString().slice(0, 10)
-const form = ref({ title: '', date: todayStr, startTime: '09:00', endTime: '10:00', color: 'blue' as EventColor })
+const form = ref({ title: '', date: todayLocal(), startTime: '09:00', endTime: '10:00', color: 'blue' as EventColor })
 
 const openCreateDialog = () => {
   editingId.value = null
-  form.value = { title: '', date: todayStr, startTime: '09:00', endTime: '10:00', color: 'blue' }
+  form.value = { title: '', date: todayLocal(), startTime: '09:00', endTime: '10:00', color: 'blue' }
   formDialogVisible.value = true
 }
 
@@ -196,6 +196,14 @@ const openEditDialog = (row: Schedule) => {
 const saveForm = () => {
   if (!form.value.title.trim()) {
     ElMessage.warning('标题不能为空')
+    return
+  }
+  if (!form.value.date || !form.value.startTime || !form.value.endTime) {
+    ElMessage.warning('请填写完整的日期和时间')
+    return
+  }
+  if (form.value.startTime >= form.value.endTime) {
+    ElMessage.warning('结束时间必须晚于开始时间')
     return
   }
   if (editingId.value) {
@@ -223,10 +231,10 @@ const handleDelete = async (row: Schedule) => {
 
 // ---- From-task create (从待办/叶子任务新增日程) ----
 const fromTodoDialogVisible = ref(false)
-const fromTodoForm = ref({ taskId: '', date: todayStr, startTime: '09:00', endTime: '10:00', color: 'blue' as EventColor })
+const fromTodoForm = ref({ taskId: '', date: todayLocal(), startTime: '09:00', endTime: '10:00', color: 'blue' as EventColor })
 
 const openFromTodoDialog = () => {
-  fromTodoForm.value = { taskId: '', date: todayStr, startTime: '09:00', endTime: '10:00', color: 'blue' }
+  fromTodoForm.value = { taskId: '', date: todayLocal(), startTime: '09:00', endTime: '10:00', color: 'blue' }
   fromTodoDialogVisible.value = true
 }
 
@@ -236,6 +244,14 @@ const confirmFromTodo = () => {
     return
   }
   const { taskId, date, startTime, endTime, color } = fromTodoForm.value
+  if (!date || !startTime || !endTime) {
+    ElMessage.warning('请填写完整的日期和时间')
+    return
+  }
+  if (startTime >= endTime) {
+    ElMessage.warning('结束时间必须晚于开始时间')
+    return
+  }
   const result = addScheduleFromTask(taskId, date, startTime, endTime, color)
   if (result) {
     ElMessage.success('已从待办创建日程')

@@ -335,6 +335,7 @@ const confirmNewSchedule = () => {
   const { title, date, startTime, endTime, color } = newScheduleForm.value
   if (!title.trim()) { ElMessage.warning('标题不能为空'); return }
   if (!date || !startTime || !endTime) { ElMessage.warning('请填写完整的日期和时间'); return }
+  if (startTime >= endTime) { ElMessage.warning('结束时间必须晚于开始时间'); return }
   if (editingScheduleId.value) {
     updateSchedule(editingScheduleId.value, { title: title.trim(), date, startTime, endTime, color })
     ElMessage.success('已更新')
@@ -842,9 +843,10 @@ watch(isMobile, (m) => {
   word-break: break-word;
 }
 
-/* Background Color Override for Day Area */
+/* Background Color Override for Day Area.
+   --color-primary 是 hex 值，rgba(hex, a) 非法会整条丢弃——必须用 color-mix 派生透明度 */
 .fc .fc-timegrid-col.fc-day-today {
-  background-color: rgba(var(--color-primary), 0.02) !important;
+  background-color: color-mix(in srgb, var(--color-primary) 2%, transparent) !important;
 }
 
 /* Current-time indicator (the red line + arrow).

@@ -3,11 +3,21 @@ import { Moon, Sunny } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
 import { useThemeStore, type Settings } from '../stores'
 
-defineProps<{ form: Settings }>()
+const props = defineProps<{ form: Settings }>()
 
 const themeStore = useThemeStore()
 const { isDark } = storeToRefs(themeStore) // state → storeToRefs
 const { toggleTheme } = themeStore // action 直接解构
+
+// 时间范围联动钳制：startHour >= endHour 会让 FC 网格（slotMinTime > slotMaxTime）异常
+const onStartHourChange = (v: number | undefined) => {
+  if (v == null) return
+  if (v >= props.form.endHour) props.form.endHour = Math.min(24, v + 1)
+}
+const onEndHourChange = (v: number | undefined) => {
+  if (v == null) return
+  if (v <= props.form.startHour) props.form.startHour = Math.max(0, v - 1)
+}
 </script>
 
 <template>
@@ -47,9 +57,9 @@ const { toggleTheme } = themeStore // action 直接解构
       <template #header><span class="card-title">日历画布与密度</span></template>
       <el-form-item label="时间范围（小时）">
         <div class="dual-input">
-          <el-input-number v-model="form.startHour" :min="0" :max="23" controls-position="right" />
+          <el-input-number v-model="form.startHour" :min="0" :max="23" controls-position="right" @change="onStartHourChange" />
           <span class="range-sep">~</span>
-          <el-input-number v-model="form.endHour" :min="1" :max="24" controls-position="right" />
+          <el-input-number v-model="form.endHour" :min="1" :max="24" controls-position="right" @change="onEndHourChange" />
         </div>
       </el-form-item>
       <el-form-item label="时行数（一个小时划分为几行）">
