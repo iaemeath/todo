@@ -36,3 +36,6 @@ components.d.ts
 
 # playwright-mcp 测试快照
 .playwright-mcp/
+
+# 构建产物 zip（部署包不入库）
+*.zip
