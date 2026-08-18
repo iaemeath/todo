@@ -211,11 +211,12 @@ onUnmounted(() => {
 }
 
 /* 头部带与 FC 工具条同构（CalendarArea .calendar-toolbar 同一 calc 定高）：
-   border-top（同灰色）偏移跟随日历面板内边距，灰带从面板顶延伸不露白 */
+   border-top（同灰色）从面板顶延伸不露白。padding-bottom 与工具条同步——
+   抵消 12px 顶边 / 1px 底边不对称造成的整体偏下，使内容对齐整条灰带视觉中心 */
 .sidebar-header {
   border-top: var(--space-md) solid var(--el-fill-color-light);
   height: calc(44px + var(--space-md) + 1px); /* 桌面 57 / 移动 53，与工具条严格相等 */
-  padding: 0 var(--space-lg);
+  padding: 0 var(--space-lg) calc(var(--space-md) - 1px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -255,23 +256,48 @@ onUnmounted(() => {
   box-shadow: 0 0 0 2px var(--el-color-primary-light-9);
 }
 
-.btn-add {
-  width: var(--touch-target);
-  height: var(--touch-target);
-  border-radius: var(--radius-md);
-  background: var(--color-primary);
-  color: white;
+/* 面板内图标（lucide 未传 size 默认 24）：统一 20px，与 FC 工具条按钮图标等重 */
+.icon-sm {
+  width: 20px;
+  height: 20px;
+}
+
+/* 面板按钮统一形态（与 FC 工具条 fullscreen 按钮同族）：透明底、无边框、
+   radius-md、hover 语义色底。触控热区两套：移动端紧凑 32px（WCAG 2.5.8 AA ≥24），
+   桌面 var(--touch-target)（36） */
+.btn-add,
+.btn-delete,
+.btn-collapse {
+  background: transparent;
   border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
   transition: all var(--duration-fast);
 }
 
+@media (width >= 769px) {
+  .btn-add,
+  .btn-delete,
+  .btn-collapse {
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
+  }
+}
+
+/* 新增是表单主操作：ghost 形态内保留主题色强调 */
+.btn-add {
+  color: var(--color-primary);
+}
+
 .btn-add:hover {
-  background: var(--color-primary-light);
-  transform: translateY(-1px);
+  background: var(--color-primary-alpha);
 }
 
 .todo-list {
@@ -304,16 +330,25 @@ onUnmounted(() => {
   margin-top: var(--space-xl);
 }
 
+/* 卡片行高两套：移动端紧凑（4px 纵向内边距 + 4px 间距，配合 32px 按钮热区压低行高），
+   桌面舒展（8px 内边距 + 36px 热区） */
 .todo-item {
   display: flex;
   align-items: center;
-  padding: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
   border-radius: var(--radius-md);
   background: var(--bg-card);
   border: 1px solid var(--border-glass);
-  gap: var(--space-sm);
+  gap: var(--space-xs);
   cursor: grab;
   transition: all var(--duration-fast) ease;
+}
+
+@media (width >= 769px) {
+  .todo-item {
+    padding: var(--space-sm);
+    gap: var(--space-sm);
+  }
 }
 
 .todo-item:hover {
@@ -350,23 +385,7 @@ onUnmounted(() => {
   text-overflow: ellipsis;
 }
 
-/* 行内图标按钮：视觉紧凑但热区满足触控目标令牌（web 36 / 移动 44） */
-.btn-delete,
-.btn-collapse {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: var(--space-xs);
-  min-width: var(--touch-target);
-  min-height: var(--touch-target);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--duration-fast);
-}
-
+/* 行内图标按钮（删除/收起）已并入上方统一形态组，仅保留各自的语义色 hover */
 .btn-delete:hover {
   background: rgb(244 63 94 / 10%);
   color: var(--color-danger);

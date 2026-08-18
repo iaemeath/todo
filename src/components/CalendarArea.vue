@@ -81,7 +81,7 @@
           @click="setTodoVisible(true)"
           title="展开待办栏"
         >
-          <PanelRight :size="24" />
+          <PanelRight :size="20" />
         </button>
         <button
           v-if="isMobile && !todoVisible"
@@ -561,7 +561,10 @@ watch(isMobile, (m) => {
   align-items: center;
   flex-shrink: 0;
   height: calc(44px + var(--space-md) + 1px); /* 桌面 57 / 移动 53（顶边随令牌） */
-  padding: 0 var(--space-md);
+
+  /* 上下边框不对称（12px 顶 / 1px 底），flex 只在内容盒居中会整体偏下 (12-1)/2=5.5px；
+     补「边框差」等量 padding-bottom，把按钮/选择器抬回整条灰带的视觉中心 */
+  padding: 0 var(--space-md) calc(var(--space-md) - 1px);
   border-top: var(--space-md) solid var(--el-fill-color-light);
   border-bottom: 1px solid var(--el-border-color-lighter);
   background: var(--el-fill-color-light);
@@ -586,11 +589,30 @@ watch(isMobile, (m) => {
   gap: var(--space-xs);
 }
 
-/* 时段平移按钮（上一个/下一个） */
-.period-nav {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+/* ‹ › 与「月」按钮：移动优先默认隐藏（移动端翻时段由左右滑动手势承担），桌面恢复显示。
+   .calendar-toolbar 祖先提权：全局 button:not(.el-button)（theme.css）特异性更高，
+   单类 .period-nav 会被其 display:flex 压过导致隐藏失效 */
+.calendar-toolbar .period-nav,
+.calendar-toolbar .month-toggle,
+.calendar-toolbar .fullscreen-toggle {
+  display: none;
+}
+
+@media (width >= 769px) {
+  .calendar-toolbar .period-nav,
+  .calendar-toolbar .month-toggle,
+  .calendar-toolbar .fullscreen-toggle {
+    display: inline-flex;
+  }
+}
+
+/* 工具条按钮统一形态（fullscreen 按钮样式）：32×32 透明底、无边框、hover 灰底 + 主题色。
+   period-nav / month / fullscreen / reopen 四者共用一组规则（display 与居中由全局
+   button 规则和上方恢复块管理，这里不再声明）；month-toggle 仅追加文字排版 */
+.calendar-toolbar .period-nav,
+.calendar-toolbar .month-toggle,
+.calendar-toolbar .fullscreen-toggle,
+.calendar-toolbar .reopen-todo-btn {
   width: 32px;
   height: 32px;
   border: none;
@@ -601,52 +623,23 @@ watch(isMobile, (m) => {
   transition: all var(--duration-fast) ease;
 }
 
-.period-nav:hover {
+/* 月按钮：统一形态内的文字排版（字号与 20px 图标视觉等重） */
+.calendar-toolbar .month-toggle {
+  font-size: var(--font-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+}
+
+.calendar-toolbar .period-nav:hover,
+.calendar-toolbar .month-toggle:hover,
+.calendar-toolbar .fullscreen-toggle:hover,
+.calendar-toolbar .reopen-todo-btn:hover {
   background: var(--el-fill-color); /* 工具条灰带上 hover 需更深一档可见 */
   color: var(--el-color-primary);
 }
 
-/* 月视图 toggle（待办按钮左侧） */
-.month-toggle {
-  padding: var(--space-xs) var(--space-md);
-  border: 1px solid var(--border-glass);
-  border-radius: var(--radius-md);
-  background: var(--el-bg-color);
-  color: var(--text-secondary);
-  font-size: var(--font-sm);
-  font-weight: var(--weight-semibold);
-  cursor: pointer;
-  transition: all var(--duration-fast) ease;
-}
-
-.month-toggle:hover {
-  border-color: var(--color-primary-light);
-  color: var(--color-primary);
-}
-
-/* 全屏 toggle（月按钮右侧，样式同 period-nav 一族的图标按钮） */
-.fullscreen-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--el-text-color-regular);
-  cursor: pointer;
-  transition: all var(--duration-fast) ease;
-}
-
-.fullscreen-toggle:hover {
-  background: var(--el-fill-color); /* 同 period-nav：灰带上 hover 加深一档 */
-  color: var(--el-color-primary);
-}
-
-.month-toggle.active {
+.calendar-toolbar .month-toggle.active {
   background: var(--color-primary);
-  border-color: var(--color-primary);
   color: #fff;
 }
 
@@ -691,10 +684,7 @@ watch(isMobile, (m) => {
   text-align: center;
 }
 
-/* 日历图标：隐藏——图标在胶囊左侧会把两段日期文字整体右推（几何居中但视觉偏右），
-   去掉后内容完全对称（与移动端窄屏的处理一致） */
-.calendar-title-picker .el-range__icon,
-/* 清除按钮隐藏态仍占 14px，同样破坏胶囊内对称（右侧多占 → 文字左偏） */
+/* 清除按钮隐藏态仍占 14px、破坏胶囊内对称，隐藏；左侧日历图标保留（主题色点缀） */
 .calendar-title-picker .el-range__close-icon {
   display: none;
 }
@@ -742,22 +732,7 @@ watch(isMobile, (m) => {
   color: var(--el-color-primary);
 }
 
-/* ‹ › 与「月」按钮：移动优先默认隐藏（移动端翻时段由左右滑动手势承担），桌面恢复显示。
-   加 .calendar-toolbar 祖先提权：全局 button:not(.el-button)（theme.css）特异性更高，
-   单类 .period-nav 会被其 display:flex 压过导致隐藏失效 */
-.calendar-toolbar .period-nav,
-.calendar-toolbar .month-toggle,
-.calendar-toolbar .fullscreen-toggle {
-  display: none;
-}
-
-@media (width >= 769px) {
-  .calendar-toolbar .period-nav,
-  .calendar-toolbar .month-toggle,
-  .calendar-toolbar .fullscreen-toggle {
-    display: inline-flex;
-  }
-}
+/* 待办栏收起后的展开按钮已并入上方工具条统一形态组（.calendar-toolbar .reopen-todo-btn） */
 
 /* 全屏态：CSS 伪全屏（fixed 铺满视口）。
    z-index 999 的分层依据：低于 EP 弹窗/消息（~2000+，保证全屏中日程弹窗可见），
@@ -772,28 +747,7 @@ watch(isMobile, (m) => {
   box-shadow: none;
 }
 
-/* 待办栏收起后，工具条右侧的展开入口 */
-.calendar-wrapper .reopen-todo-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-xs);
-  border: 1px solid var(--border-glass);
-  border-radius: var(--radius-md);
-  background: var(--el-bg-color);
-  color: var(--text-secondary);
-  font-size: var(--font-sm);
-  font-weight: var(--weight-semibold);
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--duration-fast) ease;
-}
-
-.reopen-todo-btn:hover {
-  border-color: var(--color-primary-light);
-  color: var(--color-primary);
-  background: var(--card-hover-bg);
-}
+/* 待办栏收起后的展开按钮已并入上方工具条统一形态组（.calendar-toolbar .reopen-todo-btn） */
 
 /* 移动端：打开待办浮层的按钮（.calendar-wrapper 前缀提高特异性，
    覆盖全局 button:not(.el-button) 的圆角/缩放，确保圆形） */
