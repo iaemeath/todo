@@ -691,13 +691,15 @@ watch(isMobile, (m) => {
   text-align: center;
 }
 
-/* 日历图标与分隔符：主题色点缀 */
-.calendar-title-picker .el-range__icon {
-  color: var(--el-color-primary);
-  font-size: 16px;
-  margin-right: 2px;
+/* 日历图标：隐藏——图标在胶囊左侧会把两段日期文字整体右推（几何居中但视觉偏右），
+   去掉后内容完全对称（与移动端窄屏的处理一致） */
+.calendar-title-picker .el-range__icon,
+/* 清除按钮隐藏态仍占 14px，同样破坏胶囊内对称（右侧多占 → 文字左偏） */
+.calendar-title-picker .el-range__close-icon {
+  display: none;
 }
 
+/* 分隔符：主题色点缀 */
 .calendar-title-picker .el-range-separator {
   color: var(--el-color-primary);
   font-weight: var(--weight-bold);
@@ -894,7 +896,7 @@ html.platform-mobile .fc .fc-col-header {
 .fc .fc-col-header-cell-cushion {
   color: var(--text-primary) !important;
   font-weight: 800 !important; /* stylelint-disable-line declaration-property-value-disallowed-list -- FC 列头超粗为设计特例（超出字重刻度） */
-  padding: 8px 4px !important;
+  padding: 3px var(--space-xs) !important; /* 表头行紧凑：8px→3px 上下 */
   font-size: 0.85rem !important;
   white-space: nowrap !important;
 }
