@@ -78,7 +78,7 @@ html, body {
   font-family: var(--font-family);
   height: 100vh;
   overflow: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color var(--duration-base) ease, color var(--duration-base) ease;
 }
 
 .app-layout {
@@ -129,7 +129,7 @@ html, body {
   z-index: 20;
   background: var(--el-bg-color);
   display: flex;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+  transition: transform var(--duration-base) var(--ease-spring), opacity var(--duration-base) ease;
 }
 
 .mobile-todo-overlay.dragging {
@@ -141,7 +141,7 @@ html, body {
 /* 浮层从右侧滑入/滑出（沿用项目招牌弹性曲线） */
 .overlay-slide-enter-active,
 .overlay-slide-leave-active {
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+  transition: transform var(--duration-base) var(--ease-spring), opacity var(--duration-base) ease;
 }
 
 .overlay-slide-enter-from,

@@ -142,7 +142,7 @@ const { settings: form } = storeToRefs(settingsStore)
   border-bottom: 1px solid var(--el-border-color-lighter);
   font-size: var(--font-base);
   color: var(--el-text-color-primary);
-  transition: background 0.2s;
+  transition: background var(--duration-fast);
 }
 
 .mobile-item:hover {
@@ -175,7 +175,7 @@ const { settings: form } = storeToRefs(settingsStore)
 }
 
 .card-title {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   font-size: var(--font-base);
 }
 
@@ -193,7 +193,7 @@ const { settings: form } = storeToRefs(settingsStore)
 }
 
 .setting-name {
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   font-size: var(--font-sm);
 }
 
@@ -244,7 +244,7 @@ const { settings: form } = storeToRefs(settingsStore)
   justify-content: space-between;
   padding: var(--space-md) var(--space-sm);
   border-bottom: 1px solid var(--el-border-color-lighter);
-  transition: background 0.15s ease;
+  transition: background var(--duration-fast) ease;
 }
 
 .model-item:last-child {
@@ -266,12 +266,12 @@ const { settings: form } = storeToRefs(settingsStore)
 }
 
 .model-name {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   font-size: var(--font-sm);
 }
 
 .model-size {
-  font-weight: 400;
+  font-weight: var(--weight-regular);
   font-size: var(--font-xs);
   color: var(--el-text-color-secondary);
 }
@@ -307,7 +307,7 @@ const { settings: form } = storeToRefs(settingsStore)
 
 .pane-title {
   font-size: var(--font-md);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   margin: 0 0 4px;
   color: var(--el-text-color-primary);
 }
@@ -334,7 +334,7 @@ const { settings: form } = storeToRefs(settingsStore)
 
 .stat-value {
   font-size: 1.6rem;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   color: var(--el-text-color-primary);
 }
 
@@ -356,7 +356,7 @@ const { settings: form } = storeToRefs(settingsStore)
 }
 
 .detail-title {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   font-size: var(--font-sm);
   color: var(--el-text-color-secondary);
 }
@@ -383,7 +383,7 @@ const { settings: form } = storeToRefs(settingsStore)
 }
 
 .text-primary-bold {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--el-color-primary);
 }
 </style>

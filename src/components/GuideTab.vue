@@ -134,7 +134,7 @@ const mobileSections: GuideSection[] = [
 
 .guide-section-title {
   font-size: var(--font-base);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   margin: 0 0 var(--space-sm);
   color: var(--el-text-color-primary);
 }
@@ -157,7 +157,7 @@ const mobileSections: GuideSection[] = [
   border-radius: var(--radius-sm);
   background: var(--el-color-primary-light-9);
   color: var(--el-color-primary);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   font-size: var(--font-sm);
   line-height: 1.5;
   text-align: center;

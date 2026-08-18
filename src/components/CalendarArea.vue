@@ -572,7 +572,7 @@ watch(isMobile, (m) => {
   background: transparent;
   color: var(--el-text-color-regular);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--duration-fast) ease;
 }
 
 .period-nav:hover {
@@ -588,9 +588,9 @@ watch(isMobile, (m) => {
   background: var(--el-bg-color);
   color: var(--text-secondary);
   font-size: var(--font-sm);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--duration-fast) ease;
 }
 
 .month-toggle:hover {
@@ -626,20 +626,20 @@ watch(isMobile, (m) => {
   border-radius: var(--radius-md);
   padding: var(--space-xs) var(--space-lg);
   cursor: pointer;
-  transition: background 0.2s ease, box-shadow 0.2s ease;
+  transition: background var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
 }
 
 .calendar-title-picker.el-range-editor:hover,
 .calendar-title-picker.el-range-editor.is-active {
   background: var(--el-fill-color);
-  box-shadow: 0 2px 10px var(--el-box-shadow-light) !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
 /* 日期文本：大号加粗居中 */
 .calendar-title-picker .el-range-input {
   background: transparent;
   font-size: 1.08rem;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   color: var(--el-text-color-primary);
   cursor: pointer;
   text-align: center;
@@ -654,7 +654,7 @@ watch(isMobile, (m) => {
 
 .calendar-title-picker .el-range-separator {
   color: var(--el-color-primary);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
 }
 
 /* 单值选择器（移动端单日 / 桌面月模式），type=date|month 的 el-input 结构，样式统一。
@@ -670,7 +670,7 @@ watch(isMobile, (m) => {
   border-radius: var(--radius-md);
   padding: var(--space-xs) var(--space-sm);
   cursor: pointer;
-  transition: background 0.2s ease, box-shadow 0.2s ease;
+  transition: background var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
 }
 
 .calendar-day-picker .el-input__wrapper:hover,
@@ -678,13 +678,13 @@ watch(isMobile, (m) => {
 .calendar-month-picker .el-input__wrapper:hover,
 .calendar-month-picker .el-input__wrapper.is-active {
   background: var(--el-fill-color);
-  box-shadow: 0 2px 10px var(--el-box-shadow-light) !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
 .calendar-day-picker .el-input__inner,
 .calendar-month-picker .el-input__inner {
   font-size: var(--font-base);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   color: var(--el-text-color-primary);
   text-align: center;
   cursor: pointer;
@@ -721,10 +721,10 @@ watch(isMobile, (m) => {
   background: var(--el-bg-color);
   color: var(--text-secondary);
   font-size: var(--font-sm);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   cursor: pointer;
-  box-shadow: 0 2px 8px var(--shadow-color);
-  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--duration-fast) ease;
 }
 
 .reopen-todo-btn:hover {
@@ -746,7 +746,7 @@ watch(isMobile, (m) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
 }
 
 .calendar-wrapper .mobile-todo-fab:hover {
@@ -817,7 +817,7 @@ html.platform-mobile .fc .fc-col-header {
 .fc .fc-timegrid-slot-label-cushion,
 .fc .fc-timegrid-axis-cushion {
   color: var(--text-secondary) !important;
-  font-weight: 600 !important;
+  font-weight: 600 !important; /* stylelint-disable-line declaration-property-value-disallowed-list -- FC 战争区（!important 对抗 FC 内联样式） */
   font-size: 0.75rem !important;
   position: absolute;
   top: 0;
@@ -833,7 +833,7 @@ html.platform-mobile .fc .fc-col-header {
 /* Headers */
 .fc .fc-col-header-cell-cushion {
   color: var(--text-primary) !important;
-  font-weight: 800 !important;
+  font-weight: 800 !important; /* stylelint-disable-line declaration-property-value-disallowed-list -- FC 列头超粗为设计特例（超出字重刻度） */
   padding: 8px 4px !important;
   font-size: 0.85rem !important;
   white-space: nowrap !important;
@@ -843,14 +843,14 @@ html.platform-mobile .fc .fc-col-header {
 .fc-timegrid-event, .fc-daygrid-event {
   border-width: 1.5px !important;
   border-radius: var(--radius-md) !important;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 5%);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: var(--shadow-md);
+  transition: transform var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
 }
 
 .fc-timegrid-event:hover {
   transform: scale(1.02);
   z-index: 10 !important;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 10%);
+  box-shadow: var(--shadow-lg);
 }
 
 .fc-event-main {

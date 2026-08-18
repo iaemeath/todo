@@ -451,7 +451,7 @@ const toggleVoice = () => {
   border: 1px solid var(--el-border-color-light);
   box-shadow: var(--el-box-shadow-light);
   font-size: var(--font-sm);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   max-width: 300px;
   width: max-content;
   overflow-wrap: break-word;
@@ -471,7 +471,7 @@ const toggleVoice = () => {
 /* Toast Transitions */
 .toast-slide-enter-active,
 .toast-slide-leave-active {
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all var(--duration-base) var(--ease-spring);
 }
 
 .toast-slide-enter-from {
@@ -497,7 +497,7 @@ const toggleVoice = () => {
   box-shadow: 0 8px 24px var(--color-primary-alpha);
   cursor: grab;
   position: relative;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all var(--duration-base) var(--ease-spring);
   outline: none;
 }
 

@@ -413,7 +413,7 @@ const confirmSchedule = () => {
   background: var(--color-primary);
   border-radius: 9999px;
   box-shadow: 0 2px 8px var(--color-primary-alpha);
-  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--duration-base) var(--ease-standard);
   z-index: 0;
   pointer-events: none;
 }
@@ -432,14 +432,14 @@ const confirmSchedule = () => {
   background: transparent;
   color: var(--text-secondary);
   font-size: var(--font-sm);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-xs);
   white-space: nowrap;
-  transition: color 0.25s ease;
+  transition: color var(--duration-base) ease;
 }
 
 .view-tab:hover {

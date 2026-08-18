@@ -63,6 +63,24 @@
   /* ===== Touch target（鼠标场景可小，移动端见 platform-mobile） ===== */
   --touch-target: 36px;
 
+  /* ===== Motion scale（时长归并 0.15/0.2→fast、0.25/0.28/0.3→base、0.4→slow） ===== */
+  --duration-fast: 0.2s;  /* hover / 微反馈 */
+  --duration-base: 0.3s;  /* 常规过渡 / 浮层滑入 */
+  --duration-slow: 0.4s;  /* 大面积切换（主题/背景） */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* 招牌弹性（轻微回弹） */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);    /* 标准减速 */
+
+  /* ===== Elevation（中性阴影；彩色辉光跟主题色 alpha 手拼） ===== */
+  --shadow-sm: 0 2px 8px var(--shadow-color);
+  --shadow-md: 0 4px 12px var(--shadow-color);
+  --shadow-lg: 0 8px 24px var(--shadow-color);
+
+  /* ===== Weight scale ===== */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
   /* ===== Element Plus token bridge ===== */
 
   /* Map EP's CSS variables to our design tokens so EP components pick up the
@@ -121,7 +139,7 @@ body {
   background-color: var(--el-bg-color-page);
   color: var(--el-text-color-primary);
   min-height: 100vh;
-  transition: background-color 0.4s ease, color 0.4s ease;
+  transition: background-color var(--duration-slow) ease, color var(--duration-slow) ease;
   overflow: hidden;
 }
 
@@ -131,7 +149,7 @@ body {
   border: 1px solid var(--el-border-color-light);
   border-radius: var(--radius-lg);
   box-shadow: var(--el-box-shadow-light);
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  transition: border-color var(--duration-base) ease, box-shadow var(--duration-base) ease;
 }
 
 .glass-card {
@@ -139,13 +157,13 @@ body {
   border: 1px solid var(--el-border-color-lighter);
   border-radius: var(--radius-md);
   box-shadow: 0 1px 4px 0 var(--shadow-color);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--duration-base) var(--ease-standard);
 }
 
 .glass-card:hover {
   transform: translateY(-2px);
   border-color: var(--el-color-primary-light-7);
-  box-shadow: 0 4px 12px 0 var(--shadow-color);
+  box-shadow: var(--shadow-md);
 }
 
 /* Form-control font/color inheritance only.
@@ -169,8 +187,8 @@ button:not(.el-button) {
   border: none;
   outline: none;
   border-radius: var(--radius-lg);
-  font-weight: 600;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: var(--weight-semibold);
+  transition: all var(--duration-base) var(--ease-standard);
   display: inline-flex;
   align-items: center;
   justify-content: center;

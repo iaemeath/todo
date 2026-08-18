@@ -97,12 +97,12 @@ const navTitle = computed(() => {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   font-size: 1rem;
   color: var(--el-text-color-primary);
   flex-shrink: 0;
   cursor: pointer;
-  transition: color 0.2s ease;
+  transition: color var(--duration-fast) ease;
 }
 
 .nav-logo:hover {
@@ -123,7 +123,7 @@ const navTitle = computed(() => {
   border: none;
   color: var(--el-text-color-primary);
   font-size: var(--font-base);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   cursor: pointer;
   padding: var(--space-sm) 0;
   min-height: var(--touch-target);
@@ -155,9 +155,9 @@ const navTitle = computed(() => {
   background: transparent;
   color: var(--el-text-color-regular);
   font-size: var(--font-sm);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--duration-fast) ease;
 }
 
 .nav-tab:hover {
@@ -168,7 +168,7 @@ const navTitle = computed(() => {
 .nav-tab.active {
   background: var(--el-color-primary-light-9);
   color: var(--el-color-primary);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .tab-icon {

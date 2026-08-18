@@ -22,7 +22,9 @@
     "declaration-property-value-disallowed-list": {
       "/^padding/": ["/^\\d+px$/", "/^\\d+\\.\\d+rem$/"],
       "gap": ["/^\\d+px$/"],
-      "/^border-radius/": ["/^(?!9999px)\\d+px$/"]
+      "/^border-radius/": ["/^(?!9999px)\\d+px$/"],
+      "transition": ["/0\\.[0-9]+s/", "/cubic-bezier\\(/"],
+      "font-weight": ["/^\\d+$/"]
     }
   },
   "ignoreFiles": ["node_modules/**", "dist/**", "deploy/**"]

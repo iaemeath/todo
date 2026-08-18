@@ -196,7 +196,7 @@ onUnmounted(() => {
   flex-direction: column;
   overflow: hidden;
   box-shadow: var(--el-box-shadow-light);
-  transition: width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+  transition: width var(--duration-base) var(--ease-spring), opacity var(--duration-base) ease;
   flex: 1;
   min-height: 0;
 }
@@ -221,7 +221,7 @@ onUnmounted(() => {
 
 .sidebar-header h2 {
   font-size: var(--font-md);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   margin: 0;
   color: var(--text-primary);
 }
@@ -243,7 +243,7 @@ onUnmounted(() => {
   color: var(--el-text-color-primary);
   font-size: var(--font-base);
   outline: none;
-  transition: all 0.2s;
+  transition: all var(--duration-fast);
 }
 
 .glass-input:focus {
@@ -262,7 +262,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-fast);
 }
 
 .btn-add:hover {
@@ -309,13 +309,13 @@ onUnmounted(() => {
   border: 1px solid var(--border-glass);
   gap: var(--space-md);
   cursor: grab;
-  transition: all 0.2s ease;
+  transition: all var(--duration-fast) ease;
 }
 
 .todo-item:hover {
   border-color: var(--color-primary-alpha);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 5%);
+  box-shadow: var(--shadow-md);
 }
 
 .todo-item:active {
@@ -338,7 +338,7 @@ onUnmounted(() => {
 
 .todo-title {
   font-size: var(--font-base);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--text-primary);
   display: block;
   white-space: nowrap;
@@ -360,7 +360,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all var(--duration-fast);
 }
 
 .btn-delete:hover {
