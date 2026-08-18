@@ -27,11 +27,11 @@ export interface Settings {
   webMaxRangeDays: number
   /** 时间区间选择上限（天）：移动端 */
   mobileMaxRangeDays: number
-  /** 工具条「月」视图按钮是否显示 */
+  /** 手机端是否显示「月」视图按钮（网页端常驻） */
   showMonthButton: boolean
-  /** 任务管理入口是否显示 */
+  /** 手机端是否显示任务管理入口（网页端常驻） */
   showTaskManage: boolean
-  /** 日程管理入口是否显示 */
+  /** 手机端是否显示日程管理入口（网页端常驻） */
   showScheduleManage: boolean
 }
 

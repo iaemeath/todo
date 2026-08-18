@@ -53,8 +53,9 @@
         </button>
       </div>
       <div class="calendar-toolbar__side calendar-toolbar__side--right">
-        <!-- 月视图 toggle：激活时选择器切换为月选择器（显示与否在「设置-视觉与外观」控制，移动端默认隐藏） -->
-        <button v-if="settings.showMonthButton" class="month-toggle" :class="{ active: pickerMode === 'month' }" @click="toggleMonthMode" title="月视图">
+        <!-- 月视图 toggle：激活时选择器切换为月选择器。
+             网页端常驻；移动端由「设置-视觉与外观」控制（默认隐藏） -->
+        <button v-if="!isMobile || settings.showMonthButton" class="month-toggle" :class="{ active: pickerMode === 'month' }" @click="toggleMonthMode" title="月视图">
           月
         </button>
         <!-- 全屏 toggle：CSS 伪全屏（fixed 铺满），ESC 退出 -->

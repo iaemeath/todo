@@ -56,16 +56,17 @@ const { currentView, isMobile, settingsSection } = storeToRefs(uiStore) // state
 const { switchView } = uiStore // action 直接解构
 const { settings } = storeToRefs(useSettingsStore())
 
-// 任务/日程入口可见性（设置中可关；移动端默认隐藏）
+// 桌面端导航项（主页由 logo 充当，故只列 任务/日程/设置；网页端三项常驻，
+// 设置中的开关只管移动端显隐）
+const navItems: { key: AppView; label: string; icon: any }[] = [
+  { key: 'task', label: '任务管理', icon: List },
+  { key: 'schedule', label: '日程管理', icon: Clock },
+  { key: 'settings', label: '设置', icon: Setting }
+]
+
+// 移动端任务/日程入口可见性（设置中可关；默认隐藏，网页端不受影响）
 const showTaskManage = computed(() => settings.value.showTaskManage)
 const showScheduleManage = computed(() => settings.value.showScheduleManage)
-
-// 桌面端导航项（主页由 logo 充当，故只列 任务/日程/设置；任务/日程按设置过滤）
-const navItems = computed<{ key: AppView; label: string; icon: any }[]>(() => [
-  { key: 'task', label: '任务管理', icon: List, visible: showTaskManage.value },
-  { key: 'schedule', label: '日程管理', icon: Clock, visible: showScheduleManage.value },
-  { key: 'settings', label: '设置', icon: Setting, visible: true }
-].filter(i => i.visible))
 
 // toggle 导航：再点一次当前页 → 回主页
 const toggleView = (view: AppView) => {

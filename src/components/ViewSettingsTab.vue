@@ -130,13 +130,13 @@ const onEndHourChange = (v: number | undefined) => {
       <span class="setting-desc">中央时间选择器可选的最大天数，超限自动截断</span>
     </el-card>
 
-    <!-- 界面元素 -->
+    <!-- 移动端界面元素 -->
     <el-card shadow="never" class="setting-card">
-      <template #header><span class="card-title">界面元素</span></template>
+      <template #header><span class="card-title">移动端界面元素（网页端始终显示）</span></template>
       <div class="setting-row">
         <div class="setting-info">
           <span class="setting-name">「月」视图按钮</span>
-          <span class="setting-desc">日历工具条右侧的月视图切换按钮（手机端默认隐藏）</span>
+          <span class="setting-desc">手机端日历工具条右侧的月视图切换按钮（默认隐藏）</span>
         </div>
         <el-switch v-model="form.showMonthButton" />
       </div>
@@ -144,7 +144,7 @@ const onEndHourChange = (v: number | undefined) => {
       <div class="setting-row">
         <div class="setting-info">
           <span class="setting-name">任务管理入口</span>
-          <span class="setting-desc">顶部导航中的任务管理页入口（手机端默认隐藏）</span>
+          <span class="setting-desc">手机端主页顶部的任务管理图标（默认隐藏）</span>
         </div>
         <el-switch v-model="form.showTaskManage" />
       </div>
@@ -152,7 +152,7 @@ const onEndHourChange = (v: number | undefined) => {
       <div class="setting-row">
         <div class="setting-info">
           <span class="setting-name">日程管理入口</span>
-          <span class="setting-desc">顶部导航中的日程管理页入口（手机端默认隐藏）</span>
+          <span class="setting-desc">手机端主页顶部的日程管理图标（默认隐藏）</span>
         </div>
         <el-switch v-model="form.showScheduleManage" />
       </div>
