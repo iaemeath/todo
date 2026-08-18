@@ -852,7 +852,7 @@ html.platform-mobile .fc .fc-col-header {
   font-size: 0.75rem !important;
   position: absolute;
   top: 0;
-  left: 4px;               /* 贴左对齐 */
+  left: 3px;               /* 贴左对齐（4-1：视觉微调左移 1px） */
   transform: translateY(-50%);  /* 让文字中心对准刻度线 */
   background: var(--el-bg-color);
   padding: 0 4px;
