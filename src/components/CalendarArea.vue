@@ -514,7 +514,7 @@ watch(isMobile, (m) => {
   flex: 1;
   width: 100%;
   height: 100%;
-  padding: var(--space-lg);
+  padding: var(--space-md); /* 12/8：面板内边距收紧，配合外层间距减少视觉留白叠加 */
   box-sizing: border-box;
   overflow: hidden;
   position: relative;
@@ -538,7 +538,7 @@ watch(isMobile, (m) => {
   align-items: center;
   flex-shrink: 0;
   min-height: 44px;
-  margin-bottom: 6px;
+  margin-bottom: var(--space-xs); /* 工具条与网格间距 6→4，收紧纵深 */
 }
 
 .calendar-toolbar__side {

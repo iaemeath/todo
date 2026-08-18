@@ -92,14 +92,16 @@ html, body {
 .content-area {
   flex: 1;
   overflow: hidden;
-  padding: var(--space-lg); /* 桌面 16 / 移动 12（令牌双值） */
+
+  /* 纵向 12 / 横向 16：导航栏与内容面板之间的间距收紧一档（面板自带边框阴影，间距可更紧凑） */
+  padding: var(--space-md) var(--space-lg);
   box-sizing: border-box;
 }
 
 /* 主页：左右布局 */
 .home-view {
   display: flex;
-  gap: var(--space-lg);
+  gap: var(--space-md); /* 日历与待办面板间距 16→12（两侧面板内边距叠加后观感本已偏大） */
   height: 100%;
   overflow: hidden;
   position: relative; /* 为移动端待办浮层 absolute 定位 */
