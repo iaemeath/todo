@@ -122,13 +122,9 @@ const { settings: form } = storeToRefs(settingsStore)
 /* 内容区域（桌面 + 移动端共用） */
 .settings-content {
   flex: 1;
-  padding: 20px 32px;
+  padding: var(--space-lg); /* 桌面 16 / 移动 12（令牌双值） */
   overflow-y: auto;
   min-width: 0;
-}
-
-.settings-page.is-mobile .settings-content {
-  padding: 16px;
 }
 
 /* 移动端：列表入口 */
@@ -140,11 +136,11 @@ const { settings: form } = storeToRefs(settingsStore)
 .mobile-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
+  gap: var(--space-md);
+  padding: var(--space-lg) var(--space-xl);
   cursor: pointer;
   border-bottom: 1px solid var(--el-border-color-lighter);
-  font-size: 1rem;
+  font-size: var(--font-base);
   color: var(--el-text-color-primary);
   transition: background 0.2s;
 }
@@ -167,27 +163,27 @@ const { settings: form } = storeToRefs(settingsStore)
 .settings-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-lg);
 }
 
 .setting-card {
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .setting-card :deep(.el-card__header) {
-  padding: 12px 16px;
+  padding: var(--space-md) var(--space-lg);
 }
 
 .card-title {
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: var(--font-base);
 }
 
 .setting-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 0;
+  padding: var(--space-xs) 0;
 }
 
 .setting-info {
@@ -198,18 +194,18 @@ const { settings: form } = storeToRefs(settingsStore)
 
 .setting-name {
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: var(--font-sm);
 }
 
 .setting-desc {
-  font-size: 0.8rem;
+  font-size: var(--font-xs);
   color: var(--el-text-color-secondary);
 }
 
 .dual-input {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-md);
 }
 
 .range-sep {
@@ -219,11 +215,11 @@ const { settings: form } = storeToRefs(settingsStore)
 .engine-radio-group {
   display: flex;
   flex-direction: row;
-  gap: 12px;
+  gap: var(--space-md);
 }
 
 .form-hint {
-  font-size: 0.8rem;
+  font-size: var(--font-xs);
   color: var(--el-text-color-secondary);
   margin-top: 4px;
   line-height: 1.5;
@@ -232,21 +228,21 @@ const { settings: form } = storeToRefs(settingsStore)
 .model-toolbar {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-lg);
   margin-bottom: 12px;
 }
 
 .model-list-scroll {
   border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
-  padding: 0 8px;
+  border-radius: var(--radius-md);
+  padding: 0 var(--space-sm);
 }
 
 .model-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 8px;
+  padding: var(--space-md) var(--space-sm);
   border-bottom: 1px solid var(--el-border-color-lighter);
   transition: background 0.15s ease;
 }
@@ -271,19 +267,19 @@ const { settings: form } = storeToRefs(settingsStore)
 
 .model-name {
   font-weight: 600;
-  font-size: 0.88rem;
+  font-size: var(--font-sm);
 }
 
 .model-size {
   font-weight: 400;
-  font-size: 0.8rem;
+  font-size: var(--font-xs);
   color: var(--el-text-color-secondary);
 }
 
 .model-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-sm);
   flex-shrink: 0;
 }
 
@@ -295,7 +291,7 @@ const { settings: form } = storeToRefs(settingsStore)
 }
 
 .progress-text {
-  font-size: 0.72rem;
+  font-size: var(--font-xs);
   color: var(--el-text-color-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -306,32 +302,32 @@ const { settings: form } = storeToRefs(settingsStore)
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: var(--space-xl);
 }
 
 .pane-title {
-  font-size: 1.1rem;
+  font-size: var(--font-md);
   font-weight: 700;
   margin: 0 0 4px;
   color: var(--el-text-color-primary);
 }
 
 .pane-desc {
-  font-size: 0.85rem;
+  font-size: var(--font-sm);
   color: var(--el-text-color-secondary);
   margin: 0;
 }
 
 .usage-stats {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-xl);
 }
 
 .usage-stats :deep(.stat-card-body) {
-  padding: 16px;
+  padding: var(--space-lg);
 }
 
 .stat-label {
-  font-size: 0.8rem;
+  font-size: var(--font-xs);
   color: var(--el-text-color-secondary);
   margin-bottom: 8px;
 }
@@ -347,10 +343,10 @@ const { settings: form } = storeToRefs(settingsStore)
 }
 
 .usage-details {
-  padding: 8px 16px;
+  padding: var(--space-sm) var(--space-lg);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-md);
 }
 
 .detail-block {
@@ -361,12 +357,12 @@ const { settings: form } = storeToRefs(settingsStore)
 
 .detail-title {
   font-weight: 600;
-  font-size: 0.82rem;
+  font-size: var(--font-sm);
   color: var(--el-text-color-secondary);
 }
 
 .detail-text {
-  font-size: 0.85rem;
+  font-size: var(--font-sm);
   line-height: 1.6;
   color: var(--el-text-color-primary);
   white-space: pre-wrap;
@@ -377,7 +373,7 @@ const { settings: form } = storeToRefs(settingsStore)
   font-family: var(--font-mono);
   background: var(--el-fill-color-light);
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   max-height: 160px;
   overflow-y: auto;
 }

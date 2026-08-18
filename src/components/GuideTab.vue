@@ -122,26 +122,28 @@ const mobileSections: GuideSection[] = [
 </script>
 
 <style scoped>
+/* 移动优先：基础样式 = 窄屏上下堆叠；桌面行布局在 min-width 断点增强。
+   间距/字号/圆角走令牌，移动端紧凑值由 platform-mobile 自动生效。 */
 .guide-tab {
   max-width: 860px;
 }
 
 .guide-section {
-  margin-bottom: 24px;
+  margin-bottom: var(--space-xl);
 }
 
 .guide-section-title {
-  font-size: 0.95rem;
+  font-size: var(--font-base);
   font-weight: 700;
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-sm);
   color: var(--el-text-color-primary);
 }
 
 .guide-row {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 8px 0;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) 0;
   border-bottom: 1px dashed var(--el-border-color-lighter);
 }
 
@@ -150,43 +152,36 @@ const mobileSections: GuideSection[] = [
 }
 
 .guide-action {
-  flex-shrink: 0;
-  min-width: 130px;
-  max-width: 230px;
-  padding: 3px 10px;
-  border-radius: 6px;
+  align-self: flex-start;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
   background: var(--el-color-primary-light-9);
   color: var(--el-color-primary);
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: var(--font-sm);
   line-height: 1.5;
   text-align: center;
   box-sizing: border-box;
 }
 
 .guide-desc {
-  flex: 1;
-  font-size: 0.88rem;
+  font-size: var(--font-sm);
   line-height: 1.7;
   color: var(--el-text-color-regular);
-  padding-top: 2px;
 }
 
-/* 窄屏：操作标签与说明上下堆叠 */
-@media (width <= 768px) {
+/* 桌面：操作标签与说明左右并排，标签定宽对齐 */
+@media (width >= 769px) {
   .guide-row {
-    flex-direction: column;
-    gap: 4px;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--space-md);
   }
 
   .guide-action {
-    min-width: 0;
-    max-width: none;
-    align-self: flex-start;
-  }
-
-  .guide-desc {
-    padding-top: 0;
+    flex-shrink: 0;
+    min-width: 130px;
+    max-width: 230px;
   }
 }
 </style>

@@ -81,24 +81,24 @@ const navTitle = computed(() => {
 </script>
 
 <style scoped>
+/* 移动优先：基础样式 = 移动端（紧凑 padding / 纯图标入口），桌面增强在 min-width 断点 */
 .app-navbar {
   display: flex;
   align-items: center;
   height: 56px;
-  padding: 0 16px 0 20px;
+  padding: 0 var(--space-lg); /* 桌面 16 / 移动 12（令牌双值） */
+  gap: var(--space-sm);
   background: var(--el-bg-color);
   border-bottom: 1px solid var(--el-border-color-light);
   flex-shrink: 0;
-
-  /* gap: 32px; */
 }
 
 .nav-logo {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-sm);
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: var(--el-text-color-primary);
   flex-shrink: 0;
   cursor: pointer;
@@ -114,32 +114,33 @@ const navTitle = computed(() => {
   color: var(--el-color-primary);
 }
 
-/* 移动端非主页：返回按钮 */
+/* 移动端非主页：返回按钮（触控目标达标） */
 .nav-back {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-xs);
   background: transparent;
   border: none;
   color: var(--el-text-color-primary);
-  font-size: 1rem;
+  font-size: var(--font-base);
   font-weight: 600;
   cursor: pointer;
-  padding: 8px 0;
+  padding: var(--space-sm) 0;
+  min-height: var(--touch-target);
 }
 
 .nav-tabs {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 4px;
+  gap: var(--space-xs);
   flex: 1;
 }
 
 .nav-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-xs);
   flex-shrink: 0;
   margin-left: auto;
 }
@@ -148,12 +149,12 @@ const navTitle = computed(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
+  padding: var(--space-sm) var(--space-lg);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--el-text-color-regular);
-  font-size: 0.9rem;
+  font-size: var(--font-sm);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -174,21 +175,18 @@ const navTitle = computed(() => {
   font-size: 1.05rem;
 }
 
-/* 移动端：纯图标按钮 */
+/* 移动端：纯图标按钮，热区满足触控目标令牌 */
 .nav-tab.icon-only {
-  padding: 8px 10px;
+  padding: var(--space-sm);
+  min-width: var(--touch-target);
+  min-height: var(--touch-target);
   font-size: 1.25rem;
 }
 
-/* 移动端：navbar 收紧 */
-@media (width <= 768px) {
-  .app-navbar {
-    padding: 0 12px;
-    gap: 8px;
-  }
-
+/* 桌面增强：logo 放大一档 */
+@media (width >= 769px) {
   .logo-text {
-    font-size: 1rem;
+    font-size: var(--font-md);
   }
 }
 </style>

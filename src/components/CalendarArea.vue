@@ -550,14 +550,14 @@ watch(isMobile, (m) => {
 
 .calendar-toolbar__side--right {
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--space-sm);
 }
 
 /* 中央组合：‹ 选择器 › */
 .calendar-toolbar__center {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-xs);
 }
 
 /* 时段平移按钮（上一个/下一个） */
@@ -568,7 +568,7 @@ watch(isMobile, (m) => {
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--el-text-color-regular);
   cursor: pointer;
@@ -582,12 +582,12 @@ watch(isMobile, (m) => {
 
 /* 月视图 toggle（待办按钮左侧） */
 .month-toggle {
-  padding: 6px 12px;
+  padding: var(--space-xs) var(--space-md);
   border: 1px solid var(--border-glass);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--el-bg-color);
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: var(--font-sm);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -623,8 +623,8 @@ watch(isMobile, (m) => {
 .calendar-title-picker.el-range-editor {
   background: var(--el-fill-color-light);
   box-shadow: none !important;
-  border-radius: 8px;
-  padding: 6px 16px;
+  border-radius: var(--radius-md);
+  padding: var(--space-xs) var(--space-lg);
   cursor: pointer;
   transition: background 0.2s ease, box-shadow 0.2s ease;
 }
@@ -667,8 +667,8 @@ watch(isMobile, (m) => {
 .calendar-month-picker .el-input__wrapper {
   background: var(--el-fill-color-light);
   box-shadow: none !important;
-  border-radius: 8px;
-  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  padding: var(--space-xs) var(--space-sm);
   cursor: pointer;
   transition: background 0.2s ease, box-shadow 0.2s ease;
 }
@@ -683,7 +683,7 @@ watch(isMobile, (m) => {
 
 .calendar-day-picker .el-input__inner,
 .calendar-month-picker .el-input__inner {
-  font-size: 0.98rem;
+  font-size: var(--font-base);
   font-weight: 700;
   color: var(--el-text-color-primary);
   text-align: center;
@@ -695,18 +695,18 @@ watch(isMobile, (m) => {
   color: var(--el-color-primary);
 }
 
-/* 移动端：隐藏 ‹ › 与「月」按钮（翻时段改由左右滑动手势承担）、圆形待办按钮不撑高工具条。
+/* ‹ › 与「月」按钮：移动优先默认隐藏（移动端翻时段由左右滑动手势承担），桌面恢复显示。
    加 .calendar-toolbar 祖先提权：全局 button:not(.el-button)（theme.css）特异性更高，
    单类 .period-nav 会被其 display:flex 压过导致隐藏失效 */
-@media (width <= 768px) {
+.calendar-toolbar .period-nav,
+.calendar-toolbar .month-toggle {
+  display: none;
+}
+
+@media (width >= 769px) {
   .calendar-toolbar .period-nav,
   .calendar-toolbar .month-toggle {
-    display: none;
-  }
-
-  .calendar-toolbar__side--right .mobile-todo-fab {
-    width: 36px;
-    height: 36px;
+    display: inline-flex;
   }
 }
 
@@ -715,12 +715,12 @@ watch(isMobile, (m) => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 5px;
+  padding: var(--space-sm) var(--space-xs);
   border: 1px solid var(--border-glass);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--el-bg-color);
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: var(--font-sm);
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 2px 8px var(--shadow-color);
@@ -736,8 +736,8 @@ watch(isMobile, (m) => {
 /* 移动端：打开待办浮层的按钮（.calendar-wrapper 前缀提高特异性，
    覆盖全局 button:not(.el-button) 的圆角/缩放，确保圆形） */
 .calendar-wrapper .mobile-todo-fab {
-  width: 44px;
-  height: 44px;
+  width: var(--touch-target);
+  height: var(--touch-target);
   border: none;
   background: transparent;
   color: var(--color-primary);
@@ -758,11 +758,11 @@ watch(isMobile, (m) => {
   transform: scale(0.94);
 }
 
-/* 移动端：隐藏空白的列头行（day 视图列头无内容，容器仍占位 → 干脆隐藏） */
-@media (width <= 768px) {
-  .fc .fc-col-header {
-    display: none !important;
-  }
+/* 移动端：隐藏空白的列头行（day 视图列头无内容，容器仍占位 → 干脆隐藏）。
+   用 platform-mobile 类作用域（与 ui store isMobile 同源）而非媒体查询：
+   FC 列头是表格布局，翻转写法无法可靠恢复其默认 display 值 */
+html.platform-mobile .fc .fc-col-header {
+  display: none !important;
 }
 
 /* Base FullCalendar Overrides */

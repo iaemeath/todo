@@ -443,14 +443,14 @@ const toggleVoice = () => {
 
 .voice-toast {
   position: absolute;
-  bottom: calc(100% + 16px);
+  bottom: calc(100% + var(--space-lg));
   right: 0;
-  padding: 12px 20px;
-  border-radius: 8px;
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-md);
   background: var(--el-bg-color);
   border: 1px solid var(--el-border-color-light);
   box-shadow: var(--el-box-shadow-light);
-  font-size: 0.9rem;
+  font-size: var(--font-sm);
   font-weight: 500;
   max-width: 300px;
   width: max-content;

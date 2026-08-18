@@ -58,7 +58,7 @@
           <el-tag size="small" :type="priorityTagType(row.priority)" effect="plain">{{ priorityLabel(row.priority) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" :width="isMobile ? 88 : 240" fixed="right">
+      <el-table-column label="操作" :width="isMobile ? 124 : 240" fixed="right">
         <template #default="{ row }">
           <div class="row-actions">
             <el-button v-if="canAddChild(row.id)" text size="small" type="primary" :icon="Plus" @click="openCreateDialog(row as Task)"><span v-if="!isMobile">加子任务</span></el-button>
@@ -353,14 +353,14 @@ const confirmSchedule = () => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-lg);
   overflow-y: auto;
 }
 
 /* 收紧表格行高（配合操作按钮 size="small"） */
 .manage-page :deep(.el-table .el-table__cell) {
-  padding-top: 5px;
-  padding-bottom: 5px;
+  padding-top: var(--space-xs);
+  padding-bottom: var(--space-xs);
 }
 
 /* 操作列按钮：inline-flex 防换行 + 收紧间距（覆盖 EP 默认 12px margin） */
@@ -373,24 +373,24 @@ const confirmSchedule = () => {
   margin-left: 0;
 }
 
-/* 收紧 text small 按钮水平内边距 */
+/* 图标按钮：移动优先基础态（横向收紧、热区由 min-* 保证），桌面放宽水平内边距 */
 .row-actions :deep(.el-button) {
   padding-left: 0;
-  padding-right: 6px;
+  padding-right: 2px;
+  min-width: 28px;
+  min-height: var(--touch-target);
 }
 
-/* 移动端：纯图标按钮进一步收紧内边距 */
-@media (width <= 768px) {
+@media (width >= 769px) {
   .row-actions :deep(.el-button) {
-    padding-left: 0;
-    padding-right: 2px;
+    padding-right: 6px;
   }
 }
 
 .manage-toolbar {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-lg);
   flex-shrink: 0;
 }
 
@@ -425,13 +425,13 @@ const confirmSchedule = () => {
 .view-tab {
   position: relative;
   z-index: 1;
-  min-width: 92px;
-  padding: 5px 14px;
+  min-width: 56px;
+  padding: 4px 12px;
   border: none;
   border-radius: 9999px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: var(--font-sm);
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
@@ -455,12 +455,11 @@ const confirmSchedule = () => {
   transform: none;
 }
 
-/* 移动端：胶囊紧凑化（断点与 isMobile 768px 一致） */
-@media (width <= 768px) {
+/* 桌面：胶囊放宽 */
+@media (width >= 769px) {
   .view-tab {
-    min-width: 56px;
-    padding: 4px 12px;
-    font-size: 0.8rem;
+    min-width: 92px;
+    padding: 5px 14px;
   }
 }
 
@@ -477,7 +476,7 @@ const confirmSchedule = () => {
 }
 
 .schedule-hint {
-  margin: 0 0 16px;
+  margin: 0 0 var(--space-lg);
   color: var(--el-text-color-regular);
 }
 </style>

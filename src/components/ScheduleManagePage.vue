@@ -267,14 +267,14 @@ const confirmFromTodo = () => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-lg);
   overflow-y: auto;
 }
 
 /* 收紧表格行高（配合操作按钮 size="small"） */
 .manage-page :deep(.el-table .el-table__cell) {
-  padding-top: 8px;
-  padding-bottom: 8px;
+  padding-top: var(--space-sm);
+  padding-bottom: var(--space-sm);
 }
 
 /* 操作列按钮：inline-flex 防换行 + 收紧间距（覆盖 EP 默认 12px margin） */
@@ -287,10 +287,16 @@ const confirmFromTodo = () => {
   margin-left: 0;
 }
 
+/* 触控热区（P1 修复）：纵向 44/36、横向 28 保底 */
+.row-actions :deep(.el-button) {
+  min-width: 28px;
+  min-height: var(--touch-target);
+}
+
 .manage-toolbar {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-lg);
   flex-shrink: 0;
 }
 
