@@ -134,8 +134,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import type { CalendarOptions, DateSelectArg, DatesSetArg, DayHeaderContentArg, EventChangeArg, EventClickArg, EventMountArg } from '@fullcalendar/core'
 
-// FC v6 core 未直接导出 dateClick/eventReceive 回调的 Arg 类型，从 CalendarOptions 推导
-type DateClickArg = Parameters<NonNullable<CalendarOptions['dateClick']>>[0]
+// FC v6 core 未直接导出 eventReceive 回调的 Arg 类型，从 CalendarOptions 推导
 type EventReceiveArg = Parameters<NonNullable<CalendarOptions['eventReceive']>>[0]
 import { storeToRefs } from 'pinia'
 import { useTaskStore, useSettingsStore, useThemeStore, useUIStore } from '../stores'
@@ -317,17 +316,14 @@ const handleEventDidMount = (info: EventMountArg) => {
   })
 }
 
-// 单击时间格：默认时长 1h
-const handleDateClick = (info: DateClickArg) => {
-  const d = new Date(info.date)
-  const end = new Date(d.getTime() + 60 * 60 * 1000)
-  openNewScheduleDialog(fmtDate(d), fmtTime(d), fmtTime(end))
-}
-
-// 拖选时段：精确起止时间
+// 拖选时段：精确起止时间（web 拖选；移动端长按约 1s 后拖选，与滑动翻页的 <800ms 快扫错开）。
+// 注意：FC 在 selectable 模式下，静止单击也会走本回调，且区间恰好 = 一个 snap（5min）；
+// 单击新增已刻意去除（易误触），用「≤ 一个 snap」闸门过滤（实测单击正是 5min，边界相等须用 <=）。
+const MIN_SELECT_MS = 5 * 60 * 1000 // snapDuration 5min；真实拖选至少 ≥ 10min 才弹窗
 const handleSelect = (info: DateSelectArg) => {
   const start = new Date(info.start)
   const end = new Date(info.end)
+  if (end.getTime() - start.getTime() <= MIN_SELECT_MS) return // 单击/极短选区：忽略
   openNewScheduleDialog(fmtDate(start), fmtTime(start), fmtTime(end))
 }
 
@@ -483,8 +479,7 @@ const calendarOptions = computed(() => ({
   nowIndicator: true,
   eventChange: handleEventChange, // When event is dragged or resized
   eventReceive: handleEventReceive, // When external event is dropped
-  dateClick: handleDateClick, // 点击空白时间格新增日程
-  select: handleSelect, // 拖选时段新增日程（精确起止）
+  select: handleSelect, // 拖选时段新增日程（唯一新增入口；单击被时长闸门过滤，防误触）
   eventClick: handleEventClick, // 移动端：双击事件编辑（自判定）
   eventDidMount: handleEventDidMount, // web 端：右击事件编辑
   datesSet: handleDatesSet, // 日期区间变化 → 同步中央时间选择器
