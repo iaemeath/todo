@@ -627,19 +627,18 @@ html.platform-mobile .calendar-wrapper {
   gap: var(--space-xs);
 }
 
-/* ‹ › 与「月」按钮：移动优先默认隐藏（移动端翻时段由左右滑动手势承担），桌面恢复显示。
+/* ‹ › 与「月」按钮：移动优先默认隐藏（移动端翻时段由左右滑动手势承担、月模式为桌面专属），
+   桌面恢复显示。全屏按钮两端常驻。
    .calendar-toolbar 祖先提权：全局 button:not(.el-button)（theme.css）特异性更高，
    单类 .period-nav 会被其 display:flex 压过导致隐藏失效 */
 .calendar-toolbar .period-nav,
-.calendar-toolbar .month-toggle,
-.calendar-toolbar .fullscreen-toggle {
+.calendar-toolbar .month-toggle {
   display: none;
 }
 
 @media (width >= 769px) {
   .calendar-toolbar .period-nav,
-  .calendar-toolbar .month-toggle,
-  .calendar-toolbar .fullscreen-toggle {
+  .calendar-toolbar .month-toggle {
     display: inline-flex;
   }
 }
@@ -715,6 +714,10 @@ html.platform-mobile .calendar-wrapper {
 /* 移动端：屏窄，胶囊左右内边距收紧一档（12→8），日期文字多留空间 */
 html.platform-mobile .calendar-title-picker.el-range-editor {
   padding: var(--space-xs) var(--space-sm);
+
+  /* 日期文字收紧：input 默认 flex:1 平分剩余空间（文字各自居中，与分隔符拉开大缝），
+     改为按内容收缩 + 整组居中，两段日期紧贴分隔符 */
+  justify-content: center;
 }
 
 /* 日期文本：大号加粗居中 */
@@ -743,6 +746,19 @@ html.platform-mobile .calendar-title-picker.el-range-editor {
 .calendar-title-picker .el-range-separator {
   color: var(--el-color-primary);
   font-weight: var(--weight-bold);
+}
+
+/* 移动端日期文字收紧（置于上述基础规则之后，特异性降序 lint 要求）：
+   input 默认 flex:1 平分剩余空间，文字各自居中与分隔符拉开大缝；
+   改按内容收缩，配合编辑器 justify-content:center 两段日期紧贴分隔符。
+   分隔符自带 padding 0 5px 同步收紧为 0 2px */
+html.platform-mobile .calendar-title-picker .el-range-input {
+  flex: none;
+  width: auto;
+}
+
+html.platform-mobile .calendar-title-picker .el-range-separator {
+  padding: 0 2px;
 }
 
 /* 桌面月模式选择器，type=month 的 el-input 结构。
