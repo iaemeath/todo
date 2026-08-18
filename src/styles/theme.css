@@ -41,6 +41,28 @@
   --z-overlay: 10000;
   --z-modal: 10100;
 
+  /* ===== Spacing scale（4px 刻度，组件禁止写裸 px 间距） ===== */
+  --space-xs: 4px;   /* 图标与文字 */
+  --space-sm: 8px;   /* 组内相关元素 */
+  --space-md: 12px;  /* 卡片内边距 */
+  --space-lg: 16px;  /* 区块内边距 */
+  --space-xl: 24px;  /* 区块间距 */
+
+  /* ===== Type scale（6 档，收编散落的 19 种字号） ===== */
+  --font-xs: 0.75rem;   /* 刻度 / 辅助角标 */
+  --font-sm: 0.85rem;   /* 次要正文 / 按钮 */
+  --font-base: 0.95rem; /* 正文 */
+  --font-md: 1.1rem;    /* 卡片标题 */
+  --font-lg: 1.3rem;    /* 页面标题 */
+
+  /* ===== Radius scale ===== */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* ===== Touch target（鼠标场景可小，移动端见 platform-mobile） ===== */
+  --touch-target: 36px;
+
   /* ===== Element Plus token bridge ===== */
 
   /* Map EP's CSS variables to our design tokens so EP components pick up the
@@ -57,9 +79,20 @@
   --el-color-danger: var(--color-danger);
   --el-color-info: var(--color-info);
   --el-font-family: var(--font-family);
-  --el-border-radius-base: 8px;
-  --el-border-radius-small: 6px;
+  --el-border-radius-base: var(--radius-md);
+  --el-border-radius-small: var(--radius-sm);
   --el-border-radius-round: 16px;
+}
+
+/* ===== 平台令牌差：移动端整体紧凑一档 =====
+   由 ui store 的 detect() 与 isMobile 同源挂/摘（html.platform-mobile），
+   组件只消费令牌即自动获得双平台值，无需写平台媒体查询。 */
+html.platform-mobile {
+  --space-md: 8px;
+  --space-lg: 12px;
+  --space-xl: 16px;
+  --font-base: 0.9rem;
+  --touch-target: 44px;
 }
 
 [data-theme="dark"] {

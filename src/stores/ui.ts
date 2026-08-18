@@ -48,6 +48,8 @@ export const useUIStore = defineStore('ui', () => {
   // --- Device detection (setup 只执行一次，监听随应用生命周期常驻) ---
   const detect = () => {
     isMobile.value = window.innerWidth <= MOBILE_BREAKPOINT
+    // CSS 平台作用域与 isMobile 同源挂载：令牌双平台值的开关（见 theme.css html.platform-mobile）
+    document.documentElement.classList.toggle('platform-mobile', isMobile.value)
   }
   const initResize = () => {
     if (typeof window === 'undefined') return
