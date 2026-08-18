@@ -291,13 +291,14 @@ onUnmounted(() => {
   }
 }
 
-/* 新增是表单主操作：ghost 形态内保留主题色强调 */
+/* 新增是表单主操作：表单区非灰带背景，ghost 对比不足，恢复实色主按钮 */
 .btn-add {
-  color: var(--color-primary);
+  background: var(--color-primary);
+  color: white;
 }
 
 .btn-add:hover {
-  background: var(--color-primary-alpha);
+  background: var(--color-primary-light);
 }
 
 .todo-list {

@@ -689,6 +689,13 @@ watch(isMobile, (m) => {
   display: none;
 }
 
+/* 日历图标：主题色，调大一档（18px）与 1.08rem 粗体日期文字视觉等重 */
+.calendar-title-picker .el-range__icon {
+  color: var(--el-color-primary);
+  font-size: 18px;
+  margin-right: 2px;
+}
+
 /* 分隔符：主题色点缀 */
 .calendar-title-picker .el-range-separator {
   color: var(--el-color-primary);
