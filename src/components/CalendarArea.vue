@@ -532,7 +532,10 @@ watch(isMobile, (m) => {
   flex: 1;
   width: 100%;
   height: 100%;
-  padding: var(--space-md); /* 12/8：面板内边距收紧，配合外层间距减少视觉留白叠加 */
+
+  /* FC 网格铺满面板：不留内边距（左右/底部全部让给日历内容），
+     圆角裁切由 overflow:hidden 完成；工具条自身的内边距独立设置 */
+  padding: 0;
   box-sizing: border-box;
   overflow: hidden;
   position: relative;
@@ -551,14 +554,13 @@ watch(isMobile, (m) => {
 /* ===== 顶部工具条（文档流三段式，替代已移除的 FC 工具栏）===== */
 
 /* 左右等宽占位 + 中央选择器，保证 picker 始终水平居中；右侧承载待办开关。
-   与待办头部（TodoSidebar .sidebar-header）同构的灰带：负边距出血到面板顶/左右，
-   12px 灰顶边 + 44 内容 + 1px 底边——两带用同一 calc 定高（子元素不撑高），几何严格相等 */
+   与待办头部（TodoSidebar .sidebar-header）同构的灰带：12px 灰顶边 + 44 内容 + 1px 底边，
+   两带用同一 calc 定高（子元素不撑高）几何严格相等；底边直接贴 FC 网格（无间距） */
 .calendar-toolbar {
   display: flex;
   align-items: center;
   flex-shrink: 0;
   height: calc(44px + var(--space-md) + 1px); /* 桌面 57 / 移动 53（顶边随令牌） */
-  margin: calc(var(--space-md) * -1) calc(var(--space-md) * -1) var(--space-xs); /* 上/左/右出血吃掉 wrapper 内边距 */
   padding: 0 var(--space-md);
   border-top: var(--space-md) solid var(--el-fill-color-light);
   border-bottom: 1px solid var(--el-border-color-lighter);
