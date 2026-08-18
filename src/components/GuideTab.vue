@@ -9,23 +9,31 @@
 
     <el-tabs v-model="activePlatform" class="guide-tabs">
       <el-tab-pane label="Web 端" name="web">
-        <section v-for="section in webSections" :key="section.title" class="guide-section">
-          <h4 class="guide-section-title">{{ section.title }}</h4>
-          <div v-for="entry in section.entries" :key="entry.action" class="guide-row">
-            <span class="guide-action">{{ entry.action }}</span>
-            <span class="guide-desc">{{ entry.desc }}</span>
-          </div>
-        </section>
+        <div class="settings-form">
+          <el-card v-for="section in webSections" :key="section.title" shadow="never" class="setting-card">
+            <template #header><span class="card-title">{{ section.title }}</span></template>
+            <div v-for="entry in section.entries" :key="entry.action" class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">{{ entry.action }}</span>
+                <span class="setting-desc">{{ entry.desc }}</span>
+              </div>
+            </div>
+          </el-card>
+        </div>
       </el-tab-pane>
 
       <el-tab-pane label="移动端" name="mobile">
-        <section v-for="section in mobileSections" :key="section.title" class="guide-section">
-          <h4 class="guide-section-title">{{ section.title }}</h4>
-          <div v-for="entry in section.entries" :key="entry.action" class="guide-row">
-            <span class="guide-action">{{ entry.action }}</span>
-            <span class="guide-desc">{{ entry.desc }}</span>
-          </div>
-        </section>
+        <div class="settings-form">
+          <el-card v-for="section in mobileSections" :key="section.title" shadow="never" class="setting-card">
+            <template #header><span class="card-title">{{ section.title }}</span></template>
+            <div v-for="entry in section.entries" :key="entry.action" class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">{{ entry.action }}</span>
+                <span class="setting-desc">{{ entry.desc }}</span>
+              </div>
+            </div>
+          </el-card>
+        </div>
       </el-tab-pane>
     </el-tabs>
   </div>
@@ -123,66 +131,27 @@ const mobileSections: GuideSection[] = [
 </script>
 
 <style scoped>
-/* 移动优先：基础样式 = 窄屏上下堆叠；桌面行布局在 min-width 断点增强。
-   间距/字号/圆角走令牌，移动端紧凑值由 platform-mobile 自动生效。 */
+/* 布局与其他设置页同构：settings-form 纵排 + setting-card 卡片 + setting-row 行
+   （结构样式来自 SettingsPage 全局层），仅保留指南特有的适配。 */
 .guide-tab {
   max-width: 860px;
 }
 
-.guide-section {
-  margin-bottom: var(--space-xl);
-}
-
-.guide-section-title {
-  font-size: var(--font-base);
-  font-weight: var(--weight-bold);
-  margin: 0 0 var(--space-sm);
-  color: var(--el-text-color-primary);
-}
-
-.guide-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
+/* 指南条目多且说明偏长：行距放宽一档，行间加浅分隔线提升可读性
+   （其他设置页条目少，无分隔线） */
+.guide-tab .setting-row {
   padding: var(--space-sm) 0;
   border-bottom: 1px dashed var(--el-border-color-lighter);
 }
 
-.guide-row:last-child {
+.guide-tab .setting-row:last-child {
   border-bottom: none;
 }
 
-.guide-action {
-  align-self: flex-start;
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius-sm);
-  background: var(--el-color-primary-light-9);
-  color: var(--el-color-primary);
-  font-weight: var(--weight-semibold);
-  font-size: var(--font-sm);
-  line-height: 1.5;
-  text-align: center;
-  box-sizing: border-box;
-}
-
-.guide-desc {
+/* 说明为长句（其他设置页是短提示）：字号升一档 + 正文色 + 行高放宽 */
+.guide-tab .setting-desc {
   font-size: var(--font-sm);
   line-height: 1.7;
   color: var(--el-text-color-regular);
-}
-
-/* 桌面：操作标签与说明左右并排，标签定宽对齐 */
-@media (width >= 769px) {
-  .guide-row {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: var(--space-md);
-  }
-
-  .guide-action {
-    flex-shrink: 0;
-    min-width: 130px;
-    max-width: 230px;
-  }
 }
 </style>
