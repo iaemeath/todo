@@ -53,8 +53,8 @@
         </button>
       </div>
       <div class="calendar-toolbar__side calendar-toolbar__side--right">
-        <!-- 月视图 toggle：激活时选择器切换为月选择器 -->
-        <button class="month-toggle" :class="{ active: pickerMode === 'month' }" @click="toggleMonthMode" title="月视图">
+        <!-- 月视图 toggle：激活时选择器切换为月选择器（显示与否在「设置-视觉与外观」控制，移动端默认隐藏） -->
+        <button v-if="settings.showMonthButton" class="month-toggle" :class="{ active: pickerMode === 'month' }" @click="toggleMonthMode" title="月视图">
           月
         </button>
         <!-- 全屏 toggle：CSS 伪全屏（fixed 铺满），ESC 退出 -->
@@ -371,7 +371,10 @@ const selectedMonth = ref<Date>(new Date())
 // 当前 FC 视图类型（datesSet 同步）：timeGridDay 单日翻日 / 其余按区间整段平移
 const curViewType = ref('')
 
-const MAX_RANGE_DAYS = 14 // 区间选择上限
+/* 区间选择上限（天）：两端独立设置（设置页可调） */
+const maxRangeDays = computed(() =>
+  isMobile.value ? settings.value.mobileMaxRangeDays : settings.value.webMaxRangeDays
+)
 
 // 移动端多日区间视图恢复列头（单日视图列头冗余仍隐藏）
 const showColHeader = computed(() =>
@@ -409,9 +412,9 @@ const handleDatesSet = (info: DatesSetArg) => {
 const applyCustomRange = (range: [Date, Date]) => {
   const start = dayjs(range[0]).startOf('day')
   let end = dayjs(range[1]).startOf('day')
-  if (end.diff(start, 'day') + 1 > MAX_RANGE_DAYS) {
-    end = start.add(MAX_RANGE_DAYS - 1, 'day')
-    ElMessage.warning(`最多选择 ${MAX_RANGE_DAYS} 天，已自动截断`)
+  if (end.diff(start, 'day') + 1 > maxRangeDays.value) {
+    end = start.add(maxRangeDays.value - 1, 'day')
+    ElMessage.warning(`最多选择 ${maxRangeDays.value} 天，已自动截断`)
   }
   customRange = { start: start.toDate(), end: end.add(1, 'day').toDate() } // FC end 排他
   // 单日区间直接用日视图（移动端列头隐藏/翻日语义与旧单日选择器一致；桌面仅少一列冗余列头）
@@ -627,18 +630,16 @@ html.platform-mobile .calendar-wrapper {
   gap: var(--space-xs);
 }
 
-/* ‹ › 与「月」按钮：移动优先默认隐藏（移动端翻时段由左右滑动手势承担、月模式为桌面专属），
-   桌面恢复显示。全屏按钮两端常驻。
+/* ‹ › 按钮：移动优先默认隐藏（移动端翻时段由左右滑动手势承担），桌面恢复显示。
+   「月」按钮不再由 CSS 控制——显示与否走 settings.showMonthButton（v-if）。
    .calendar-toolbar 祖先提权：全局 button:not(.el-button)（theme.css）特异性更高，
    单类 .period-nav 会被其 display:flex 压过导致隐藏失效 */
-.calendar-toolbar .period-nav,
-.calendar-toolbar .month-toggle {
+.calendar-toolbar .period-nav {
   display: none;
 }
 
 @media (width >= 769px) {
-  .calendar-toolbar .period-nav,
-  .calendar-toolbar .month-toggle {
+  .calendar-toolbar .period-nav {
     display: inline-flex;
   }
 }
@@ -714,10 +715,6 @@ html.platform-mobile .calendar-wrapper {
 /* 移动端：屏窄，胶囊左右内边距收紧一档（12→8），日期文字多留空间 */
 html.platform-mobile .calendar-title-picker.el-range-editor {
   padding: var(--space-xs) var(--space-sm);
-
-  /* 日期文字收紧：input 默认 flex:1 平分剩余空间（文字各自居中，与分隔符拉开大缝），
-     改为按内容收缩 + 整组居中，两段日期紧贴分隔符 */
-  justify-content: center;
 }
 
 /* 日期文本：大号加粗居中 */
@@ -746,19 +743,6 @@ html.platform-mobile .calendar-title-picker.el-range-editor {
 .calendar-title-picker .el-range-separator {
   color: var(--el-color-primary);
   font-weight: var(--weight-bold);
-}
-
-/* 移动端日期文字收紧（置于上述基础规则之后，特异性降序 lint 要求）：
-   input 默认 flex:1 平分剩余空间，文字各自居中与分隔符拉开大缝；
-   改按内容收缩，配合编辑器 justify-content:center 两段日期紧贴分隔符。
-   分隔符自带 padding 0 5px 同步收紧为 0 2px */
-html.platform-mobile .calendar-title-picker .el-range-input {
-  flex: none;
-  width: auto;
-}
-
-html.platform-mobile .calendar-title-picker .el-range-separator {
-  padding: 0 2px;
 }
 
 /* 桌面月模式选择器，type=month 的 el-input 结构。

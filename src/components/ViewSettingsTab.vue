@@ -118,5 +118,44 @@ const onEndHourChange = (v: number | undefined) => {
         <el-slider v-model="form.nowIndicatorHeight" :min="1" :max="6" :step="0.5" class="control-width" />
       </el-form-item>
     </el-card>
+    <!-- 时间区间选择 -->
+    <el-card shadow="never" class="setting-card">
+      <template #header><span class="card-title">时间区间选择</span></template>
+      <el-form-item label="网页端区间上限（天）">
+        <el-input-number v-model="form.webMaxRangeDays" :min="1" :max="31" controls-position="right" />
+      </el-form-item>
+      <el-form-item label="移动端区间上限（天）">
+        <el-input-number v-model="form.mobileMaxRangeDays" :min="1" :max="31" controls-position="right" />
+      </el-form-item>
+      <span class="setting-desc">中央时间选择器可选的最大天数，超限自动截断</span>
+    </el-card>
+
+    <!-- 界面元素 -->
+    <el-card shadow="never" class="setting-card">
+      <template #header><span class="card-title">界面元素</span></template>
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-name">「月」视图按钮</span>
+          <span class="setting-desc">日历工具条右侧的月视图切换按钮（手机端默认隐藏）</span>
+        </div>
+        <el-switch v-model="form.showMonthButton" />
+      </div>
+      <el-divider />
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-name">任务管理入口</span>
+          <span class="setting-desc">顶部导航中的任务管理页入口（手机端默认隐藏）</span>
+        </div>
+        <el-switch v-model="form.showTaskManage" />
+      </div>
+      <el-divider />
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-name">日程管理入口</span>
+          <span class="setting-desc">顶部导航中的日程管理页入口（手机端默认隐藏）</span>
+        </div>
+        <el-switch v-model="form.showScheduleManage" />
+      </div>
+    </el-card>
   </el-form>
 </template>

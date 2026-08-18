@@ -23,6 +23,16 @@ export interface Settings {
   primaryColor: string
   nowIndicatorColor: string
   nowIndicatorHeight: number
+  /** 时间区间选择上限（天）：桌面端 */
+  webMaxRangeDays: number
+  /** 时间区间选择上限（天）：移动端 */
+  mobileMaxRangeDays: number
+  /** 工具条「月」视图按钮是否显示 */
+  showMonthButton: boolean
+  /** 任务管理入口是否显示 */
+  showTaskManage: boolean
+  /** 日程管理入口是否显示 */
+  showScheduleManage: boolean
 }
 
 export const defaultSettings: Settings = {
@@ -43,18 +53,34 @@ export const defaultSettings: Settings = {
   endHour: 24,
   primaryColor: '#758af0',
   nowIndicatorColor: 'rgba(239, 68, 68, 0.8)',
-  nowIndicatorHeight: 2
+  nowIndicatorHeight: 2,
+  webMaxRangeDays: 14,
+  mobileMaxRangeDays: 7,
+  showMonthButton: true,
+  showTaskManage: true,
+  showScheduleManage: true
 }
 
 /**
- * 移动端首次安装的外观默认值：紧凑行高 + 极简网格。
+ * 移动端首次安装的外观默认值：紧凑行高 + 极简网格 + 隐藏次要入口。
  * 仅在无任何已存储设置时生效；用户保存过设置后以存储值为准。
  */
 const mobileAppearanceDefaults: Partial<Settings> = {
   slotHeight: 30,
   majorLineWidth: 1,
   majorLineOpacity: 0.25,
-  showMinorLines: false
+  showMinorLines: false,
+  // 手机屏小：月按钮与任务/日程入口默认隐藏，需要时到「设置-视觉与外观」打开
+  showMonthButton: false,
+  showTaskManage: false,
+  showScheduleManage: false
+}
+
+// 老数据迁移用：可见性开关的移动端默认（load 中按设备取值）
+const mobileVisibilityDefaults: Pick<Settings, 'showMonthButton' | 'showTaskManage' | 'showScheduleManage'> = {
+  showMonthButton: false,
+  showTaskManage: false,
+  showScheduleManage: false
 }
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -66,7 +92,15 @@ export const useSettingsStore = defineStore('settings', () => {
     const stored = localStorage.getItem(LOCAL_STORAGE_SETTINGS)
     if (stored) {
       try {
-        settings.value = { ...defaultSettings, ...JSON.parse(stored) }
+        const storedObj = JSON.parse(stored)
+        // 可见性开关为后加字段：老数据未存过时按「当前设备」取默认
+        // （移动端隐藏三入口），而非 defaultSettings 的桌面默认
+        for (const key of ['showMonthButton', 'showTaskManage', 'showScheduleManage'] as const) {
+          if (storedObj[key] === undefined) {
+            storedObj[key] = useUIStore().isMobile ? mobileVisibilityDefaults[key] : true
+          }
+        }
+        settings.value = { ...defaultSettings, ...storedObj }
       } catch (e) {
         console.error('Failed to parse settings', e)
       }

@@ -28,13 +28,13 @@
       </button>
     </nav>
 
-    <!-- 移动端：主页时显示 任务/日程/设置 三图标 -->
+    <!-- 移动端：主页时显示 任务/日程/设置 图标（任务/日程可在设置中隐藏） -->
     <div class="nav-actions">
       <template v-if="isMobile && currentView === 'home'">
-        <button class="nav-tab icon-only" @click="switchView('task')" title="任务管理">
+        <button v-if="showTaskManage" class="nav-tab icon-only" @click="switchView('task')" title="任务管理">
           <el-icon><List /></el-icon>
         </button>
-        <button class="nav-tab icon-only" @click="switchView('schedule')" title="日程管理">
+        <button v-if="showScheduleManage" class="nav-tab icon-only" @click="switchView('schedule')" title="日程管理">
           <el-icon><Clock /></el-icon>
         </button>
         <button class="nav-tab icon-only" @click="switchView('settings')" title="设置">
@@ -49,18 +49,23 @@
 import { computed } from 'vue'
 import { Calendar, List, Clock, Setting, ArrowLeft } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
-import { useUIStore, type AppView } from '../stores'
+import { useUIStore, useSettingsStore, type AppView } from '../stores'
 
 const uiStore = useUIStore()
 const { currentView, isMobile, settingsSection } = storeToRefs(uiStore) // state → storeToRefs
 const { switchView } = uiStore // action 直接解构
+const { settings } = storeToRefs(useSettingsStore())
 
-// 桌面端导航项（主页由 logo 充当，故只列 任务/日程/设置）
-const navItems: { key: AppView; label: string; icon: any }[] = [
-  { key: 'task', label: '任务管理', icon: List },
-  { key: 'schedule', label: '日程管理', icon: Clock },
-  { key: 'settings', label: '设置', icon: Setting }
-]
+// 任务/日程入口可见性（设置中可关；移动端默认隐藏）
+const showTaskManage = computed(() => settings.value.showTaskManage)
+const showScheduleManage = computed(() => settings.value.showScheduleManage)
+
+// 桌面端导航项（主页由 logo 充当，故只列 任务/日程/设置；任务/日程按设置过滤）
+const navItems = computed<{ key: AppView; label: string; icon: any }[]>(() => [
+  { key: 'task', label: '任务管理', icon: List, visible: showTaskManage.value },
+  { key: 'schedule', label: '日程管理', icon: Clock, visible: showScheduleManage.value },
+  { key: 'settings', label: '设置', icon: Setting, visible: true }
+].filter(i => i.visible))
 
 // toggle 导航：再点一次当前页 → 回主页
 const toggleView = (view: AppView) => {
