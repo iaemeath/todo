@@ -210,8 +210,12 @@ onUnmounted(() => {
   }
 }
 
+/* 头部带与 FC 工具条完全对齐：顶部偏移跟随日历面板内边距（工具条在 wrapper padding 之内），
+   高度一致（44），顶/底边齐平 */
 .sidebar-header {
-  padding: var(--space-lg);
+  margin-top: var(--space-md);
+  min-height: 44px;
+  padding: 0 var(--space-lg);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -219,15 +223,23 @@ onUnmounted(() => {
   background: var(--el-fill-color-light);
 }
 
+/* 短屏跟 FC 工具条同步收紧（断点对齐 CalendarArea，wrapper padding 同步 sm） */
+@media (height <= 820px) {
+  .sidebar-header {
+    margin-top: var(--space-sm);
+    min-height: 36px;
+  }
+}
+
 .sidebar-header h2 {
   font-size: var(--font-md);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-semibold);
   margin: 0;
   color: var(--text-primary);
 }
 
 .add-todo-form {
-  padding: var(--space-lg);
+  padding: var(--space-sm);
   display: flex;
   gap: var(--space-sm);
   border-bottom: 1px solid var(--border-glass-subtle);
@@ -236,12 +248,12 @@ onUnmounted(() => {
 .glass-input {
   width: 70%;
   flex: 1;
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-xs) var(--space-sm);
   border-radius: var(--radius-md);
   border: 1px solid var(--el-border-color);
   background: var(--el-bg-color-page);
   color: var(--el-text-color-primary);
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   outline: none;
   transition: all var(--duration-fast);
 }
@@ -273,10 +285,10 @@ onUnmounted(() => {
 .todo-list {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-lg);
+  padding: var(--space-md);
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-sm);
 }
 
 /* Custom scrollbar for todo list */
@@ -296,18 +308,18 @@ onUnmounted(() => {
 .empty-state {
   text-align: center;
   color: var(--text-muted);
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   margin-top: var(--space-xl);
 }
 
 .todo-item {
   display: flex;
   align-items: center;
-  padding: var(--space-md);
-  border-radius: var(--radius-lg);
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
   background: var(--bg-card);
   border: 1px solid var(--border-glass);
-  gap: var(--space-md);
+  gap: var(--space-sm);
   cursor: grab;
   transition: all var(--duration-fast) ease;
 }
@@ -337,9 +349,9 @@ onUnmounted(() => {
 }
 
 .todo-title {
-  font-size: var(--font-base);
-  font-weight: var(--weight-semibold);
-  color: var(--text-primary);
+  font-size: var(--font-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
   display: block;
   white-space: nowrap;
   overflow: hidden;
