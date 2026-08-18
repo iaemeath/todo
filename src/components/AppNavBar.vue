@@ -1,10 +1,10 @@
 <template>
   <header class="app-navbar">
-    <!-- 左侧：移动端非主页显示「‹ 标题」返回按钮；否则 logo（点击回主页） -->
+    <!-- 左侧：移动端非主页显示「‹ 标题」返回按钮（逐级返回）；否则 logo（点击回主页） -->
     <button
       v-if="isMobile && currentView !== 'home'"
       class="nav-back"
-      @click="switchView('home')"
+      @click="handleBack"
     >
       <el-icon><ArrowLeft /></el-icon>
       <span>{{ navTitle }}</span>
@@ -53,8 +53,17 @@ import { useUIStore, useSettingsStore, type AppView } from '../stores'
 
 const uiStore = useUIStore()
 const { currentView, isMobile, settingsSection } = storeToRefs(uiStore) // state → storeToRefs
-const { switchView } = uiStore // action 直接解构
+const { switchView, setSettingsSection } = uiStore // action 直接解构
 const { settings } = storeToRefs(useSettingsStore())
+
+// 移动端逐级返回：设置内页 → 设置列表 → 主页（任务/日程为单级，直接回主页）
+const handleBack = () => {
+  if (currentView.value === 'settings' && settingsSection.value !== 'list') {
+    setSettingsSection('list')
+  } else {
+    switchView('home')
+  }
+}
 
 // 桌面端导航项（主页由 logo 充当，故只列 任务/日程/设置；网页端三项常驻，
 // 设置中的开关只管移动端显隐）
