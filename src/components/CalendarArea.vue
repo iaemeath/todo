@@ -1,6 +1,7 @@
 <template>
   <div
     class="calendar-wrapper glass-panel"
+    :class="{ 'is-fullscreen': calendarFullscreen }"
     :style="{
       '--slot-height': settings.slotHeight + 'px',
       '--major-line-width': settings.majorLineWidth + 'px',
@@ -63,6 +64,15 @@
         <!-- 月视图 toggle：激活时选择器切换为月选择器 -->
         <button class="month-toggle" :class="{ active: pickerMode === 'month' }" @click="toggleMonthMode" title="月视图">
           月
+        </button>
+        <!-- 全屏 toggle：CSS 伪全屏（fixed 铺满），ESC 退出 -->
+        <button
+          class="fullscreen-toggle"
+          :title="calendarFullscreen ? '退出全屏 (Esc)' : '全屏 (Esc)'"
+          @click="toggleCalendarFullscreen"
+        >
+          <Minimize2 v-if="calendarFullscreen" :size="20" />
+          <Maximize2 v-else :size="20" />
         </button>
         <!-- 待办栏收起后：web 展开侧栏 / 移动打开浮层 -->
         <button
@@ -138,7 +148,7 @@ import type { CalendarOptions, DateSelectArg, DatesSetArg, DayHeaderContentArg, 
 type EventReceiveArg = Parameters<NonNullable<CalendarOptions['eventReceive']>>[0]
 import { storeToRefs } from 'pinia'
 import { useTaskStore, useSettingsStore, useThemeStore, useUIStore } from '../stores'
-import { PanelRight, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { PanelRight, ChevronLeft, ChevronRight, Maximize2, Minimize2 } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import { colorOptions, colorScheme } from '../constants/colors'
 
@@ -148,8 +158,8 @@ const { updateSchedule, addScheduleFromTask, addSchedule, deleteSchedule } = tas
 const { settings } = storeToRefs(useSettingsStore())
 const { isDark } = storeToRefs(useThemeStore())
 const uiStore = useUIStore()
-const { isMobile, todoVisible } = storeToRefs(uiStore) // state
-const { setTodoVisible } = uiStore // action
+const { isMobile, todoVisible, calendarFullscreen } = storeToRefs(uiStore) // state
+const { setTodoVisible, toggleCalendarFullscreen } = uiStore // action
 
 const fullCalendar = ref<InstanceType<typeof FullCalendar> | null>(null)
 let resizeObserver: ResizeObserver | null = null
@@ -197,6 +207,8 @@ onMounted(() => {
     wrapperEl.addEventListener('touchstart', onTouchStart, { passive: true })
     wrapperEl.addEventListener('touchend', onTouchEnd, { passive: true })
   }
+  // 全屏时 ESC 退出（document 级监听，随组件生命周期增删）
+  document.addEventListener('keydown', onKeydown)
 })
 
 onBeforeUnmount(() => {
@@ -205,7 +217,13 @@ onBeforeUnmount(() => {
   }
   wrapperEl?.removeEventListener('touchstart', onTouchStart)
   wrapperEl?.removeEventListener('touchend', onTouchEnd)
+  document.removeEventListener('keydown', onKeydown)
 })
+
+// ---- 全屏：ESC 退出 ----
+const onKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && calendarFullscreen.value) toggleCalendarFullscreen()
+}
 
 // Convert our schedules to FullCalendar event format
 const calendarEvents = computed(() => {
@@ -598,6 +616,26 @@ watch(isMobile, (m) => {
   color: var(--color-primary);
 }
 
+/* 全屏 toggle（月按钮右侧，样式同 period-nav 一族的图标按钮） */
+.fullscreen-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--el-text-color-regular);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.fullscreen-toggle:hover {
+  background: var(--el-fill-color-light);
+  color: var(--el-color-primary);
+}
+
 .month-toggle.active {
   background: var(--color-primary);
   border-color: var(--color-primary);
@@ -699,14 +737,40 @@ watch(isMobile, (m) => {
    加 .calendar-toolbar 祖先提权：全局 button:not(.el-button)（theme.css）特异性更高，
    单类 .period-nav 会被其 display:flex 压过导致隐藏失效 */
 .calendar-toolbar .period-nav,
-.calendar-toolbar .month-toggle {
+.calendar-toolbar .month-toggle,
+.calendar-toolbar .fullscreen-toggle {
   display: none;
 }
 
 @media (width >= 769px) {
   .calendar-toolbar .period-nav,
-  .calendar-toolbar .month-toggle {
+  .calendar-toolbar .month-toggle,
+  .calendar-toolbar .fullscreen-toggle {
     display: inline-flex;
+  }
+}
+
+/* 全屏态：CSS 伪全屏（fixed 铺满视口）。
+   z-index 999 的分层依据：低于 EP 弹窗/消息（~2000+，保证全屏中日程弹窗可见），
+   高于普通内容与导航；语音球（--z-overlay 10000）仍浮于其上，全屏中语音排期可用。
+   刻意不用原生 Fullscreen API：其 top-layer 会挡住挂在 body 上的 el-dialog。 */
+.calendar-wrapper.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* 短屏自动紧凑（平板横屏 / 老笔记本）：压缩纵向固定开销，无需用户操作 */
+@media (height <= 820px) {
+  .calendar-toolbar {
+    min-height: 36px;
+  }
+
+  .calendar-wrapper {
+    padding: var(--space-sm);
   }
 }
 

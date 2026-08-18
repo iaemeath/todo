@@ -93,6 +93,13 @@ const navTitle = computed(() => {
   flex-shrink: 0;
 }
 
+/* 短屏自动紧凑（平板横屏 / 老笔记本，与 CalendarArea 的 max-height 断点对齐） */
+@media (height <= 820px) {
+  .app-navbar {
+    height: 44px;
+  }
+}
+
 .nav-logo {
   display: flex;
   align-items: center;

@@ -33,6 +33,13 @@ export const useUIStore = defineStore('ui', () => {
   // 移动端拖拽中视觉隐藏状态（DOM 保留供 FC 继续拖拽）
   const mobileTodoDragging = ref(false)
 
+  // 日历 CSS 伪全屏（不持久化：刷新即退出，符合直觉）
+  const calendarFullscreen = ref(false)
+
+  const toggleCalendarFullscreen = () => {
+    calendarFullscreen.value = !calendarFullscreen.value
+  }
+
   const setTodoVisible = (v: boolean) => {
     todoVisible.value = v
     if (!v) mobileTodoDragging.value = false // 关闭时复位拖拽透明态
@@ -85,6 +92,8 @@ export const useUIStore = defineStore('ui', () => {
     todoVisible,
     setTodoVisible,
     mobileTodoDragging,
-    setMobileTodoDragging
+    setMobileTodoDragging,
+    calendarFullscreen,
+    toggleCalendarFullscreen
   }
 })
