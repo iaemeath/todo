@@ -2,7 +2,7 @@
   <aside class="todo-sidebar glass-panel">
 
       <div class="sidebar-header">
-        <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: var(--space-sm);">
           <h2>待办</h2>
         </div>
         <button class="btn-collapse" @click="closeSidebar" title="收起待办栏">
@@ -290,7 +290,7 @@ onUnmounted(() => {
 
 .todo-list::-webkit-scrollbar-thumb {
   background: var(--border-glass-subtle);
-  border-radius: 4px;
+  border-radius: 4px; /* stylelint-disable-line declaration-property-value-disallowed-list -- 滚动条微调特例 */
 }
 
 .empty-state {

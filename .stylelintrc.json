@@ -18,7 +18,12 @@
     "custom-property-pattern": null,
     "selector-pseudo-class-no-unknown": [true, { "ignorePseudoClasses": ["deep", "global", "slotted"] }],
     "function-no-unknown": [true, { "ignoreFunctions": ["theme"] }],
-    "import-notation": null
+    "import-notation": null,
+    "declaration-property-value-disallowed-list": {
+      "/^padding/": ["/^\\d+px$/", "/^\\d+\\.\\d+rem$/"],
+      "gap": ["/^\\d+px$/"],
+      "/^border-radius/": ["/^(?!9999px)\\d+px$/"]
+    }
   },
   "ignoreFiles": ["node_modules/**", "dist/**", "deploy/**"]
 }

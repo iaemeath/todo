@@ -129,7 +129,7 @@ body {
 .glass-panel {
   background: var(--el-bg-color);
   border: 1px solid var(--el-border-color-light);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--el-box-shadow-light);
   transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
@@ -137,7 +137,7 @@ body {
 .glass-card {
   background: var(--el-bg-color-page);
   border: 1px solid var(--el-border-color-lighter);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   box-shadow: 0 1px 4px 0 var(--shadow-color);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -168,13 +168,13 @@ button:not(.el-button) {
   cursor: pointer;
   border: none;
   outline: none;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   font-weight: 600;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-sm);
 }
 
 button:not(.el-button):active {

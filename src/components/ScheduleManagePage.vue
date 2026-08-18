@@ -280,7 +280,7 @@ const confirmFromTodo = () => {
 /* 操作列按钮：inline-flex 防换行 + 收紧间距（覆盖 EP 默认 12px margin） */
 .row-actions {
   display: inline-flex;
-  gap: 2px;
+  gap: 2px; /* stylelint-disable-line declaration-property-value-disallowed-list -- 对抗 EP 默认间距的收紧特例 */
 }
 
 .row-actions :deep(.el-button + .el-button) {

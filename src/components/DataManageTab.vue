@@ -110,13 +110,13 @@ const handleFileChange = async (e: Event) => {
 .data-manage {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-lg);
 }
 
 .data-empty-hint {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-xs);
   font-size: 0.78rem;
   color: var(--el-text-color-secondary);
 }

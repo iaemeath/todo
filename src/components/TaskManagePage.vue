@@ -366,7 +366,7 @@ const confirmSchedule = () => {
 /* 操作列按钮：inline-flex 防换行 + 收紧间距（覆盖 EP 默认 12px margin） */
 .row-actions {
   display: inline-flex;
-  gap: 2px;
+  gap: 2px; /* stylelint-disable-line declaration-property-value-disallowed-list -- 对抗 EP 默认间距的收紧特例 */
 }
 
 .row-actions :deep(.el-button + .el-button) {
@@ -376,14 +376,14 @@ const confirmSchedule = () => {
 /* 图标按钮：移动优先基础态（横向收紧、热区由 min-* 保证），桌面放宽水平内边距 */
 .row-actions :deep(.el-button) {
   padding-left: 0;
-  padding-right: 2px;
+  padding-right: 2px; /* stylelint-disable-line declaration-property-value-disallowed-list -- 对抗 EP 默认内边距的收紧特例 */
   min-width: 28px;
   min-height: var(--touch-target);
 }
 
 @media (width >= 769px) {
   .row-actions :deep(.el-button) {
-    padding-right: 6px;
+    padding-right: var(--space-xs);
   }
 }
 
@@ -398,7 +398,7 @@ const confirmSchedule = () => {
 .view-tabs {
   position: relative;
   display: inline-flex;
-  padding: 3px;
+  padding: 3px; /* stylelint-disable-line declaration-property-value-disallowed-list -- 胶囊指示器几何偏移特例 */
   background: var(--el-fill-color-light);
   border: 1px solid var(--border-glass);
   border-radius: 9999px;
@@ -437,7 +437,7 @@ const confirmSchedule = () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-xs);
   white-space: nowrap;
   transition: color 0.25s ease;
 }

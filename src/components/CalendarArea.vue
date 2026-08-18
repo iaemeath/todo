@@ -514,7 +514,7 @@ watch(isMobile, (m) => {
   flex: 1;
   width: 100%;
   height: 100%;
-  padding: 16px;
+  padding: var(--space-lg);
   box-sizing: border-box;
   overflow: hidden;
   position: relative;
@@ -714,7 +714,7 @@ watch(isMobile, (m) => {
 .calendar-wrapper .reopen-todo-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-xs);
   padding: var(--space-sm) var(--space-xs);
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-md);
@@ -786,7 +786,7 @@ html.platform-mobile .fc .fc-col-header {
 
 .fc-scroller::-webkit-scrollbar-thumb {
   background: var(--border-glass-subtle);
-  border-radius: 4px;
+  border-radius: 4px; /* stylelint-disable-line declaration-property-value-disallowed-list -- FC 深度覆盖战争区 */
 }
 
 .fc-scroller::-webkit-scrollbar-thumb:hover {
@@ -825,7 +825,7 @@ html.platform-mobile .fc .fc-col-header {
   transform: translateY(-50%);  /* 让文字中心对准刻度线 */
   background: var(--el-bg-color);
   padding: 0 4px;
-  border-radius: 3px;
+  border-radius: 3px; /* stylelint-disable-line declaration-property-value-disallowed-list -- FC 深度覆盖战争区 */
   z-index: 2;
   white-space: nowrap;
 }
@@ -842,7 +842,7 @@ html.platform-mobile .fc .fc-col-header {
 /* Event Styles */
 .fc-timegrid-event, .fc-daygrid-event {
   border-width: 1.5px !important;
-  border-radius: 8px !important;
+  border-radius: var(--radius-md) !important;
   box-shadow: 0 4px 12px rgb(0 0 0 / 5%);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }

@@ -189,7 +189,7 @@ const { settings: form } = storeToRefs(settingsStore)
 .setting-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 2px; /* stylelint-disable-line declaration-property-value-disallowed-list -- 亚刻度微间距特例 */
 }
 
 .setting-name {
@@ -262,7 +262,7 @@ const { settings: form } = storeToRefs(settingsStore)
 .model-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-xs);
 }
 
 .model-name {
@@ -287,7 +287,7 @@ const { settings: form } = storeToRefs(settingsStore)
   width: 180px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 2px; /* stylelint-disable-line declaration-property-value-disallowed-list -- 亚刻度微间距特例 */
 }
 
 .progress-text {
@@ -352,7 +352,7 @@ const { settings: form } = storeToRefs(settingsStore)
 .detail-block {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-xs);
 }
 
 .detail-title {

@@ -148,7 +148,7 @@ const navTitle = computed(() => {
 .nav-tab {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-xs);
   padding: var(--space-sm) var(--space-lg);
   border: none;
   border-radius: var(--radius-md);
