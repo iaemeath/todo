@@ -89,7 +89,7 @@
           @click="setTodoVisible(true)"
           title="打开待办"
         >
-          <PanelRight :size="24" />
+          <PanelRight :size="20" />
         </button>
       </div>
     </div>
@@ -765,10 +765,11 @@ html.platform-mobile .calendar-wrapper {
 /* 待办栏收起后的展开按钮已并入上方工具条统一形态组（.calendar-toolbar .reopen-todo-btn） */
 
 /* 移动端：打开待办浮层的按钮（.calendar-wrapper 前缀提高特异性，
-   覆盖全局 button:not(.el-button) 的圆角/缩放，确保圆形） */
+   覆盖全局 button:not(.el-button) 的圆角/缩放，确保圆形）。
+   尺寸与待办头部关闭按钮（btn-collapse 移动端紧凑档）及工具条按钮族一致：32×32 */
 .calendar-wrapper .mobile-todo-fab {
-  width: var(--touch-target);
-  height: var(--touch-target);
+  width: 32px;
+  height: 32px;
   border: none;
   background: transparent;
   color: var(--color-primary);
@@ -852,7 +853,7 @@ html.platform-mobile .fc .fc-col-header {
   font-size: 0.75rem !important;
   position: absolute;
   top: 0;
-  left: 3px;               /* 贴左对齐（4-1：视觉微调左移 1px） */
+  left: 1px;
   transform: translateY(-50%);  /* 让文字中心对准刻度线 */
   background: var(--el-bg-color);
   padding: 0 4px;
