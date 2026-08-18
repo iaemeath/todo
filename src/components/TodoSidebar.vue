@@ -183,30 +183,35 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 移动优先：基础样式 = 移动浮层场景（占满浮层宽，高度由父容器约束）；
+   桌面专属的固定宽侧栏在 min-width 断点增强。
+   间距/字号/圆角/触控目标全部走 theme.css 令牌——移动端紧凑值由
+   html.platform-mobile 自动生效，本组件不再写平台媒体查询的数值覆盖。 */
 .todo-sidebar {
-  width: 340px;
+  width: 100%;
   background: var(--el-bg-color);
   border: 1px solid var(--el-border-color-light);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-shadow: var(--el-box-shadow-light);
   transition: width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
-  flex-shrink: 0;
+  flex: 1;
+  min-height: 0;
 }
 
-/* 移动端：占满宽度，由 App.vue 主页子 Tab 容器约束高度 */
-@media (width <= 768px) {
+/* 桌面：固定宽侧栏与主页日历并排（App.vue 的 :last-child 规则兜底 flex-shrink） */
+@media (width >= 769px) {
   .todo-sidebar {
-    width: 100%;
-    flex: 1;
-    min-height: 0;
+    width: 340px;
+    flex: none;
+    flex-shrink: 0;
   }
 }
 
 .sidebar-header {
-  padding: 16px 20px;
+  padding: var(--space-lg);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -215,28 +220,28 @@ onUnmounted(() => {
 }
 
 .sidebar-header h2 {
-  font-size: 1.1rem;
+  font-size: var(--font-md);
   font-weight: 700;
   margin: 0;
   color: var(--text-primary);
 }
 
 .add-todo-form {
-  padding: 16px;
+  padding: var(--space-lg);
   display: flex;
-  gap: 8px;
+  gap: var(--space-sm);
   border-bottom: 1px solid var(--border-glass-subtle);
 }
 
 .glass-input {
   width: 70%;
   flex: 1;
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
   border: 1px solid var(--el-border-color);
   background: var(--el-bg-color-page);
   color: var(--el-text-color-primary);
-  font-size: 0.9rem;
+  font-size: var(--font-base);
   outline: none;
   transition: all 0.2s;
 }
@@ -247,9 +252,9 @@ onUnmounted(() => {
 }
 
 .btn-add {
-  width: 38px;
-  height: 38px;
-  border-radius: 8px;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  border-radius: var(--radius-md);
   background: var(--color-primary);
   color: white;
   border: none;
@@ -268,10 +273,10 @@ onUnmounted(() => {
 .todo-list {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: var(--space-lg);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-md);
 }
 
 /* Custom scrollbar for todo list */
@@ -291,18 +296,18 @@ onUnmounted(() => {
 .empty-state {
   text-align: center;
   color: var(--text-muted);
-  font-size: 0.9rem;
-  margin-top: 32px;
+  font-size: var(--font-base);
+  margin-top: var(--space-xl);
 }
 
 .todo-item {
   display: flex;
   align-items: center;
-  padding: 12px;
-  border-radius: 12px;
+  padding: var(--space-md);
+  border-radius: var(--radius-lg);
   background: var(--bg-card);
   border: 1px solid var(--border-glass);
-  gap: 12px;
+  gap: var(--space-md);
   cursor: grab;
   transition: all 0.2s ease;
 }
@@ -332,7 +337,7 @@ onUnmounted(() => {
 }
 
 .todo-title {
-  font-size: 0.95rem;
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--text-primary);
   display: block;
@@ -341,13 +346,17 @@ onUnmounted(() => {
   text-overflow: ellipsis;
 }
 
-.btn-delete {
+/* 行内图标按钮：视觉紧凑但热区满足触控目标令牌（web 36 / 移动 44） */
+.btn-delete,
+.btn-collapse {
   background: transparent;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
+  padding: var(--space-xs);
+  min-width: var(--touch-target);
+  min-height: var(--touch-target);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -357,19 +366,6 @@ onUnmounted(() => {
 .btn-delete:hover {
   background: rgb(244 63 94 / 10%);
   color: var(--color-danger);
-}
-
-.btn-collapse {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
 }
 
 .btn-collapse:hover {
