@@ -98,13 +98,6 @@ html, body {
   box-sizing: border-box;
 }
 
-/* 短屏自动紧凑（平板横屏 / 老笔记本，断点与导航/工具条一致） */
-@media (height <= 820px) {
-  .content-area {
-    padding-block: var(--space-sm);
-  }
-}
-
 /* 主页：左右布局 */
 .home-view {
   display: flex;

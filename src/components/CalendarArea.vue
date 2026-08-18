@@ -763,17 +763,6 @@ watch(isMobile, (m) => {
   box-shadow: none;
 }
 
-/* 短屏自动紧凑（平板横屏 / 老笔记本）：压缩纵向固定开销，无需用户操作 */
-@media (height <= 820px) {
-  .calendar-toolbar {
-    min-height: 36px;
-  }
-
-  .calendar-wrapper {
-    padding: var(--space-sm);
-  }
-}
-
 /* 待办栏收起后，工具条右侧的展开入口 */
 .calendar-wrapper .reopen-todo-btn {
   display: inline-flex;

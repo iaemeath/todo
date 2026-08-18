@@ -210,10 +210,10 @@ onUnmounted(() => {
   }
 }
 
-/* 头部带与 FC 工具条完全对齐：顶部偏移跟随日历面板内边距（工具条在 wrapper padding 之内），
-   高度一致（44），顶/底边齐平 */
+/* 头部带与 FC 工具条对齐：border-top（同灰色）替代 margin-top——
+   偏移量跟随日历面板内边距（工具条在 wrapper padding 之内），且灰带从面板顶延伸不露白 */
 .sidebar-header {
-  margin-top: var(--space-md);
+  border-top: var(--space-md) solid var(--el-fill-color-light);
   min-height: 44px;
   padding: 0 var(--space-lg);
   display: flex;
@@ -221,14 +221,6 @@ onUnmounted(() => {
   justify-content: space-between;
   border-bottom: 1px solid var(--el-border-color-lighter);
   background: var(--el-fill-color-light);
-}
-
-/* 短屏跟 FC 工具条同步收紧（断点对齐 CalendarArea，wrapper padding 同步 sm） */
-@media (height <= 820px) {
-  .sidebar-header {
-    margin-top: var(--space-sm);
-    min-height: 36px;
-  }
 }
 
 .sidebar-header h2 {
