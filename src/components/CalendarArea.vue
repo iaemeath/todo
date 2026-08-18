@@ -712,6 +712,11 @@ html.platform-mobile .calendar-wrapper {
   box-shadow: var(--shadow-sm) !important;
 }
 
+/* 移动端：屏窄，胶囊左右内边距收紧一档（12→8），日期文字多留空间 */
+html.platform-mobile .calendar-title-picker.el-range-editor {
+  padding: var(--space-xs) var(--space-sm);
+}
+
 /* 日期文本：大号加粗居中 */
 .calendar-title-picker .el-range-input {
   background: transparent;
