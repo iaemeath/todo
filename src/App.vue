@@ -92,14 +92,14 @@ html, body {
 .content-area {
   flex: 1;
   overflow: hidden;
-  padding: 16px;
+  padding: var(--space-lg); /* 桌面 16 / 移动 12（令牌双值） */
   box-sizing: border-box;
 }
 
 /* 主页：左右布局 */
 .home-view {
   display: flex;
-  gap: 16px;
+  gap: var(--space-lg);
   height: 100%;
   overflow: hidden;
   position: relative; /* 为移动端待办浮层 absolute 定位 */
@@ -118,13 +118,14 @@ html, body {
   pointer-events: none;
 }
 
-/* 移动端待办浮层：占屏宽 60%，贴右、从右侧滑出覆盖日历右半 */
+/* 移动端待办浮层：占屏宽 72%，贴右、从右侧滑出覆盖日历右侧
+   （72% 为令牌化后的取舍：小屏多显 2 字标题，仍留 28% 日历可辨识） */
 .mobile-todo-overlay {
   position: absolute;
   top: 0;
   bottom: 0;
   right: 0;
-  width: 60%;
+  width: 72%;
   z-index: 20;
   background: var(--el-bg-color);
   display: flex;
@@ -162,12 +163,5 @@ html, body {
 /* 移动端：日历占满整屏 */
 .home-view--mobile {
   flex-direction: column;
-}
-
-/* 移动端：收紧内容区内边距 */
-@media (width <= 768px) {
-  .content-area {
-    padding: 12px;
-  }
 }
 </style>
