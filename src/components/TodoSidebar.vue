@@ -331,12 +331,13 @@ onUnmounted(() => {
   margin-top: var(--space-xl);
 }
 
-/* 卡片行高两套：移动端紧凑（4px 纵向内边距 + 4px 间距，配合 32px 按钮热区压低行高），
+/* 卡片行高两套：移动端紧凑（4px 纵向内边距 + 4px 间距，配合 32px 按钮热区压低行高；
+   左右内边距为 0——把手/删除按钮自身已居中留白，省下的宽度全给标题），
    桌面舒展（8px 内边距 + 36px 热区） */
 .todo-item {
   display: flex;
   align-items: center;
-  padding: var(--space-xs) var(--space-sm);
+  padding: var(--space-xs) 0;
   border-radius: var(--radius-md);
   background: var(--bg-card);
   border: 1px solid var(--border-glass);
