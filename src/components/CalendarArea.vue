@@ -713,28 +713,16 @@ html.platform-mobile .calendar-wrapper {
   box-shadow: var(--shadow-sm) !important;
 }
 
-/* 移动端紧凑档：
-   1) 左右内边距 8→4、分隔符 EP 默认 padding 0 5px→0，空隙合计压掉约 18px；
-   2) 宽度 250→230 同步收窄（内容可用区基本不减，纯省屏宽）；
-      month picker 共用 calendar-title-picker 类同宽，避免模式切换宽度跳动 */
+/* 移动端紧凑档：左右内边距 8→4、宽度 250→230 同步收窄（空隙压掉后内容可用区不减，
+   纯省屏宽）；month picker 共用 calendar-title-picker 类同宽，避免模式切换宽度跳动 */
 html.platform-mobile .calendar-wrapper .calendar-title-picker.el-date-editor {
   width: 230px;
+
   --el-date-editor-width: 230px;
 }
 
 html.platform-mobile .calendar-title-picker.el-range-editor {
   padding: var(--space-xs);
-}
-
-/* 分隔符 "–"：en-dash 字面自带留白，EP 默认 padding 0 5px 纯属多余 */
-html.platform-mobile .calendar-title-picker .el-range-separator {
-  padding: 0;
-}
-
-/* 两个日期框 EP 默认 39% 定宽；胶囊收窄 20px 后按 42% 回补，
-   保证最长 "12月31日"（1.08rem×5 字 ≈ 87px）不贴边截字 */
-html.platform-mobile .calendar-title-picker .el-range-input {
-  width: 42%;
 }
 
 /* 日期文本：大号加粗居中 */
@@ -745,6 +733,12 @@ html.platform-mobile .calendar-title-picker .el-range-input {
   color: var(--el-text-color-primary);
   cursor: pointer;
   text-align: center;
+}
+
+/* 两个日期框 EP 默认 39% 定宽；移动端胶囊收窄 20px 后按 42% 回补，
+   保证最长 "12月31日"（1.08rem×5 字 ≈ 87px）不贴边截字 */
+html.platform-mobile .calendar-title-picker .el-range-input {
+  width: 42%;
 }
 
 /* 清除按钮隐藏态仍占 14px、破坏胶囊内对称，隐藏；左侧日历图标保留（主题色点缀） */
@@ -763,6 +757,11 @@ html.platform-mobile .calendar-title-picker .el-range-input {
 .calendar-title-picker .el-range-separator {
   color: var(--el-color-primary);
   font-weight: var(--weight-bold);
+}
+
+/* 分隔符 "–"：en-dash 字面自带留白，移动端紧凑档去掉 EP 默认 padding 0 5px */
+html.platform-mobile .calendar-title-picker .el-range-separator {
+  padding: 0;
 }
 
 /* 桌面月模式选择器，type=month 的 el-input 结构。

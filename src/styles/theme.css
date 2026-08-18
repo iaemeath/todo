@@ -13,11 +13,9 @@
   --color-success: hsl(142deg 70% 45%);
   --color-success-alpha: rgb(34 197 94 / 15%);
   --color-warning: hsl(38deg 92% 50%);
-  --color-warning-alpha: rgb(245 158 11 / 15%);
   --color-danger: hsl(350deg 89% 60%);
   --color-danger-alpha: rgb(239 68 68 / 15%);
   --color-info: hsl(200deg 95% 48%);
-  --color-info-alpha: rgb(14 165 233 / 15%);
 
   /* Light Theme Variables */
   --border-glass: rgb(0 0 0 / 8%);
@@ -26,7 +24,6 @@
   --text-secondary: #64748b;
   --text-muted: #94a3b8;
   --shadow-color: rgb(31 38 135 / 8%);
-  --card-hover-bg: rgb(255 255 255 / 60%);
 
   /* Solid panel token */
   --bg-card: #f1f5f9;
@@ -34,12 +31,9 @@
   /* Monospace font */
   --font-mono: ui-monospace, 'Cascadia Code', consolas, monospace;
 
-  /* z-index layering system */
-  --z-base: 1;
-  --z-dropdown: 9500;
-  --z-nav: 9000;
+  /* z-index：全局浮层只有语音球一档用 token（VoiceAssistant）；
+     其余 z-index 均为组件内局部小值（1~999）直接写数值 */
   --z-overlay: 10000;
-  --z-modal: 10100;
 
   /* ===== Spacing scale（4px 刻度，组件禁止写裸 px 间距） ===== */
   --space-xs: 4px;   /* 图标与文字 */
@@ -48,12 +42,11 @@
   --space-lg: 16px;  /* 区块内边距 */
   --space-xl: 24px;  /* 区块间距 */
 
-  /* ===== Type scale（6 档，收编散落的 19 种字号） ===== */
+  /* ===== Type scale（5 档，收编散落的 19 种字号） ===== */
   --font-xs: 0.75rem;   /* 刻度 / 辅助角标 */
   --font-sm: 0.85rem;   /* 次要正文 / 按钮 */
   --font-base: 0.95rem; /* 正文 */
   --font-md: 1.1rem;    /* 卡片标题 */
-  --font-lg: 1.3rem;    /* 页面标题 */
 
   /* ===== Radius scale ===== */
   --radius-sm: 6px;
@@ -121,7 +114,6 @@ html.platform-mobile {
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
   --shadow-color: rgb(0 0 0 / 35%);
-  --card-hover-bg: rgb(255 255 255 / 4%);
 
   /* Solid panel token — dark */
   --bg-card: #010409;
