@@ -575,6 +575,10 @@ html.platform-mobile .calendar-wrapper {
 .mobile-range-panel .el-picker-panel__body,
 .mobile-range-panel .el-picker-panel__body-wrapper {
   width: auto;
+
+  /* EP 给范围面板 body 预留 min-width 513px（双月表格最小宽），
+     隐藏右面板后它就是右侧空白区的来源，必须显式清零 */
+  min-width: 0;
 }
 
 .mobile-range-panel .el-date-range-picker__content.is-left {
