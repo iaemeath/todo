@@ -210,11 +210,11 @@ onUnmounted(() => {
   }
 }
 
-/* 头部带与 FC 工具条对齐：border-top（同灰色）替代 margin-top——
-   偏移量跟随日历面板内边距（工具条在 wrapper padding 之内），且灰带从面板顶延伸不露白 */
+/* 头部带与 FC 工具条同构（CalendarArea .calendar-toolbar 同一 calc 定高）：
+   border-top（同灰色）偏移跟随日历面板内边距，灰带从面板顶延伸不露白 */
 .sidebar-header {
   border-top: var(--space-md) solid var(--el-fill-color-light);
-  min-height: 44px;
+  height: calc(44px + var(--space-md) + 1px); /* 桌面 57 / 移动 53，与工具条严格相等 */
   padding: 0 var(--space-lg);
   display: flex;
   align-items: center;

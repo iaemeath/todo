@@ -550,13 +550,19 @@ watch(isMobile, (m) => {
 
 /* ===== 顶部工具条（文档流三段式，替代已移除的 FC 工具栏）===== */
 
-/* 左右等宽占位 + 中央选择器，保证 picker 始终水平居中；右侧承载待办开关 */
+/* 左右等宽占位 + 中央选择器，保证 picker 始终水平居中；右侧承载待办开关。
+   与待办头部（TodoSidebar .sidebar-header）同构的灰带：负边距出血到面板顶/左右，
+   12px 灰顶边 + 44 内容 + 1px 底边——两带用同一 calc 定高（子元素不撑高），几何严格相等 */
 .calendar-toolbar {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  min-height: 44px;
-  margin-bottom: var(--space-xs); /* 工具条与网格间距 6→4，收紧纵深 */
+  height: calc(44px + var(--space-md) + 1px); /* 桌面 57 / 移动 53（顶边随令牌） */
+  margin: calc(var(--space-md) * -1) calc(var(--space-md) * -1) var(--space-xs); /* 上/左/右出血吃掉 wrapper 内边距 */
+  padding: 0 var(--space-md);
+  border-top: var(--space-md) solid var(--el-fill-color-light);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  background: var(--el-fill-color-light);
 }
 
 .calendar-toolbar__side {
@@ -594,7 +600,7 @@ watch(isMobile, (m) => {
 }
 
 .period-nav:hover {
-  background: var(--el-fill-color-light);
+  background: var(--el-fill-color); /* 工具条灰带上 hover 需更深一档可见 */
   color: var(--el-color-primary);
 }
 
@@ -632,7 +638,7 @@ watch(isMobile, (m) => {
 }
 
 .fullscreen-toggle:hover {
-  background: var(--el-fill-color-light);
+  background: var(--el-fill-color); /* 同 period-nav：灰带上 hover 加深一档 */
   color: var(--el-color-primary);
 }
 
@@ -657,9 +663,9 @@ watch(isMobile, (m) => {
   height: 40px;
 }
 
-/* 胶囊底：轻填充 + 全圆角，与 FC 按钮组的玻璃质感统一 */
+/* 胶囊底：白底浮于工具条灰带（原灰底会融进带子），与 FC 按钮组质感统一 */
 .calendar-title-picker.el-range-editor {
-  background: var(--el-fill-color-light);
+  background: var(--el-bg-color);
   box-shadow: none !important;
   border-radius: var(--radius-md);
   padding: var(--space-xs) var(--space-lg);
@@ -703,7 +709,7 @@ watch(isMobile, (m) => {
 
 .calendar-day-picker .el-input__wrapper,
 .calendar-month-picker .el-input__wrapper {
-  background: var(--el-fill-color-light);
+  background: var(--el-bg-color); /* 白底浮于工具条灰带（同 daterange 胶囊） */
   box-shadow: none !important;
   border-radius: var(--radius-md);
   padding: var(--space-xs) var(--space-sm);
@@ -715,7 +721,6 @@ watch(isMobile, (m) => {
 .calendar-day-picker .el-input__wrapper.is-active,
 .calendar-month-picker .el-input__wrapper:hover,
 .calendar-month-picker .el-input__wrapper.is-active {
-  background: var(--el-fill-color);
   box-shadow: var(--shadow-sm) !important;
 }
 
