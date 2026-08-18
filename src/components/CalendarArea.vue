@@ -713,9 +713,28 @@ html.platform-mobile .calendar-wrapper {
   box-shadow: var(--shadow-sm) !important;
 }
 
-/* 移动端：屏窄，胶囊左右内边距收紧一档（12→8），日期文字多留空间 */
+/* 移动端紧凑档：
+   1) 左右内边距 8→4、分隔符 EP 默认 padding 0 5px→0，空隙合计压掉约 18px；
+   2) 宽度 250→230 同步收窄（内容可用区基本不减，纯省屏宽）；
+      month picker 共用 calendar-title-picker 类同宽，避免模式切换宽度跳动 */
+html.platform-mobile .calendar-wrapper .calendar-title-picker.el-date-editor {
+  width: 230px;
+  --el-date-editor-width: 230px;
+}
+
 html.platform-mobile .calendar-title-picker.el-range-editor {
-  padding: var(--space-xs) var(--space-sm);
+  padding: var(--space-xs);
+}
+
+/* 分隔符 "–"：en-dash 字面自带留白，EP 默认 padding 0 5px 纯属多余 */
+html.platform-mobile .calendar-title-picker .el-range-separator {
+  padding: 0;
+}
+
+/* 两个日期框 EP 默认 39% 定宽；胶囊收窄 20px 后按 42% 回补，
+   保证最长 "12月31日"（1.08rem×5 字 ≈ 87px）不贴边截字 */
+html.platform-mobile .calendar-title-picker .el-range-input {
+  width: 42%;
 }
 
 /* 日期文本：大号加粗居中 */
