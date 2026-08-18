@@ -210,6 +210,12 @@ onUnmounted(() => {
   }
 }
 
+/* 移动端浮层贴屏幕右缘（App.vue 主页出血后）：右缘圆角/边框拉平为通栏，左缘保留圆角 */
+html.platform-mobile .todo-sidebar {
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  border-right: none;
+}
+
 /* 头部带与 FC 工具条同构（CalendarArea .calendar-toolbar 同一 calc 定高）：
    border-top（同灰色）从面板顶延伸不露白。padding-bottom 与工具条同步——
    抵消 12px 顶边 / 1px 底边不对称造成的整体偏下，使内容对齐整条灰带视觉中心 */

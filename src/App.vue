@@ -93,7 +93,8 @@ html, body {
   flex: 1;
   overflow: hidden;
 
-  /* 纵向 12 / 横向 16：导航栏与内容面板之间的间距收紧一档（面板自带边框阴影，间距可更紧凑） */
+  /* 纵向 12 / 横向 16：导航栏与内容面板之间的间距收紧一档（面板自带边框阴影，间距可更紧凑）。
+     移动端主页由 .home-view--mobile 负边距出血吃掉此内边距（任务/日程/设置页不受影响） */
   padding: var(--space-md) var(--space-lg);
   box-sizing: border-box;
 }
@@ -162,8 +163,13 @@ html, body {
   flex-shrink: 0;
 }
 
-/* 移动端：日历占满整屏 */
+/* 移动端主页全屏出血：手机空间宝贵，日历面板贴边铺满（等效 content-area 零内边距，
+   任务/日程/设置页不受影响）。height 需同步补上被吃掉的上下内边距——
+   负 margin-bottom 只影响后续兄弟，不改变自身底边，单靠负边距底部会残留缺口。
+   须置于 .home-view 基础规则之后：两者同为单类特异性，height 按源顺序取胜 */
 .home-view--mobile {
   flex-direction: column;
+  height: calc(100% + (var(--space-md) * 2));
+  margin: calc(var(--space-md) * -1) calc(var(--space-lg) * -1);
 }
 </style>

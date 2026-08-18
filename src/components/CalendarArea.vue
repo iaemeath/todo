@@ -543,6 +543,14 @@ watch(isMobile, (m) => {
   flex-direction: column;
 }
 
+/* 移动端全屏出血（App.vue .home-view--mobile 负边距）：面板贴屏幕边缘，
+   glass-panel 的圆角与侧边框会在屏幕边产生缺口/细线，拉平为通栏 */
+html.platform-mobile .calendar-wrapper {
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+}
+
 /* 新增日程弹窗颜色选项圆点 */
 .color-dot {
   display: inline-block;
