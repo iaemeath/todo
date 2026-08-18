@@ -197,11 +197,10 @@ onUnmounted(() => {
 }
 
 /* 移动端：占满宽度，由 App.vue 主页子 Tab 容器约束高度 */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .todo-sidebar {
     width: 100%;
     flex: 1;
-    flex-shrink: 1;
     min-height: 0;
   }
 }
@@ -279,9 +278,11 @@ onUnmounted(() => {
 .todo-list::-webkit-scrollbar {
   width: 6px;
 }
+
 .todo-list::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .todo-list::-webkit-scrollbar-thumb {
   background: var(--border-glass-subtle);
   border-radius: 4px;
@@ -309,7 +310,7 @@ onUnmounted(() => {
 .todo-item:hover {
   border-color: var(--color-primary-alpha);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 5%);
 }
 
 .todo-item:active {
@@ -325,6 +326,7 @@ onUnmounted(() => {
 .todo-content {
   flex: 1;
   overflow: hidden;
+
   /* 移动端：让 FullCalendar 接管触摸拖拽，阻止浏览器滚动抢占 touch 事件 */
   touch-action: none;
 }
@@ -353,7 +355,7 @@ onUnmounted(() => {
 }
 
 .btn-delete:hover {
-  background: rgba(244, 63, 94, 0.1);
+  background: rgb(244 63 94 / 10%);
   color: var(--color-danger);
 }
 

@@ -271,17 +271,18 @@ const confirmFromTodo = () => {
   overflow-y: auto;
 }
 
-/* 收紧表格行高（配合操作按钮 size="small"）*/
+/* 收紧表格行高（配合操作按钮 size="small"） */
 .manage-page :deep(.el-table .el-table__cell) {
   padding-top: 8px;
   padding-bottom: 8px;
 }
 
-/* 操作列按钮：inline-flex 防换行 + 收紧间距（覆盖 EP 默认 12px margin）*/
+/* 操作列按钮：inline-flex 防换行 + 收紧间距（覆盖 EP 默认 12px margin） */
 .row-actions {
   display: inline-flex;
   gap: 2px;
 }
+
 .row-actions :deep(.el-button + .el-button) {
   margin-left: 0;
 }

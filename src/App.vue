@@ -112,6 +112,7 @@ html, body {
   inset: 0;
   z-index: 19;
 }
+
 /* 拖拽待办到日历排期时穿透，避免拦截 FullCalendar 的拖放命中 */
 .mobile-todo-backdrop.dragging {
   pointer-events: none;
@@ -129,6 +130,7 @@ html, body {
   display: flex;
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
 }
+
 .mobile-todo-overlay.dragging {
   /* 拖拽中：透明隐藏（不用 translateX，避免拖拽源移位导致 FC 拖影丢失） */
   opacity: 0;
@@ -140,6 +142,7 @@ html, body {
 .overlay-slide-leave-active {
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
 }
+
 .overlay-slide-enter-from,
 .overlay-slide-leave-to {
   transform: translateX(100%);
@@ -162,7 +165,7 @@ html, body {
 }
 
 /* 移动端：收紧内容区内边距 */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .content-area {
     padding: 12px;
   }

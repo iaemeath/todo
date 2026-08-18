@@ -3,7 +3,7 @@
  *
  * Design tokens (colors, fonts, spacing) are defined ONCE in theme.css.
  * This file only holds element resets and component rules that don't fit in
- * a scoped <style> block. Legacy variable names (--accent, --text, --bg, ...)
+ * a scoped \3c style> block. Legacy variable names (--accent, --text, --bg, ...)
  * are aliased in theme.css for backwards compatibility.
  */
 
@@ -13,7 +13,7 @@
   color-scheme: light dark;
   color: var(--text-primary);
   font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  text-rendering: optimizelegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -52,7 +52,7 @@ p {
  * Breakpoint 768px matches useUI's MOBILE_BREAKPOINT. !important is needed to
  * override Element Plus's inline width on .el-message-box.
  */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .el-message-box {
     width: 92vw !important;
     max-width: 92vw;

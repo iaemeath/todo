@@ -357,27 +357,30 @@ const confirmSchedule = () => {
   overflow-y: auto;
 }
 
-/* 收紧表格行高（配合操作按钮 size="small"）*/
+/* 收紧表格行高（配合操作按钮 size="small"） */
 .manage-page :deep(.el-table .el-table__cell) {
   padding-top: 5px;
   padding-bottom: 5px;
 }
 
-/* 操作列按钮：inline-flex 防换行 + 收紧间距（覆盖 EP 默认 12px margin）*/
+/* 操作列按钮：inline-flex 防换行 + 收紧间距（覆盖 EP 默认 12px margin） */
 .row-actions {
   display: inline-flex;
   gap: 2px;
 }
+
 .row-actions :deep(.el-button + .el-button) {
   margin-left: 0;
 }
+
 /* 收紧 text small 按钮水平内边距 */
 .row-actions :deep(.el-button) {
   padding-left: 0;
   padding-right: 6px;
 }
+
 /* 移动端：纯图标按钮进一步收紧内边距 */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .row-actions :deep(.el-button) {
     padding-left: 0;
     padding-right: 2px;
@@ -400,6 +403,7 @@ const confirmSchedule = () => {
   border: 1px solid var(--border-glass);
   border-radius: 9999px;
 }
+
 .view-tab-indicator {
   position: absolute;
   top: 3px;
@@ -413,9 +417,11 @@ const confirmSchedule = () => {
   z-index: 0;
   pointer-events: none;
 }
+
 .view-tab-indicator.right {
   transform: translateX(100%);
 }
+
 .view-tab {
   position: relative;
   z-index: 1;
@@ -435,19 +441,22 @@ const confirmSchedule = () => {
   white-space: nowrap;
   transition: color 0.25s ease;
 }
+
 .view-tab:hover {
   color: var(--text-primary);
 }
+
 .view-tab.active {
   color: #fff;
 }
+
 /* 覆盖全局 button:not(.el-button) 的 :active 缩放，反馈交给滑动指示块 */
 .view-tab:active {
   transform: none;
 }
 
 /* 移动端：胶囊紧凑化（断点与 isMobile 768px 一致） */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .view-tab {
     min-width: 56px;
     padding: 4px 12px;

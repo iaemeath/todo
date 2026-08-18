@@ -95,10 +95,12 @@ const { settings: form } = storeToRefs(settingsStore)
   height: 100%;
   min-height: 0;
 }
+
 /* 桌面：左右布局（菜单 + 内容） */
 .settings-page:not(.is-mobile) {
   display: flex;
 }
+
 /* 移动端：纵向流 */
 .settings-page.is-mobile {
   display: flex;
@@ -124,6 +126,7 @@ const { settings: form } = storeToRefs(settingsStore)
   overflow-y: auto;
   min-width: 0;
 }
+
 .settings-page.is-mobile .settings-content {
   padding: 16px;
 }
@@ -133,6 +136,7 @@ const { settings: form } = storeToRefs(settingsStore)
   display: flex;
   flex-direction: column;
 }
+
 .mobile-item {
   display: flex;
   align-items: center;
@@ -144,9 +148,11 @@ const { settings: form } = storeToRefs(settingsStore)
   color: var(--el-text-color-primary);
   transition: background 0.2s;
 }
+
 .mobile-item:hover {
   background: var(--el-fill-color-light);
 }
+
 .mobile-item .arrow {
   margin-left: auto;
   color: var(--el-text-color-secondary);
@@ -306,7 +312,7 @@ const { settings: form } = storeToRefs(settingsStore)
 .pane-title {
   font-size: 1.1rem;
   font-weight: 700;
-  margin: 0 0 4px 0;
+  margin: 0 0 4px;
   color: var(--el-text-color-primary);
 }
 
@@ -364,7 +370,7 @@ const { settings: form } = storeToRefs(settingsStore)
   line-height: 1.6;
   color: var(--el-text-color-primary);
   white-space: pre-wrap;
-  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .json-view {

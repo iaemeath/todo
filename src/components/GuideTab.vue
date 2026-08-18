@@ -133,7 +133,7 @@ const mobileSections: GuideSection[] = [
 .guide-section-title {
   font-size: 0.95rem;
   font-weight: 700;
-  margin: 0 0 8px 0;
+  margin: 0 0 8px;
   color: var(--el-text-color-primary);
 }
 
@@ -173,16 +173,18 @@ const mobileSections: GuideSection[] = [
 }
 
 /* 窄屏：操作标签与说明上下堆叠 */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .guide-row {
     flex-direction: column;
     gap: 4px;
   }
+
   .guide-action {
     min-width: 0;
     max-width: none;
     align-self: flex-start;
   }
+
   .guide-desc {
     padding-top: 0;
   }

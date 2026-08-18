@@ -531,6 +531,7 @@ watch(isMobile, (m) => {
 }
 
 /* ===== 顶部工具条（文档流三段式，替代已移除的 FC 工具栏）===== */
+
 /* 左右等宽占位 + 中央选择器，保证 picker 始终水平居中；右侧承载待办开关 */
 .calendar-toolbar {
   display: flex;
@@ -539,12 +540,14 @@ watch(isMobile, (m) => {
   min-height: 44px;
   margin-bottom: 6px;
 }
+
 .calendar-toolbar__side {
   flex: 1;
   display: flex;
   align-items: center;
   min-width: 0;
 }
+
 .calendar-toolbar__side--right {
   justify-content: flex-end;
   gap: 8px;
@@ -571,6 +574,7 @@ watch(isMobile, (m) => {
   cursor: pointer;
   transition: all 0.2s ease;
 }
+
 .period-nav:hover {
   background: var(--el-fill-color-light);
   color: var(--el-color-primary);
@@ -588,10 +592,12 @@ watch(isMobile, (m) => {
   cursor: pointer;
   transition: all 0.2s ease;
 }
+
 .month-toggle:hover {
   border-color: var(--color-primary-light);
   color: var(--color-primary);
 }
+
 .month-toggle.active {
   background: var(--color-primary);
   border-color: var(--color-primary);
@@ -608,6 +614,7 @@ watch(isMobile, (m) => {
    须用「祖先+双类」高优先级选择器 + 直接 width 声明才能覆盖 */
 .calendar-wrapper .calendar-title-picker.el-date-editor {
   width: 250px;
+
   --el-date-editor-width: 250px;
   height: 40px;
 }
@@ -621,6 +628,7 @@ watch(isMobile, (m) => {
   cursor: pointer;
   transition: background 0.2s ease, box-shadow 0.2s ease;
 }
+
 .calendar-title-picker.el-range-editor:hover,
 .calendar-title-picker.el-range-editor.is-active {
   background: var(--el-fill-color);
@@ -636,12 +644,14 @@ watch(isMobile, (m) => {
   cursor: pointer;
   text-align: center;
 }
+
 /* 日历图标与分隔符：主题色点缀 */
 .calendar-title-picker .el-range__icon {
   color: var(--el-color-primary);
   font-size: 16px;
   margin-right: 2px;
 }
+
 .calendar-title-picker .el-range-separator {
   color: var(--el-color-primary);
   font-weight: 700;
@@ -652,6 +662,7 @@ watch(isMobile, (m) => {
 .calendar-day-picker.el-input {
   --el-date-editor-width: 178px;
 }
+
 .calendar-day-picker .el-input__wrapper,
 .calendar-month-picker .el-input__wrapper {
   background: var(--el-fill-color-light);
@@ -661,6 +672,7 @@ watch(isMobile, (m) => {
   cursor: pointer;
   transition: background 0.2s ease, box-shadow 0.2s ease;
 }
+
 .calendar-day-picker .el-input__wrapper:hover,
 .calendar-day-picker .el-input__wrapper.is-active,
 .calendar-month-picker .el-input__wrapper:hover,
@@ -668,6 +680,7 @@ watch(isMobile, (m) => {
   background: var(--el-fill-color);
   box-shadow: 0 2px 10px var(--el-box-shadow-light) !important;
 }
+
 .calendar-day-picker .el-input__inner,
 .calendar-month-picker .el-input__inner {
   font-size: 0.98rem;
@@ -676,6 +689,7 @@ watch(isMobile, (m) => {
   text-align: center;
   cursor: pointer;
 }
+
 .calendar-day-picker .el-input__prefix,
 .calendar-month-picker .el-input__prefix {
   color: var(--el-color-primary);
@@ -684,11 +698,12 @@ watch(isMobile, (m) => {
 /* 移动端：隐藏 ‹ › 与「月」按钮（翻时段改由左右滑动手势承担）、圆形待办按钮不撑高工具条。
    加 .calendar-toolbar 祖先提权：全局 button:not(.el-button)（theme.css）特异性更高，
    单类 .period-nav 会被其 display:flex 压过导致隐藏失效 */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .calendar-toolbar .period-nav,
   .calendar-toolbar .month-toggle {
     display: none;
   }
+
   .calendar-toolbar__side--right .mobile-todo-fab {
     width: 36px;
     height: 36px;
@@ -711,6 +726,7 @@ watch(isMobile, (m) => {
   box-shadow: 0 2px 8px var(--shadow-color);
   transition: all 0.2s ease;
 }
+
 .reopen-todo-btn:hover {
   border-color: var(--color-primary-light);
   color: var(--color-primary);
@@ -732,16 +748,18 @@ watch(isMobile, (m) => {
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+
 .calendar-wrapper .mobile-todo-fab:hover {
   transform: scale(1.06);
   box-shadow: 0 6px 20px var(--color-primary-alpha);
 }
+
 .calendar-wrapper .mobile-todo-fab:active {
   transform: scale(0.94);
 }
 
 /* 移动端：隐藏空白的列头行（day 视图列头无内容，容器仍占位 → 干脆隐藏） */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .fc .fc-col-header {
     display: none !important;
   }
@@ -761,13 +779,16 @@ watch(isMobile, (m) => {
   width: 6px;
   height: 6px;
 }
+
 .fc-scroller::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .fc-scroller::-webkit-scrollbar-thumb {
   background: var(--border-glass-subtle);
   border-radius: 4px;
 }
+
 .fc-scroller::-webkit-scrollbar-thumb:hover {
   background: var(--border-glass);
 }
@@ -822,14 +843,14 @@ watch(isMobile, (m) => {
 .fc-timegrid-event, .fc-daygrid-event {
   border-width: 1.5px !important;
   border-radius: 8px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 5%);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .fc-timegrid-event:hover {
   transform: scale(1.02);
   z-index: 10 !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 10%);
 }
 
 .fc-event-main {
@@ -838,7 +859,7 @@ watch(isMobile, (m) => {
   font-size: 0.75rem !important;
   line-height: 1.3 !important;
   overflow: hidden;
-  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 /* Background Color Override for Day Area.
@@ -852,10 +873,10 @@ watch(isMobile, (m) => {
    opacity property is needed. */
 .fc .fc-timegrid-now-indicator-line {
   border-top-width: var(--now-indicator-height, 2px) !important;
-  border-top-color: var(--now-indicator-color, rgba(239, 68, 68, 0.8)) !important;
+  border-top-color: var(--now-indicator-color, rgb(239 68 68 / 80%)) !important;
 }
 
 .fc .fc-timegrid-now-indicator-arrow {
-  border-color: var(--now-indicator-color, rgba(239, 68, 68, 0.8)) transparent transparent !important;
+  border-color: var(--now-indicator-color, rgb(239 68 68 / 80%)) transparent transparent !important;
 }
 </style>

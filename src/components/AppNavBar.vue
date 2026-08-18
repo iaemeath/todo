@@ -89,6 +89,7 @@ const navTitle = computed(() => {
   background: var(--el-bg-color);
   border-bottom: 1px solid var(--el-border-color-light);
   flex-shrink: 0;
+
   /* gap: 32px; */
 }
 
@@ -180,11 +181,12 @@ const navTitle = computed(() => {
 }
 
 /* 移动端：navbar 收紧 */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .app-navbar {
     padding: 0 12px;
     gap: 8px;
   }
+
   .logo-text {
     font-size: 1rem;
   }

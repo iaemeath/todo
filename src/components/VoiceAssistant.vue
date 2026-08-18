@@ -454,7 +454,7 @@ const toggleVoice = () => {
   font-weight: 500;
   max-width: 300px;
   width: max-content;
-  word-wrap: break-word;
+  overflow-wrap: break-word;
   color: var(--el-text-color-primary);
   border-left: 4px solid var(--el-color-primary);
   pointer-events: none;
@@ -507,14 +507,14 @@ const toggleVoice = () => {
   transform: scale(1.05);
 }
 
+.fab-btn:active {
+  transform: translateY(2px) scale(0.95);
+}
+
 .fab-btn:hover:not(.is-dragging) {
   transform: translateY(-4px) scale(1.05);
   background: var(--color-primary-light);
   box-shadow: 0 12px 32px var(--color-primary-alpha);
-}
-
-.fab-btn:active {
-  transform: translateY(2px) scale(0.95);
 }
 
 .fab-btn.listening {
@@ -551,8 +551,16 @@ const toggleVoice = () => {
 }
 
 @keyframes pulse-anim {
-  0% { transform: scale(0.95); opacity: 0.8; }
-  100% { transform: scale(1.6); opacity: 0; border-width: 1px; }
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+    border-width: 1px;
+  }
 }
 
 </style>
