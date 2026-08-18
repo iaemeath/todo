@@ -20,20 +20,26 @@
         <button class="period-nav" title="上一时段" @click="shiftPeriod(-1)">
           <ChevronLeft :size="20" />
         </button>
-        <!-- 移动端区间模式：弹窗选自定义区间（与桌面同能力）。
-             不用 EP daterange：其弹层是双月并排面板（~620px）溢出手机屏 -->
-        <button
-          v-if="isMobile && pickerMode !== 'month'"
-          class="range-capsule"
-          title="选择时间段"
-          @click="openRangeDialog"
-        >
-          <Calendar :size="18" />
-          <span>{{ mobileRangeLabel }}</span>
-        </button>
+        <!-- 区间模式：两端共用 EP daterange（所见=所选）。移动端面板收窄为单月：
+             unlink-panels 使左面板自带前进箭头，CSS 隐藏右面板（EP 双月 646px 溢出手机屏） -->
+        <el-date-picker
+          v-if="pickerMode !== 'month'"
+          ref="pickerRef"
+          v-model="selectedRange"
+          class="calendar-title-picker"
+          type="daterange"
+          :unlink-panels="isMobile"
+          :popper-class="isMobile ? 'mobile-range-panel' : undefined"
+          range-separator="–"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          format="M月D日"
+          :clearable="false"
+          @change="handlePickerChange"
+        />
         <!-- 月模式（两端共用）：月选择器 + 月视图 -->
         <el-date-picker
-          v-else-if="pickerMode === 'month'"
+          v-else
           ref="pickerRef"
           v-model="selectedMonth"
           class="calendar-title-picker calendar-month-picker"
@@ -41,20 +47,6 @@
           :clearable="false"
           format="YYYY年M月"
           @change="handleMonthPick"
-        />
-        <!-- 桌面区间模式：所见=所选的自定义区间 -->
-        <el-date-picker
-          v-else
-          ref="pickerRef"
-          v-model="selectedRange"
-          class="calendar-title-picker"
-          type="daterange"
-          range-separator="–"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          format="M月D日"
-          :clearable="false"
-          @change="handlePickerChange"
         />
         <button class="period-nav" title="下一时段" @click="shiftPeriod(1)">
           <ChevronRight :size="20" />
@@ -132,36 +124,6 @@
         <el-button type="primary" @click="confirmNewSchedule">{{ editingScheduleId ? '保存' : '创建' }}</el-button>
       </template>
     </el-dialog>
-
-    <!-- 移动端区间选择弹窗：月历两击定范围（起点→终点），与桌面 daterange 同能力 -->
-    <el-dialog
-      v-model="rangeDialogVisible"
-      title="选择时间段"
-      width="92vw"
-      :close-on-click-modal="true"
-      append-to-body
-    >
-      <div class="range-dialog">
-        <el-calendar v-model="calDate">
-          <template #date-cell="{ data }">
-            <div
-              class="range-cell"
-              :class="[cellClass(data.day), `is-${data.type}`]"
-              @click="tapRangeCell(data.day)"
-            >
-              <span class="range-cell__num">{{ Number(data.day.slice(8)) }}</span>
-            </div>
-          </template>
-        </el-calendar>
-        <p class="range-dialog__hint">
-          点击两个日期确定范围（先点起点，可反选自动换序），最多 {{ MAX_RANGE_DAYS }} 天
-        </p>
-      </div>
-      <template #footer>
-        <el-button @click="rangeDialogVisible = false">取消</el-button>
-        <el-button type="primary" :disabled="!pendingStart || !pendingEnd" @click="confirmRange">确定</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -178,7 +140,7 @@ import type { CalendarOptions, DateSelectArg, DatesSetArg, DayHeaderContentArg, 
 type EventReceiveArg = Parameters<NonNullable<CalendarOptions['eventReceive']>>[0]
 import { storeToRefs } from 'pinia'
 import { useTaskStore, useSettingsStore, useThemeStore, useUIStore } from '../stores'
-import { PanelRight, ChevronLeft, ChevronRight, Maximize2, Minimize2, Calendar } from 'lucide-vue-next'
+import { PanelRight, ChevronLeft, ChevronRight, Maximize2, Minimize2 } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import { colorOptions, colorScheme } from '../constants/colors'
 
@@ -199,7 +161,7 @@ let wrapperEl: HTMLElement | null = null
 // 判定：单指快速水平滑动（|dx|≥60px、水平位移≥1.5×垂直位移、<800ms）；
 // 起点须在日历网格内且不在日程块上（日程块交给 FC 拖拽，工具条上的滑动不翻页）。
 // 快速轻扫与长按拖选（FC touch 下按 longPressDelay 才触发）天然错开；
-// 翻页后 datesSet 自动回写中央区间胶囊。
+// 翻页后 datesSet 自动回写中央时间选择器。
 const SWIPE_MIN_DX = 60
 let touchStart: { x: number; y: number; t: number } | null = null
 
@@ -399,7 +361,7 @@ const handleDeleteSchedule = () => {
 
 // ---- 工具栏中央时间选择器 ----
 // 区间模式（默认）：两端统一「所见=所选」自定义区间（≤14 天 timeGrid，保留时间轴）。
-// 桌面用 EP daterange 弹层；移动端用 el-dialog + el-calendar 两击选区间（EP 双月面板溢出手机屏）。
+// 桌面 EP daterange 双月面板；移动端同一选择器，unlink-panels + 隐藏右面板收窄为单月。
 // 月模式：「月」按钮 toggle → 月选择器 + 标准月视图（桌面专属，移动端隐藏按钮）
 // pickerMode 由视图状态驱动（datesSet 同步），保证与日历所见一致
 const pickerRef = ref<{ handleClose?: () => void } | null>(null)
@@ -411,64 +373,11 @@ const curViewType = ref('')
 
 const MAX_RANGE_DAYS = 14 // 区间选择上限
 
-// ---- 移动端区间选择弹窗 ----
-const rangeDialogVisible = ref(false)
-const calDate = ref(new Date())
-const pendingStart = ref<Date | null>(null)
-const pendingEnd = ref<Date | null>(null)
-
-// 胶囊文案：单日「8月18日」；跨月补月名「8月31日–9月2日」
-const mobileRangeLabel = computed(() => {
-  const [s, e] = selectedRange.value
-  const sd = dayjs(s), ed = dayjs(e)
-  if (sd.isSame(ed, 'day')) return sd.format('M月D日')
-  const endFmt = ed.month() === sd.month() && ed.year() === sd.year() ? 'D日' : 'M月D日'
-  return `${sd.format('M月D日')}–${ed.format(endFmt)}`
-})
-
 // 移动端多日区间视图恢复列头（单日视图列头冗余仍隐藏）
 const showColHeader = computed(() =>
   isMobile.value && curViewType.value !== '' &&
   curViewType.value !== 'timeGridDay' && curViewType.value !== 'dayGridMonth'
 )
-
-const openRangeDialog = () => {
-  // 以当前区间初始化待选状态与月历定位
-  pendingStart.value = selectedRange.value[0]
-  pendingEnd.value = selectedRange.value[1]
-  calDate.value = selectedRange.value[0]
-  rangeDialogVisible.value = true
-}
-
-// 两击选范围：起点 → 终点；反选自动换序；选完再点重新开始
-const tapRangeCell = (dayStr: string) => {
-  const d = dayjs(dayStr).startOf('day').toDate()
-  if (!pendingStart.value || pendingEnd.value) {
-    pendingStart.value = d
-    pendingEnd.value = null
-  } else if (dayjs(d).isBefore(dayjs(pendingStart.value), 'day')) {
-    pendingStart.value = d
-  } else {
-    pendingEnd.value = d
-  }
-}
-
-const cellClass = (dayStr: string) => {
-  const d = dayjs(dayStr)
-  const s = pendingStart.value ? dayjs(pendingStart.value) : null
-  const e = pendingEnd.value ? dayjs(pendingEnd.value) : null
-  if (s && e && d.isAfter(s) && d.isBefore(e)) return 'is-in-range'
-  if (s && d.isSame(s, 'day')) return 'is-start'
-  if (e && d.isSame(e, 'day')) return 'is-end'
-  return ''
-}
-
-const confirmRange = () => {
-  const s = pendingStart.value, e = pendingEnd.value
-  if (!s || !e) return
-  applyCustomRange([s, e])
-  rangeDialogVisible.value = false
-}
 
 // 自定义区间视图的可见范围（由 picker 选择驱动；end 为排他边界 = 次日 0 点）
 let customRange: { start: Date; end: Date } = {
@@ -598,14 +507,12 @@ const calendarOptions = computed(() => ({
 
   firstDay: 1, // Start week on Monday
   dayHeaderContent: (arg: DayHeaderContentArg) => {
-    // 月视图列头显示星期名；其余视图显示具体日期
+    // 月视图列头显示星期名；其余视图两端统一 M月D日 格式
     if (arg.view.type === 'dayGridMonth') {
       return ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][arg.date.getDay()]
     }
-    // 移动端单日视图：中央胶囊已显示当天日期，列头留空（整行由 CSS 隐藏）
+    // 移动端单日视图：中央选择器已显示当天日期，列头留空（整行由 CSS 隐藏）
     if (isMobile.value && arg.view.type === 'timeGridDay') return ''
-    // 移动端多日区间：列窄，用短格式 M/D
-    if (isMobile.value) return `${arg.date.getMonth() + 1}/${arg.date.getDate()}`
     return `${arg.date.getMonth() + 1}月${arg.date.getDate()}日`
   },
 
@@ -655,69 +562,27 @@ html.platform-mobile .calendar-wrapper {
   border-radius: 50%;
 }
 
-/* ===== 移动端区间选择弹窗（el-dialog 传送至 body，需全局样式）===== */
-.range-dialog .el-calendar {
-  --el-calendar-cell-width: auto;
-  background: transparent;
+/* ===== 移动端 daterange 面板收窄为单月（popper 传送至 body，需全局样式）=====
+   EP 范围面板双月并排 ~646px 溢出手机屏；unlink-panels 使左面板自带前进箭头，
+   隐藏右侧面板后仍是可完整导航的单月范围选择。
+   左面板定宽 322px（同 EP 单日期面板），单元格 ≈44px 触控友好；
+   content 为 table-cell 布局，不定宽会自适应撑满 body */
+.mobile-range-panel .el-date-range-picker {
+  width: fit-content;
+  max-width: calc(100vw - var(--space-lg));
 }
 
-.range-dialog .el-calendar__header {
-  padding: var(--space-xs) 0;
+.mobile-range-panel .el-picker-panel__body,
+.mobile-range-panel .el-picker-panel__body-wrapper {
+  width: auto;
 }
 
-.range-dialog .el-calendar__body {
-  padding: 0;
+.mobile-range-panel .el-date-range-picker__content.is-left {
+  width: 322px;
 }
 
-/* 紧凑行高（默认 85px 过高，44px 满足触控目标）+ 去掉 EP 选中底色（由 range-cell 接管） */
-.range-dialog .el-calendar-day {
-  height: 44px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.range-dialog .el-calendar-table td.is-selected {
-  background: transparent;
-}
-
-.range-dialog .range-cell {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-sm);
-  color: var(--el-text-color-primary);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  user-select: none;
-}
-
-/* 上下月灰格（EP data.type 值带 -month 后缀） */
-.range-dialog .range-cell.is-prev-month,
-.range-dialog .range-cell.is-next-month {
-  color: var(--text-muted);
-}
-
-/* 区间中段：主题色浅底；起终点：主题色实底反白 */
-.range-dialog .range-cell.is-in-range {
-  background: var(--color-primary-alpha);
-}
-
-.range-dialog .range-cell.is-start,
-.range-dialog .range-cell.is-end {
-  background: var(--color-primary);
-  color: #fff;
-  font-weight: var(--weight-semibold);
-}
-
-.range-dialog__hint {
-  margin: var(--space-sm) 0 0;
-  font-size: var(--font-xs);
-  color: var(--text-muted);
-  text-align: center;
+.mobile-range-panel .el-date-range-picker__content.is-right {
+  display: none;
 }
 
 /* ===== 顶部工具条（文档流三段式，替代已移除的 FC 工具栏）===== */
@@ -871,32 +736,6 @@ html.platform-mobile .calendar-wrapper {
   font-weight: var(--weight-bold);
 }
 
-/* 移动端区间胶囊：触发弹窗选区间，视觉与桌面 daterange 胶囊同族
-   （白底浮于灰带、粗体日期、主题色图标） */
-.calendar-toolbar .range-capsule {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-  height: 40px;
-  padding: var(--space-xs) var(--space-lg);
-  border: none;
-  border-radius: var(--radius-md);
-  background: var(--el-bg-color);
-  color: var(--el-text-color-primary);
-  font-size: var(--font-base);
-  font-weight: var(--weight-bold);
-  cursor: pointer;
-  transition: background var(--duration-fast) ease;
-}
-
-.calendar-toolbar .range-capsule svg {
-  color: var(--el-color-primary);
-}
-
-.calendar-toolbar .range-capsule:hover {
-  background: var(--el-fill-color);
-}
-
 /* 桌面月模式选择器，type=month 的 el-input 结构。
    宽度规则：月选择器带 calendar-title-picker 类，宽度由上方 daterange 的 250px 规则统一生效 */
 .calendar-month-picker .el-input__wrapper {
@@ -968,17 +807,12 @@ html.platform-mobile .calendar-wrapper {
   transform: scale(0.94);
 }
 
-/* 移动端：隐藏空白的列头行（day 视图列头无内容，容器仍占位 → 干脆隐藏）。
+/* 移动端：单日视图列头冗余（中央选择器已示当天），整行隐藏；
+   多日区间视图（show-col-header 由视图类型驱动）不隐藏，列头与正文同源同格式。
    用 platform-mobile 类作用域（与 ui store isMobile 同源）而非媒体查询：
    FC 列头是表格布局，翻转写法无法可靠恢复其默认 display 值 */
-html.platform-mobile .fc .fc-col-header {
+html.platform-mobile .calendar-wrapper:not(.show-col-header) .fc .fc-col-header {
   display: none !important;
-}
-
-/* 移动端多日区间视图（show-col-header 由视图类型驱动）：恢复列头——
-   跨天无日期标识无法分辨列，覆盖上方单日视图的隐藏规则（特异性更高） */
-html.platform-mobile .calendar-wrapper.show-col-header .fc .fc-col-header {
-  display: table-row !important;
 }
 
 /* Base FullCalendar Overrides */
