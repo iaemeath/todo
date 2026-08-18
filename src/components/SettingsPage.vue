@@ -298,26 +298,6 @@ const { settings: form } = storeToRefs(settingsStore)
   text-overflow: ellipsis;
 }
 
-.usage-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: var(--space-xl);
-}
-
-.pane-title {
-  font-size: var(--font-md);
-  font-weight: var(--weight-bold);
-  margin: 0 0 4px;
-  color: var(--el-text-color-primary);
-}
-
-.pane-desc {
-  font-size: var(--font-sm);
-  color: var(--el-text-color-secondary);
-  margin: 0;
-}
-
 .usage-stats {
   margin-bottom: var(--space-xl);
 }

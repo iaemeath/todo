@@ -1,52 +1,25 @@
 <template>
   <div class="guide-tab">
-    <div class="usage-header">
-      <div>
-        <h3 class="pane-title">使用指南</h3>
-        <p class="pane-desc">主页（日历 + 待办）的常用操作速查，按平台切换查看对应用法。</p>
-      </div>
+    <div class="settings-form">
+      <el-card v-for="section in allSections" :key="section.title" shadow="never" class="setting-card">
+        <template #header><span class="card-title">{{ section.title }}</span></template>
+        <div v-for="entry in section.entries" :key="entry.action" class="setting-row">
+          <div class="setting-info">
+            <span class="setting-name">{{ entry.action }}</span>
+            <span class="setting-desc">{{ entry.desc }}</span>
+          </div>
+        </div>
+      </el-card>
     </div>
-
-    <el-tabs v-model="activePlatform" class="guide-tabs">
-      <el-tab-pane label="Web 端" name="web">
-        <div class="settings-form">
-          <el-card v-for="section in webSections" :key="section.title" shadow="never" class="setting-card">
-            <template #header><span class="card-title">{{ section.title }}</span></template>
-            <div v-for="entry in section.entries" :key="entry.action" class="setting-row">
-              <div class="setting-info">
-                <span class="setting-name">{{ entry.action }}</span>
-                <span class="setting-desc">{{ entry.desc }}</span>
-              </div>
-            </div>
-          </el-card>
-        </div>
-      </el-tab-pane>
-
-      <el-tab-pane label="移动端" name="mobile">
-        <div class="settings-form">
-          <el-card v-for="section in mobileSections" :key="section.title" shadow="never" class="setting-card">
-            <template #header><span class="card-title">{{ section.title }}</span></template>
-            <div v-for="entry in section.entries" :key="entry.action" class="setting-row">
-              <div class="setting-info">
-                <span class="setting-name">{{ entry.action }}</span>
-                <span class="setting-desc">{{ entry.desc }}</span>
-              </div>
-            </div>
-          </el-card>
-        </div>
-      </el-tab-pane>
-    </el-tabs>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useUIStore } from '../stores'
 
-// 按当前设备默认展示对应平台，另一平台可手动切换
 const { isMobile } = storeToRefs(useUIStore())
-const activePlatform = ref<'web' | 'mobile'>(isMobile.value ? 'mobile' : 'web')
 
 interface GuideEntry {
   action: string
@@ -128,6 +101,13 @@ const mobileSections: GuideSection[] = [
     ]
   }
 ]
+
+// 无 tabs 平铺：标题加平台前缀区分，当前设备的平台排在前面
+const allSections = computed<GuideSection[]>(() => {
+  const web = webSections.map(s => ({ ...s, title: `Web 端 · ${s.title}` }))
+  const mobile = mobileSections.map(s => ({ ...s, title: `移动端 · ${s.title}` }))
+  return isMobile.value ? [...mobile, ...web] : [...web, ...mobile]
+})
 </script>
 
 <style scoped>

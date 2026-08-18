@@ -32,11 +32,7 @@ const handleClearHistory = async () => {
 
 <template>
   <div>
-  <div class="usage-header">
-    <div>
-      <h3 class="pane-title">API 消耗记录</h3>
-      <p class="pane-desc">追踪云端大模型的 Token 消耗量。</p>
-    </div>
+  <div class="usage-actions">
     <el-button type="danger" plain :icon="Delete" @click="handleClearHistory">清空记录</el-button>
   </div>
 
@@ -91,3 +87,12 @@ const handleClearHistory = async () => {
   </el-table>
   </div>
 </template>
+
+<style scoped>
+/* 页头介绍已按设置页统一规范移除，仅保留右对齐的操作按钮行 */
+.usage-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-md);
+}
+</style>

@@ -61,13 +61,6 @@ const handleFileChange = async (e: Event) => {
 
 <template>
   <div class="data-manage">
-    <div class="usage-header">
-      <div>
-        <h3 class="pane-title">数据管理</h3>
-        <p class="pane-desc">备份与恢复全部应用数据，支持换设备 / 换浏览器迁移。</p>
-      </div>
-    </div>
-
     <el-card shadow="never" class="setting-card">
       <template #header><span class="card-title">导出备份</span></template>
       <div class="setting-row">
