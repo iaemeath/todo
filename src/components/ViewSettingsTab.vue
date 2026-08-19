@@ -140,22 +140,6 @@ const onEndHourChange = (v: number | undefined) => {
         </div>
         <el-switch v-model="form.showMonthButton" />
       </div>
-      <el-divider />
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-name">任务管理入口</span>
-          <span class="setting-desc">手机端主页顶部的任务管理图标（默认隐藏）</span>
-        </div>
-        <el-switch v-model="form.showTaskManage" />
-      </div>
-      <el-divider />
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-name">日程管理入口</span>
-          <span class="setting-desc">手机端主页顶部的日程管理图标（默认隐藏）</span>
-        </div>
-        <el-switch v-model="form.showScheduleManage" />
-      </div>
     </el-card>
   </el-form>
 </template>

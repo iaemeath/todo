@@ -29,10 +29,6 @@ export interface Settings {
   mobileMaxRangeDays: number
   /** 手机端是否显示「月」视图按钮（网页端常驻） */
   showMonthButton: boolean
-  /** 手机端是否显示任务管理入口（网页端常驻） */
-  showTaskManage: boolean
-  /** 手机端是否显示日程管理入口（网页端常驻） */
-  showScheduleManage: boolean
 }
 
 export const defaultSettings: Settings = {
@@ -56,13 +52,11 @@ export const defaultSettings: Settings = {
   nowIndicatorHeight: 2,
   webMaxRangeDays: 14,
   mobileMaxRangeDays: 7,
-  showMonthButton: true,
-  showTaskManage: true,
-  showScheduleManage: true
+  showMonthButton: true
 }
 
 /**
- * 移动端首次安装的外观默认值：紧凑行高 + 极简网格 + 隐藏次要入口。
+ * 移动端首次安装的外观默认值：紧凑行高 + 极简网格。
  * 仅在无任何已存储设置时生效；用户保存过设置后以存储值为准。
  */
 const mobileAppearanceDefaults: Partial<Settings> = {
@@ -70,17 +64,14 @@ const mobileAppearanceDefaults: Partial<Settings> = {
   majorLineWidth: 1,
   majorLineOpacity: 0.25,
   showMinorLines: false,
-  // 手机屏小：月按钮与任务/日程入口默认隐藏，需要时到「设置-视觉与外观」打开
-  showMonthButton: false,
-  showTaskManage: false,
-  showScheduleManage: false
+  // 手机屏小：「月」按钮默认隐藏，需要时到「设置-视觉与外观」打开
+  // （任务/日程入口已常驻导航抽屉，不再受开关控制）
+  showMonthButton: false
 }
 
 // 老数据迁移用：可见性开关的移动端默认（load 中按设备取值）
-const mobileVisibilityDefaults: Pick<Settings, 'showMonthButton' | 'showTaskManage' | 'showScheduleManage'> = {
-  showMonthButton: false,
-  showTaskManage: false,
-  showScheduleManage: false
+const mobileVisibilityDefaults: Pick<Settings, 'showMonthButton'> = {
+  showMonthButton: false
 }
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -94,8 +85,8 @@ export const useSettingsStore = defineStore('settings', () => {
       try {
         const storedObj = JSON.parse(stored)
         // 可见性开关为后加字段：老数据未存过时按「当前设备」取默认
-        // （移动端隐藏三入口），而非 defaultSettings 的桌面默认
-        for (const key of ['showMonthButton', 'showTaskManage', 'showScheduleManage'] as const) {
+        // （移动端隐藏月按钮），而非 defaultSettings 的桌面默认
+        for (const key of ['showMonthButton'] as const) {
           if (storedObj[key] === undefined) {
             storedObj[key] = useUIStore().isMobile ? mobileVisibilityDefaults[key] : true
           }
