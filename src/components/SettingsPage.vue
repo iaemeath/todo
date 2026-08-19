@@ -94,6 +94,13 @@ const { settings: form } = storeToRefs(settingsStore)
 .settings-page {
   height: 100%;
   min-height: 0;
+  box-sizing: border-box;
+}
+
+/* 移动端 content-area 零内边距（日历贴屏惯例），页面自补；
+   web 端不补——由 content-area 的浮岛 padding 统一提供（避免双重） */
+html.platform-mobile .settings-page {
+  padding: var(--space-md) var(--space-lg);
 }
 
 /* 桌面：左右布局（菜单 + 内容） */

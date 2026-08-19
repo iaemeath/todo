@@ -355,6 +355,13 @@ const confirmSchedule = () => {
   flex-direction: column;
   gap: var(--space-lg);
   overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* 移动端 content-area 零内边距（日历贴屏惯例），页面自补；
+   web 端不补——由 content-area 的浮岛 padding 统一提供（避免双重） */
+html.platform-mobile .manage-page {
+  padding: var(--space-md) var(--space-lg);
 }
 
 /* 收紧表格行高（配合操作按钮 size="small"） */
