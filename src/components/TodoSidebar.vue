@@ -5,8 +5,9 @@
         <div style="display: flex; align-items: center; gap: var(--space-sm);">
           <h2>待办</h2>
         </div>
-        <button class="btn-collapse" @click="closeSidebar" title="收起待办栏">
-          <PanelRightClose class="icon-sm" />
+        <!-- 关闭（与 FC 工具条右端 todo-toggle 同效：web 收侧栏 / 移动关浮层） -->
+        <button class="btn-close" @click="closeSidebar" title="关闭待办">
+          <X class="icon-sm" />
         </button>
       </div>
 
@@ -70,7 +71,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Plus, GripVertical, Trash2, PanelRightClose } from 'lucide-vue-next'
+import { Plus, GripVertical, Trash2, X } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 import { ElMessageBox } from 'element-plus'
 import { useTaskStore, useUIStore, type Task } from '../stores'
@@ -150,7 +151,8 @@ const onDragEnd = () => {
     setTodoVisible(false)
   }
 }
-// 关闭待办（web 收起侧栏 = 移动关浮层，同一状态）
+
+// 头部关闭按钮（与 FC 工具条右端 todo-toggle 同效）
 const closeSidebar = () => setTodoVisible(false)
 
 onMounted(() => {
@@ -268,12 +270,12 @@ html.platform-mobile .todo-sidebar {
   height: 20px;
 }
 
-/* 面板按钮统一形态（与 FC 工具条 fullscreen 按钮同族）：透明底、无边框、
+/* 面板按钮统一形态（与 FC 工具条按钮同族）：透明底、无边框、
    radius-md、hover 语义色底。触控热区两套：移动端紧凑 32px（WCAG 2.5.8 AA ≥24），
    桌面 var(--touch-target)（36） */
 .btn-add,
 .btn-delete,
-.btn-collapse {
+.btn-close {
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -291,7 +293,7 @@ html.platform-mobile .todo-sidebar {
 @media (width >= 769px) {
   .btn-add,
   .btn-delete,
-  .btn-collapse {
+  .btn-close {
     min-width: var(--touch-target);
     min-height: var(--touch-target);
   }
@@ -393,14 +395,15 @@ html.platform-mobile .todo-sidebar {
   text-overflow: ellipsis;
 }
 
-/* 行内图标按钮（删除/收起）已并入上方统一形态组，仅保留各自的语义色 hover */
+/* 行内图标按钮（删除/关闭）已并入上方统一形态组，仅保留各自的语义色 hover */
 .btn-delete:hover {
   background: rgb(244 63 94 / 10%);
   color: var(--color-danger);
 }
 
-.btn-collapse:hover {
+.btn-close:hover {
   background: var(--color-primary-alpha);
   color: var(--color-primary);
 }
+
 </style>

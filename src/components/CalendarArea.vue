@@ -1,7 +1,7 @@
 <template>
   <div
     class="calendar-wrapper glass-panel"
-    :class="{ 'is-fullscreen': calendarFullscreen, 'show-col-header': showColHeader }"
+    :class="{ 'show-col-header': showColHeader }"
     :style="{
       '--slot-height': settings.slotHeight + 'px',
       '--major-line-width': settings.majorLineWidth + 'px',
@@ -13,9 +13,29 @@
       '--now-indicator-height': settings.nowIndicatorHeight + 'px'
     }"
   >
-    <!-- 顶部工具条：中央时间选择器（选范围按跨度智能切视图）+ 右侧待办开关 -->
+    <!-- 顶部工具条统一四段式（双端同构）：
+         左 导航开关 | 中 时间选择器（选范围按跨度智能切视图）| 右 月视图 + 待办开关 -->
     <div class="calendar-toolbar">
-      <div class="calendar-toolbar__side"></div>
+      <div class="calendar-toolbar__side">
+        <!-- 左端导航开关：桌面 toggle rail 显隐 / 移动端拉出导航抽屉 -->
+        <button
+          v-if="isMobile"
+          class="toolbar-burger"
+          title="导航菜单"
+          @click="setNavDrawerOpen(true)"
+        >
+          <Menu :size="20" />
+        </button>
+        <button
+          v-else
+          class="toolbar-nav-toggle"
+          :title="navRailCollapsed ? '显示导航栏' : '隐藏导航栏'"
+          @click="setNavRailCollapsed(!navRailCollapsed)"
+        >
+          <PanelLeftClose v-if="!navRailCollapsed" :size="20" />
+          <PanelLeftOpen v-else :size="20" />
+        </button>
+      </div>
       <div class="calendar-toolbar__center">
         <button class="period-nav" title="上一时段" @click="shiftPeriod(-1)">
           <ChevronLeft :size="20" />
@@ -58,31 +78,15 @@
         <button v-if="!isMobile || settings.showMonthButton" class="month-toggle" :class="{ active: pickerMode === 'month' }" @click="toggleMonthMode" title="月视图">
           月
         </button>
-        <!-- 全屏 toggle：CSS 伪全屏（fixed 铺满），ESC 退出 -->
+        <!-- 待办面板开关（原待办头部"收起待办栏"按钮移此，双端统一）：
+             web 收/展侧栏，移动端收/开浮层 -->
         <button
-          class="fullscreen-toggle"
-          :title="calendarFullscreen ? '退出全屏 (Esc)' : '全屏 (Esc)'"
-          @click="toggleCalendarFullscreen"
+          class="todo-toggle"
+          :title="todoVisible ? '收起待办栏' : '展开待办栏'"
+          @click="setTodoVisible(!todoVisible)"
         >
-          <Minimize2 v-if="calendarFullscreen" :size="20" />
-          <Maximize2 v-else :size="20" />
-        </button>
-        <!-- 待办栏收起后：web 展开侧栏 / 移动打开浮层 -->
-        <button
-          v-if="!isMobile && !todoVisible"
-          class="reopen-todo-btn"
-          @click="setTodoVisible(true)"
-          title="展开待办栏"
-        >
-          <PanelRight :size="20" />
-        </button>
-        <button
-          v-if="isMobile && !todoVisible"
-          class="mobile-todo-fab"
-          @click="setTodoVisible(true)"
-          title="打开待办"
-        >
-          <PanelRight :size="20" />
+          <PanelRightClose v-if="todoVisible" :size="20" />
+          <PanelRight v-else :size="20" />
         </button>
       </div>
     </div>
@@ -141,7 +145,7 @@ import type { CalendarOptions, DateSelectArg, DatesSetArg, DayHeaderContentArg, 
 type EventReceiveArg = Parameters<NonNullable<CalendarOptions['eventReceive']>>[0]
 import { storeToRefs } from 'pinia'
 import { useTaskStore, useSettingsStore, useThemeStore, useUIStore } from '../stores'
-import { PanelRight, ChevronLeft, ChevronRight, Maximize2, Minimize2 } from 'lucide-vue-next'
+import { PanelRight, PanelRightClose, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight, Menu } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import { colorOptions, colorScheme } from '../constants/colors'
 
@@ -151,8 +155,8 @@ const { updateSchedule, addScheduleFromTask, addSchedule, deleteSchedule } = tas
 const { settings } = storeToRefs(useSettingsStore())
 const { isDark } = storeToRefs(useThemeStore())
 const uiStore = useUIStore()
-const { isMobile, todoVisible, calendarFullscreen } = storeToRefs(uiStore) // state
-const { setTodoVisible, toggleCalendarFullscreen } = uiStore // action
+const { isMobile, todoVisible, navRailCollapsed } = storeToRefs(uiStore) // state
+const { setTodoVisible, setNavDrawerOpen, setNavRailCollapsed } = uiStore // action
 
 const fullCalendar = ref<InstanceType<typeof FullCalendar> | null>(null)
 let resizeObserver: ResizeObserver | null = null
@@ -200,8 +204,6 @@ onMounted(() => {
     wrapperEl.addEventListener('touchstart', onTouchStart, { passive: true })
     wrapperEl.addEventListener('touchend', onTouchEnd, { passive: true })
   }
-  // 全屏时 ESC 退出（document 级监听，随组件生命周期增删）
-  document.addEventListener('keydown', onKeydown)
 })
 
 onBeforeUnmount(() => {
@@ -210,13 +212,7 @@ onBeforeUnmount(() => {
   }
   wrapperEl?.removeEventListener('touchstart', onTouchStart)
   wrapperEl?.removeEventListener('touchend', onTouchEnd)
-  document.removeEventListener('keydown', onKeydown)
 })
-
-// ---- 全屏：ESC 退出 ----
-const onKeydown = (e: KeyboardEvent) => {
-  if (e.key === 'Escape' && calendarFullscreen.value) toggleCalendarFullscreen()
-}
 
 // Convert our schedules to FullCalendar event format
 const calendarEvents = computed(() => {
@@ -550,12 +546,11 @@ watch(isMobile, (m) => {
   flex-direction: column;
 }
 
-/* 移动端全屏出血（App.vue .home-view--mobile 负边距）：面板贴屏幕边缘，
-   glass-panel 的圆角与侧边框会在屏幕边产生缺口/细线，拉平为通栏 */
+/* 移动端贴屏通栏：面板四边贴屏幕边缘，glass-panel 的圆角与边框会在屏幕边
+   产生缺口/细线，全部拉平 */
 html.platform-mobile .calendar-wrapper {
   border-radius: 0;
-  border-left: none;
-  border-right: none;
+  border: none;
 }
 
 /* 新增日程弹窗颜色选项圆点 */
@@ -645,13 +640,14 @@ html.platform-mobile .calendar-wrapper {
   }
 }
 
-/* 工具条按钮统一形态（fullscreen 按钮样式）：32×32 透明底、无边框、hover 灰底 + 主题色。
-   period-nav / month / fullscreen / reopen 四者共用一组规则（display 与居中由全局
-   button 规则和上方恢复块管理，这里不再声明）；month-toggle 仅追加文字排版 */
+/* 工具条按钮统一形态：32×32 透明底、无边框、hover 灰底 + 主题色。
+   period-nav / month / nav 开关 / todo 开关 / burger 五者共用一组规则（display 与居中
+   由全局 button 规则和上方恢复块管理，这里不再声明）；month-toggle 仅追加文字排版 */
 .calendar-toolbar .period-nav,
 .calendar-toolbar .month-toggle,
-.calendar-toolbar .fullscreen-toggle,
-.calendar-toolbar .reopen-todo-btn {
+.calendar-toolbar .toolbar-nav-toggle,
+.calendar-toolbar .todo-toggle,
+.calendar-toolbar .toolbar-burger {
   width: 32px;
   height: 32px;
   border: none;
@@ -671,8 +667,9 @@ html.platform-mobile .calendar-wrapper {
 
 .calendar-toolbar .period-nav:hover,
 .calendar-toolbar .month-toggle:hover,
-.calendar-toolbar .fullscreen-toggle:hover,
-.calendar-toolbar .reopen-todo-btn:hover {
+.calendar-toolbar .toolbar-nav-toggle:hover,
+.calendar-toolbar .todo-toggle:hover,
+.calendar-toolbar .toolbar-burger:hover {
   background: var(--el-fill-color); /* 工具条灰带上 hover 需更深一档可见 */
   color: var(--el-color-primary);
 }
@@ -790,49 +787,6 @@ html.platform-mobile .calendar-title-picker .el-range-separator {
 
 .calendar-month-picker .el-input__prefix {
   color: var(--el-color-primary);
-}
-
-/* 待办栏收起后的展开按钮已并入上方工具条统一形态组（.calendar-toolbar .reopen-todo-btn） */
-
-/* 全屏态：CSS 伪全屏（fixed 铺满视口）。
-   z-index 999 的分层依据：低于 EP 弹窗/消息（~2000+，保证全屏中日程弹窗可见），
-   高于普通内容与导航；语音球（--z-overlay 10000）仍浮于其上，全屏中语音排期可用。
-   刻意不用原生 Fullscreen API：其 top-layer 会挡住挂在 body 上的 el-dialog。 */
-.calendar-wrapper.is-fullscreen {
-  position: fixed;
-  inset: 0;
-  z-index: 999;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-/* 待办栏收起后的展开按钮已并入上方工具条统一形态组（.calendar-toolbar .reopen-todo-btn） */
-
-/* 移动端：打开待办浮层的按钮（.calendar-wrapper 前缀提高特异性，
-   覆盖全局 button:not(.el-button) 的圆角/缩放，确保圆形）。
-   尺寸与待办头部关闭按钮（btn-collapse 移动端紧凑档）及工具条按钮族一致：32×32 */
-.calendar-wrapper .mobile-todo-fab {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: transparent;
-  color: var(--color-primary);
-  box-shadow: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
-}
-
-.calendar-wrapper .mobile-todo-fab:hover {
-  transform: scale(1.06);
-  box-shadow: 0 6px 20px var(--color-primary-alpha);
-}
-
-.calendar-wrapper .mobile-todo-fab:active {
-  transform: scale(0.94);
 }
 
 /* 移动端：单日视图列头冗余（中央选择器已示当天），整行隐藏；

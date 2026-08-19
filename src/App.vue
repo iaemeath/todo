@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, defineAsyncComponent } from 'vue'
-import AppNavBar from './components/AppNavBar.vue'
+import AppSidebar from './components/AppSidebar.vue'
 import CalendarArea from './components/CalendarArea.vue'
 import TodoSidebar from './components/TodoSidebar.vue'
 import { storeToRefs } from 'pinia'
@@ -17,7 +17,7 @@ const SettingsPage = defineAsyncComponent(() => import('./components/SettingsPag
 
 const { loadTheme } = useThemeStore()
 const uiStore = useUIStore()
-const { currentView, isMobile, todoVisible, mobileTodoDragging } = storeToRefs(uiStore)
+const { currentView, isMobile, todoVisible, mobileTodoDragging, navRailCollapsed } = storeToRefs(uiStore)
 const { setTodoVisible } = uiStore // action 直接解构
 
 onMounted(() => {
@@ -27,12 +27,21 @@ onMounted(() => {
 
 <template>
   <el-config-provider :locale="zhCn">
-    <div class="app-layout">
-      <AppNavBar />
+    <!-- 布局类与 AppSidebar 侧栏的渲染条件同源：web 侧栏常驻（主页/管理/设置页同布局，
+         左导航 + 右内容区），在场才横向 row；移动端恒为纵向 column -->
+    <div
+      class="app-layout"
+      :class="{ 'app-layout--with-side': !isMobile && !navRailCollapsed }"
+    >
+      <AppSidebar />
 
       <main class="content-area">
         <!-- 主页 -->
-        <div v-if="currentView === 'home'" class="home-view" :class="{ 'home-view--mobile': isMobile }">
+        <div
+          v-if="currentView === 'home'"
+          class="home-view"
+          :class="{ 'home-view--mobile': isMobile }"
+        >
           <!-- 桌面：日历(左) + 待办(右) 并排；移动端：日历全屏（待办走抽屉→任务管理） -->
           <CalendarArea />
           <TodoSidebar v-if="!isMobile && todoVisible" />
@@ -89,14 +98,31 @@ html, body {
   box-sizing: border-box;
 }
 
+/* 桌面：导航侧栏在左、内容在右（与 AppSidebar--side 的 769 断点同源）。
+   移动端恒为纵向（返回条在顶），--with-side 由模板响应式挂载。
+   不设 gap：侧栏↔日历的 12px 间距由 content-area 的 padding 统一提供（叠加会变 24） */
+@media (width >= 769px) {
+  .app-layout--with-side {
+    flex-direction: row;
+  }
+}
+
 .content-area {
   flex: 1;
   overflow: hidden;
 
-  /* 纵向 12 / 横向 16：导航栏与内容面板之间的间距收紧一档（面板自带边框阴影，间距可更紧凑）。
-     移动端主页由 .home-view--mobile 负边距出血吃掉此内边距（任务/日程/设置页不受影响） */
-  padding: var(--space-md) var(--space-lg);
+  /* 移动端零内边距：日历贴屏铺满（贴边惯例，圆角边框随之拉平）；
+     任务/日程/设置页由各自页面根样式补内边距，视觉间距不变 */
   box-sizing: border-box;
+  min-width: 0;
+}
+
+/* 桌面浮岛：内容区四边 12px——日历与待办成为四周等距的对称浮岛
+   （圆角/阴影完整成立，灰底透出），侧栏保持贴三边的结构面板 */
+@media (width >= 769px) {
+  .content-area {
+    padding: var(--space-md);
+  }
 }
 
 /* 主页：左右布局 */
@@ -122,7 +148,8 @@ html, body {
 }
 
 /* 移动端待办浮层：占屏宽 72%，贴右、从右侧滑出覆盖日历右侧
-   （72% 为令牌化后的取舍：小屏多显 2 字标题，仍留 28% 日历可辨识） */
+   （72% 为令牌化后的取舍：小屏多显 2 字标题，仍留 28% 日历可辨识）。
+   左缘圆角 + 大阴影：浮于日历之上的层级感知 */
 .mobile-todo-overlay {
   position: absolute;
   top: 0;
@@ -132,6 +159,8 @@ html, body {
   z-index: 20;
   background: var(--el-bg-color);
   display: flex;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   transition: transform var(--duration-base) var(--ease-spring), opacity var(--duration-base) ease;
 }
 
@@ -163,13 +192,10 @@ html, body {
   flex-shrink: 0;
 }
 
-/* 移动端主页全屏出血：手机空间宝贵，日历面板贴边铺满（等效 content-area 零内边距，
-   任务/日程/设置页不受影响）。height 需同步补上被吃掉的上下内边距——
-   负 margin-bottom 只影响后续兄弟，不改变自身底边，单靠负边距底部会残留缺口。
-   须置于 .home-view 基础规则之后：两者同为单类特异性，height 按源顺序取胜 */
+/* 移动端主页：纵向流（日历全屏 + 待办浮层绝对定位锚于此容器）。
+   content-area 已零内边距，无需历史出血补偿 */
 .home-view--mobile {
   flex-direction: column;
-  height: calc(100% + (var(--space-md) * 2));
-  margin: calc(var(--space-md) * -1) calc(var(--space-lg) * -1);
+  height: 100%;
 }
 </style>

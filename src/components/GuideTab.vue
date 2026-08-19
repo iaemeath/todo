@@ -32,7 +32,7 @@ interface GuideSection {
 
 // 内容与实际交互一一对应：来源 CalendarArea.vue（dateClick/select/contextmenu/eventChange/
 // 工具条区间导航/滑动手势）与 TodoSidebar.vue（排序把手/拖拽排期/删除）、
-// App.vue（浮层底罩关闭）及 AppNavBar.vue（导航）
+// App.vue（浮层底罩关闭）及 AppSidebar.vue（导航）
 const webSections: GuideSection[] = [
   {
     title: '📅 日历区',

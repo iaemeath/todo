@@ -5,7 +5,7 @@ import { defineStore } from 'pinia'
  * Global UI state.
  *
  * Centralises view navigation + mobile device detection + the current settings
- * sub-section (shared between AppNavBar's back-button title and SettingsPage).
+ * sub-section (shared between AppSidebar's back-button title and SettingsPage).
  */
 
 export type AppView = 'home' | 'task' | 'schedule' | 'settings'
@@ -17,7 +17,7 @@ const LS_TODO_VISIBLE = 'todo_visible'
 export const useUIStore = defineStore('ui', () => {
   const currentView = ref<AppView>('home')
   const isMobile = ref(false)
-  // 移动端设置子页：'list'=选项列表；选中后为对应面板。AppNavBar 据此显示返回按钮标题。
+  // 移动端设置子页：'list'=选项列表；选中后为对应面板。AppSidebar 据此显示返回按钮标题。
   const settingsSection = ref<SettingsSection>('list')
 
   // 主页待办可见性（web 常驻侧栏 / 移动 60% 浮层，同一状态），持久化保留用户偏好。
@@ -33,11 +33,26 @@ export const useUIStore = defineStore('ui', () => {
   // 移动端拖拽中视觉隐藏状态（DOM 保留供 FC 继续拖拽）
   const mobileTodoDragging = ref(false)
 
-  // 日历 CSS 伪全屏（不持久化：刷新即退出，符合直觉）
-  const calendarFullscreen = ref(false)
+  // 移动端导航抽屉（桌面 rail 常驻无需状态；入口在日历工具条左端/二级页返回条）
+  const navDrawerOpen = ref(false)
 
-  const toggleCalendarFullscreen = () => {
-    calendarFullscreen.value = !calendarFullscreen.value
+  const setNavDrawerOpen = (v: boolean) => {
+    navDrawerOpen.value = v
+  }
+
+  // 桌面 rail 显隐（工具条左端开关；持久化保留用户偏好，刷新不复位）
+  const LS_NAV_RAIL = 'nav_rail_visible'
+  const readNavRailCollapsed = (): boolean => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem(LS_NAV_RAIL) === '0'
+  }
+  const navRailCollapsed = ref<boolean>(readNavRailCollapsed())
+
+  const setNavRailCollapsed = (v: boolean) => {
+    navRailCollapsed.value = v
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(LS_NAV_RAIL, v ? '0' : '1')
+    }
   }
 
   const setTodoVisible = (v: boolean) => {
@@ -93,7 +108,9 @@ export const useUIStore = defineStore('ui', () => {
     setTodoVisible,
     mobileTodoDragging,
     setMobileTodoDragging,
-    calendarFullscreen,
-    toggleCalendarFullscreen
+    navDrawerOpen,
+    setNavDrawerOpen,
+    navRailCollapsed,
+    setNavRailCollapsed
   }
 })
