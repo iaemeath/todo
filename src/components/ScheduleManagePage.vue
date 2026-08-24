@@ -199,7 +199,9 @@ const filteredSchedules = computed(() => {
   // 状态恒过滤（无"全部"档）：已进行=结束时刻早于现在
   list = list.filter(s => (viewMode.value === 'done' ? endMs(s) < nowTs.value : endMs(s) >= nowTs.value))
   if (searchQuery.value.trim()) {
-    list = fuse.value.search(searchQuery.value.trim()).map(r => r.item)
+    // 相交而非替换：命中集与状态/颜色筛选取交集（对齐任务页 matchedIds 模式）
+    const matchedIds = new Set(fuse.value.search(searchQuery.value.trim()).map(r => r.item.id))
+    list = list.filter(s => matchedIds.has(s.id))
   }
   // Sort by date + startTime
   return list.slice().sort((a, b) => {
