@@ -24,12 +24,41 @@ interface PushChange {
 const MAX_CHANGES = 5000
 
 /**
+ * 每用户固定窗口限流（认证后接口，per-uid 而非 per-IP）：
+ * 客户端正常节奏 = 30s 防抖 + 5min 兜底 + 页面隐藏/手动同步，远低于配额。
+ * push 是写操作（逐条裁决打库）配额更紧；超限 429，客户端按 offline 兜底重试。
+ */
+const RATE_LIMITS = { push: { max: 30, windowMs: 60_000 }, pull: { max: 60, windowMs: 60_000 } } as const
+const rateBuckets = new Map<string, { push: { count: number; start: number }; pull: { count: number; start: number } }>()
+
+/** 过期清扫：每次判定顺带清（小规模遍历，不起定时器——与登录限流同一取舍） */
+function allow(uid: string, kind: keyof typeof RATE_LIMITS): boolean {
+  const now = Date.now()
+  const { max, windowMs } = RATE_LIMITS[kind]
+  for (const [u, b] of rateBuckets) {
+    if (now - b.push.start > windowMs && now - b.pull.start > windowMs) rateBuckets.delete(u)
+  }
+  let bucket = rateBuckets.get(uid)
+  if (!bucket) {
+    bucket = { push: { count: 0, start: now }, pull: { count: 0, start: now } }
+    rateBuckets.set(uid, bucket)
+  }
+  const slot = bucket[kind]
+  if (now - slot.start > windowMs) { slot.count = 0; slot.start = now }
+  slot.count += 1
+  return slot.count <= max
+}
+
+/**
  * POST /api/sync/push { changes: [{c, id, data, rev}] }
  * 逐条裁决：表内 rev_time < 推来的 rev 才更新（recv_time 刷新）；
  * 否则拒绝该条（对端更新），返回被拒 key 列表触发客户端拉取修正。
  */
 router.post('/push', (req, res) => {
   const uid = me(res)
+  if (!allow(uid, 'push')) {
+    return res.status(429).json({ ok: false, message: '同步请求过于频繁，请稍后再试' })
+  }
   const changes = Array.isArray((req.body || {}).changes) ? (req.body.changes as PushChange[]) : []
   if (changes.length > MAX_CHANGES) {
     return res.status(400).json({ ok: false, message: `单次推送条数超限（${MAX_CHANGES}）` })
@@ -63,6 +92,9 @@ router.post('/push', (req, res) => {
 /** GET /api/sync/pull?since=<recv_time> —— 增量拉取（recv_time 服务端时钟游标，不漏数据） */
 router.get('/pull', (req, res) => {
   const uid = me(res)
+  if (!allow(uid, 'pull')) {
+    return res.status(429).json({ ok: false, message: '同步请求过于频繁，请稍后再试' })
+  }
   const since = Number(req.query.since || 0) || 0
   const now = Date.now()
 
