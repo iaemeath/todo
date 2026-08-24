@@ -1,5 +1,5 @@
 /**
- * 用户管理（管理员）：列表 / 补绑改邮箱 / 重置密码 / 删除。
+ * 用户管理（管理员）：列表 / 重置密码 / 删除。
  * 权限=白名单角色（roles.ts），前端 features.admin 仅控入口显隐，安全边界在此。
  * 删除用户时快照由 FK ON DELETE CASCADE 级联清除；对方浏览器本地数据不受影响（本地优先架构）。
  */
@@ -8,7 +8,6 @@ import { db } from './db'
 import { requireAuth, hashPassword } from './auth'
 import { isAdmin } from './roles'
 import type { JwtPayload } from './jwt'
-import { EMAIL_RE } from '../src/types/password'
 
 export const router = Router()
 
@@ -56,19 +55,6 @@ router.get('/users', (_req, res) => {
       }))
     }
   })
-})
-
-/** PATCH /api/admin/users/:id {email} —— 补绑/修正邮箱 */
-router.patch('/users/:id', (req, res) => {
-  const email = String((req.body || {}).email || '').trim().toLowerCase()
-
-  if (!EMAIL_RE.test(email)) return res.status(400).json({ ok: false, message: '邮箱格式不正确' })
-  const dup = db.prepare('SELECT 1 FROM users WHERE email = ? AND id != ?').get(email, req.params.id)
-  if (dup) return res.status(409).json({ ok: false, message: '该邮箱已被其他账号使用' })
-
-  const r = db.prepare('UPDATE users SET email = ? WHERE id = ?').run(email, req.params.id)
-  if (r.changes === 0) return res.status(404).json({ ok: false, message: '用户不存在' })
-  res.json({ ok: true, data: null })
 })
 
 /** PUT /api/admin/users/:id/password {password} —— 重置密码（对方已发 token 到期前仍有效，无状态 JWT 的固有限制） */

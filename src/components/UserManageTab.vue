@@ -141,7 +141,7 @@ const removeUser = async (u: AdminUser) => {
       <el-table-column label="快照" width="80" align="right">
         <template #default="{ row }">{{ row.snapshotKb ? row.snapshotKb + ' KB' : '—' }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="160" fixed="right">
+      <el-table-column label="操作" width="200" fixed="right">
         <template #default="{ row }">
           <el-button :icon="Key" link type="primary" @click="resetPassword(row as AdminUser)">重置密码</el-button>
           <el-tooltip
