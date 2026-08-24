@@ -8,11 +8,7 @@
       </el-menu-item>
       <el-menu-item index="ai">
         <el-icon><ChatDotRound /></el-icon>
-        <span>AI 助理配置</span>
-      </el-menu-item>
-      <el-menu-item index="usage">
-        <el-icon><DataLine /></el-icon>
-        <span>API 消耗记录</span>
+        <span>AI 助理</span>
       </el-menu-item>
       <el-menu-item index="data">
         <el-icon><FolderOpened /></el-icon>
@@ -33,12 +29,7 @@
       </div>
       <div class="mobile-item" @click="enterMobile('ai')">
         <el-icon><ChatDotRound /></el-icon>
-        <span>AI 助理配置</span>
-        <el-icon class="arrow"><ArrowRight /></el-icon>
-      </div>
-      <div class="mobile-item" @click="enterMobile('usage')">
-        <el-icon><DataLine /></el-icon>
-        <span>API 消耗记录</span>
+        <span>AI 助理</span>
         <el-icon class="arrow"><ArrowRight /></el-icon>
       </div>
       <div class="mobile-item" @click="enterMobile('data')">
@@ -56,8 +47,11 @@
     <!-- 内容区域（桌面 + 移动端共用） -->
     <div class="settings-content" v-show="!isMobile || settingsSection !== 'list'">
       <ViewSettingsTab v-show="currentTab === 'view'" :form="form" />
-      <AiSettingsTab v-show="currentTab === 'ai'" :form="form" :active="currentTab === 'ai'" />
-      <UsageTab v-show="currentTab === 'usage'" />
+      <!-- AI 助理页 = 配置 + API 消耗记录 两块纵向合并 -->
+      <div v-show="currentTab === 'ai'" class="ai-combined">
+        <AiSettingsTab :form="form" :active="currentTab === 'ai'" />
+        <UsageTab />
+      </div>
       <DataManageTab v-show="currentTab === 'data'" />
       <GuideTab v-show="currentTab === 'guide'" />
     </div>
@@ -66,7 +60,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Monitor, ChatDotRound, DataLine, ArrowRight, FolderOpened, QuestionFilled } from '@element-plus/icons-vue'
+import { Monitor, ChatDotRound, ArrowRight, FolderOpened, QuestionFilled } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
 import { useSettingsStore, useUIStore } from '../stores'
 import ViewSettingsTab from './ViewSettingsTab.vue'
@@ -75,15 +69,15 @@ import UsageTab from './UsageTab.vue'
 import DataManageTab from './DataManageTab.vue'
 import GuideTab from './GuideTab.vue'
 
-const activeTab = ref<'view' | 'ai' | 'usage' | 'data' | 'guide'>('view')
+const activeTab = ref<'view' | 'ai' | 'data' | 'guide'>('view')
 const uiStore = useUIStore()
 const { isMobile, settingsSection } = storeToRefs(uiStore) // state → storeToRefs
 const { setSettingsSection } = uiStore // action 直接解构
 // 桌面用 activeTab，移动端用 settingsSection（'list'=选项列表），content 统一读 currentTab
 const currentTab = computed(() => isMobile.value
-  ? (settingsSection.value === 'list' ? 'view' : settingsSection.value as 'view' | 'ai' | 'usage' | 'data' | 'guide')
+  ? (settingsSection.value === 'list' ? 'view' : settingsSection.value as 'view' | 'ai' | 'data' | 'guide')
   : activeTab.value)
-const enterMobile = (tab: 'view' | 'ai' | 'usage' | 'data' | 'guide') => { setSettingsSection(tab) }
+const enterMobile = (tab: 'view' | 'ai' | 'data' | 'guide') => { setSettingsSection(tab) }
 const settingsStore = useSettingsStore()
 // form 直接引用 store 的 settings（子 tab 通过 props 变异其字段，即时生效并持久化）。
 // 不再用挂载时快照：数据导入等外部更新必须实时反映，否则旧值会在下次调节时被回写覆盖。
@@ -165,6 +159,13 @@ html.platform-mobile .settings-page {
 .control-width {
   width: 100%;
   max-width: 400px;
+}
+
+/* AI 助理页：配置 + API 消耗记录 纵向合并的容器间距 */
+.ai-combined {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
 }
 
 .settings-form {

@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { onMounted, defineAsyncComponent } from 'vue'
+import { onMounted, watch, defineAsyncComponent } from 'vue'
 import AppSidebar from './components/AppSidebar.vue'
 import CalendarArea from './components/CalendarArea.vue'
 import TodoSidebar from './components/TodoSidebar.vue'
 import { storeToRefs } from 'pinia'
 import { ElConfigProvider } from 'element-plus'
 import { useThemeStore, useUIStore } from './stores'
+import { useAuthStore } from './stores/auth'
+import { startSync, stopSync } from './services/syncManager'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 
 // 二级页面与语音助手异步加载，避免首屏 bundle 过大
@@ -14,15 +16,27 @@ const VoiceAssistant = defineAsyncComponent(() => import('./components/VoiceAssi
 const TaskManagePage = defineAsyncComponent(() => import('./components/TaskManagePage.vue'))
 const ScheduleManagePage = defineAsyncComponent(() => import('./components/ScheduleManagePage.vue'))
 const SettingsPage = defineAsyncComponent(() => import('./components/SettingsPage.vue'))
+const AuthPage = defineAsyncComponent(() => import('./components/AuthPage.vue'))
 
 const { loadTheme } = useThemeStore()
 const uiStore = useUIStore()
+const authStore = useAuthStore()
 const { currentView, isMobile, todoVisible, mobileTodoDragging, navRailCollapsed } = storeToRefs(uiStore)
 const { setTodoVisible } = uiStore // action 直接解构
 
 onMounted(() => {
   loadTheme()
+  // 会话恢复：有 token 则校验并刷新 user/features（401 自动清态为游客模式）
+  void authStore.bootstrap()
 })
+
+// 登录态即同步开关：登录/启动 → startSync；登出/token 失效 → stopSync。
+// bootstrap 前按本地 token 乐观启动：token 已过期时首次请求 401 → 清态 → stop，无害。
+watch(
+  () => authStore.isLoggedIn,
+  (v) => (v ? startSync() : stopSync()),
+  { immediate: true }
+)
 </script>
 
 <template>
@@ -68,6 +82,9 @@ onMounted(() => {
 
         <!-- 设置 -->
         <SettingsPage v-else-if="currentView === 'settings'" />
+
+        <!-- 登录/注册页（openAuth 记录来源，closeAuth 返回） -->
+        <AuthPage v-else-if="currentView === 'auth'" />
       </main>
 
       <VoiceAssistant />

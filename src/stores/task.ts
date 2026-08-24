@@ -1,36 +1,11 @@
 import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
 import dayjs from 'dayjs'
+import type { Schedule, Task } from '../types/bundle'
 
 // ===== Types =====
-
-/**
- * 任务（树形，最多 3 级）。
- * 顶级任务 parentId = null；有子节点的任务不会出现在右侧「待办」中。
- */
-export interface Task {
-  id: string
-  parentId: string | null
-  title: string
-  description: string
-  category: string // work, personal, fitness, ideas, shopping, other
-  priority: string // high, medium, low
-  completed: boolean
-  order: number // 同级排序
-}
-
-/**
- * 日程（相对独立的日历事件）。可通过 taskId 关联到一个叶子任务。
- */
-export interface Schedule {
-  id: string
-  taskId?: string // 关联叶子任务；独立日程为空
-  title: string
-  date: string // YYYY-MM-DD
-  startTime: string // HH:MM
-  endTime: string // HH:MM
-  color: string // violet, blue, emerald, amber, rose, cyan
-}
+// 契约定义在 types/bundle.ts（前后端共享），此处 re-export 保持既有 import 路径兼容
+export type { Schedule, Task } from '../types/bundle'
 
 // ===== Storage keys =====
 const LS_TASKS = 'canvas_tasks'

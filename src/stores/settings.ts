@@ -1,59 +1,13 @@
 import { ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { useUIStore } from './ui'
+import { defaultSettings, type Settings } from '../types/bundle'
+
+// 契约定义在 types/bundle.ts（前后端共享），此处 re-export 保持既有 import 路径兼容
+export { defaultSettings } from '../types/bundle'
+export type { Settings } from '../types/bundle'
 
 const LOCAL_STORAGE_SETTINGS = 'canvas_settings'
-
-export interface Settings {
-  aiMode: 'cloud' | 'local'
-  localModelName: string
-  webLlmProgress: string
-  apiBaseUrl: string
-  apiKey: string
-  modelName: string
-  slotDuration: string
-  slotHeight: number
-  majorLineWidth: number
-  majorLineOpacity: number
-  showMinorLines: boolean
-  minorLineWidth: number
-  minorLineOpacity: number
-  startHour: number
-  endHour: number
-  primaryColor: string
-  nowIndicatorColor: string
-  nowIndicatorHeight: number
-  /** 时间区间选择上限（天）：桌面端 */
-  webMaxRangeDays: number
-  /** 时间区间选择上限（天）：移动端 */
-  mobileMaxRangeDays: number
-  /** 手机端是否显示「月」视图按钮（网页端常驻） */
-  showMonthButton: boolean
-}
-
-export const defaultSettings: Settings = {
-  aiMode: 'cloud',
-  localModelName: 'Phi-3-mini-4k-instruct-q4f16_1-MLC',
-  webLlmProgress: '',
-  apiBaseUrl: 'https://api.deepseek.com/v1',
-  apiKey: '',
-  modelName: 'deepseek-chat',
-  slotDuration: '00:30:00',
-  slotHeight: 50,
-  majorLineWidth: 1.5,
-  majorLineOpacity: 0.4,
-  showMinorLines: true,
-  minorLineWidth: 1.0,
-  minorLineOpacity: 0.15,
-  startHour: 5,
-  endHour: 24,
-  primaryColor: '#758af0',
-  nowIndicatorColor: 'rgba(239, 68, 68, 0.8)',
-  nowIndicatorHeight: 2,
-  webMaxRangeDays: 14,
-  mobileMaxRangeDays: 7,
-  showMonthButton: true
-}
 
 /**
  * 移动端首次安装的外观默认值：紧凑行高 + 极简网格。

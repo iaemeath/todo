@@ -39,3 +39,6 @@ components.d.ts
 
 # 构建产物 zip（部署包不入库）
 *.zip
+
+# 后端运行时数据（SQLite 库文件 / JWT 密钥）
+server/data/

@@ -8,8 +8,8 @@ import { defineStore } from 'pinia'
  * sub-section (shared between AppSidebar's back-button title and SettingsPage).
  */
 
-export type AppView = 'home' | 'task' | 'schedule' | 'settings'
-export type SettingsSection = 'list' | 'view' | 'ai' | 'usage' | 'data' | 'guide'
+export type AppView = 'home' | 'task' | 'schedule' | 'settings' | 'auth'
+export type SettingsSection = 'list' | 'view' | 'ai' | 'data' | 'guide'
 
 const MOBILE_BREAKPOINT = 768
 const LS_TODO_VISIBLE = 'todo_visible'
@@ -53,6 +53,17 @@ export const useUIStore = defineStore('ui', () => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(LS_NAV_RAIL, v ? '0' : '1')
     }
+  }
+
+  // 登录/注册页：openAuth 记录来源视图，登录成功/返回时回到来源
+  // （不走 switchView：避免 settings 重置逻辑误伤；直接改 currentView）
+  const authReturnView = ref<AppView>('home')
+  const openAuth = () => {
+    if (currentView.value !== 'auth') authReturnView.value = currentView.value
+    currentView.value = 'auth'
+  }
+  const closeAuth = () => {
+    if (currentView.value === 'auth') currentView.value = authReturnView.value || 'home'
   }
 
   const setTodoVisible = (v: boolean) => {
@@ -111,6 +122,9 @@ export const useUIStore = defineStore('ui', () => {
     navDrawerOpen,
     setNavDrawerOpen,
     navRailCollapsed,
-    setNavRailCollapsed
+    setNavRailCollapsed,
+    authReturnView,
+    openAuth,
+    closeAuth
   }
 })

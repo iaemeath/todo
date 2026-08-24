@@ -1,8 +1,95 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Download, Upload, FolderOpened } from '@element-plus/icons-vue'
+import { ref, computed } from 'vue'
+import { Download, Upload, FolderOpened, Refresh } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { exportAllData, parseBundle, importAllData } from '../stores'
+import { exportAllData, parseBundle, importAllData, useUIStore, type ExportBundle } from '../stores'
+import { useAuthStore } from '../stores/auth'
+import {
+  syncState,
+  lastSyncAt,
+  syncNow,
+  restoreFromCloud,
+  getLocalBackups,
+  restoreLocalBackup
+} from '../services/syncManager'
+
+const uiStore = useUIStore()
+const authStore = useAuthStore()
+
+// ---- 云同步 ----
+const SYNC_TEXT: Record<string, string> = {
+  idle: '待同步（自动进行）',
+  syncing: '同步中…',
+  synced: '已同步',
+  offline: '离线，联网后自动同步',
+  error: '同步失败，稍后自动重试'
+}
+const syncText = computed(() => SYNC_TEXT[syncState.value] || syncState.value)
+const displayName = computed(() => authStore.user?.nickname || authStore.user?.username || '')
+const lastSyncText = computed(() =>
+  lastSyncAt.value ? new Date(lastSyncAt.value).toLocaleString('zh-CN') : '从未'
+)
+
+const syncing = ref(false)
+const handleSyncNow = async () => {
+  syncing.value = true
+  try {
+    const ok = await syncNow()
+    if (ok) ElMessage.success('同步完成')
+    else if (syncState.value === 'offline') ElMessage.warning('网络不可达，联网后自动重试')
+    else ElMessage.error('同步失败，请稍后重试')
+  } finally {
+    syncing.value = false
+  }
+}
+
+const handleRestoreCloud = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '将用云端数据覆盖本机当前数据（覆盖前自动保留本机保护快照）。',
+      '从云端恢复',
+      { type: 'warning', confirmButtonText: '覆盖恢复', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+  const ok = await restoreFromCloud()
+  if (ok) {
+    ElMessage.success('已恢复云端数据')
+    refreshBackups()
+  } else {
+    ElMessage.error('恢复失败（云端无数据或网络不可达）')
+  }
+}
+
+// 本机保护快照（每次被云端覆盖前自动存档，最多 3 份）
+const backups = ref<ExportBundle[]>(getLocalBackups())
+const selectedBackup = ref('')
+const backupOptions = computed(() =>
+  backups.value.map((b, i) => ({
+    value: String(i),
+    label: `${new Date(b.exportedAt).toLocaleString('zh-CN')} · ${b.tasks.length} 任务`
+  }))
+)
+const refreshBackups = () => {
+  backups.value = getLocalBackups()
+  selectedBackup.value = ''
+}
+const handleRestoreBackup = async () => {
+  const b = backups.value[Number(selectedBackup.value)]
+  if (!b) return
+  try {
+    await ElMessageBox.confirm(
+      `回滚到 ${new Date(b.exportedAt).toLocaleString('zh-CN')} 的本机快照？当前数据将被覆盖。`,
+      '回滚本机快照',
+      { type: 'warning', confirmButtonText: '回滚', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+  restoreLocalBackup(b)
+  ElMessage.success('已回滚，稍后自动同步到云端')
+}
 
 const fileInput = ref<HTMLInputElement | null>(null)
 
@@ -61,6 +148,50 @@ const handleFileChange = async (e: Event) => {
 
 <template>
   <div class="data-manage">
+    <!-- 云同步（登录特权；游客显示引导） -->
+    <el-card shadow="never" class="setting-card">
+      <template #header><span class="card-title">云同步</span></template>
+      <template v-if="!authStore.isLoggedIn">
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-name">登录开启多设备云同步</span>
+            <span class="setting-desc">登录后数据定期自动同步到云端账号，换设备不丢数据；同时解锁语音助手。</span>
+          </div>
+          <el-button type="primary" @click="uiStore.openAuth()">登录 / 注册</el-button>
+        </div>
+        <div class="form-hint">未登录不影响本机使用：全部功能照常，数据仅存于本浏览器（清理浏览器数据会丢失）。</div>
+      </template>
+      <template v-else>
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-name">{{ syncText }}</span>
+            <span class="setting-desc">账号 {{ displayName }} · 上次同步 {{ lastSyncText }}（改动后约 30 秒自动同步）</span>
+          </div>
+          <div class="cloud-actions">
+            <el-button type="primary" plain :icon="Refresh" :loading="syncing" @click="handleSyncNow">立即同步</el-button>
+            <el-button type="warning" plain @click="handleRestoreCloud">从云端恢复</el-button>
+          </div>
+        </div>
+        <div v-if="backupOptions.length" class="setting-row">
+          <div class="setting-info">
+            <span class="setting-name">本机保护快照</span>
+            <span class="setting-desc">每次被云端覆盖前自动存档，最多保留 3 份，可随时回滚。</span>
+          </div>
+          <div class="cloud-actions">
+            <el-select v-model="selectedBackup" placeholder="选择快照" style="width: 210px">
+              <el-option
+                v-for="opt in backupOptions"
+                :key="opt.value"
+                :label="opt.label"
+                :value="opt.value"
+              />
+            </el-select>
+            <el-button :disabled="selectedBackup === ''" @click="handleRestoreBackup">回滚</el-button>
+          </div>
+        </div>
+      </template>
+    </el-card>
+
     <el-card shadow="never" class="setting-card">
       <template #header><span class="card-title">导出备份</span></template>
       <div class="setting-row">
@@ -104,6 +235,15 @@ const handleFileChange = async (e: Event) => {
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
+}
+
+/* 云同步操作按钮组（可能与较长的说明文字并排，允许换行） */
+.cloud-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .data-empty-hint {

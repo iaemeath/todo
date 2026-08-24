@@ -19,6 +19,24 @@
         <span class="tab-label">{{ item.label }}</span>
       </button>
     </nav>
+
+    <!-- 账号区（沉底）：游客显示登录入口；登录后显示昵称+同步状态点与退出 -->
+    <div class="nav-footer">
+      <button v-if="!authStore.isLoggedIn" class="nav-tab" title="登录解锁语音助手与云同步" @click="openLogin">
+        <el-icon class="tab-icon"><Lock /></el-icon>
+        <span class="tab-label">登录</span>
+      </button>
+      <template v-else>
+        <div class="nav-user" :title="syncTitle" @click="goDataManage">
+          <span class="sync-dot" :class="syncState"></span>
+          <span class="tab-label nav-user-name">{{ displayName }}</span>
+        </div>
+        <button class="nav-tab" title="退出登录（数据保留本机，可继续游客使用）" @click="handleLogout">
+          <el-icon class="tab-icon"><SwitchButton /></el-icon>
+          <span class="tab-label">退出</span>
+        </button>
+      </template>
+    </div>
   </header>
 
   <!-- 移动端二级页：返回条（左端汉堡开导航抽屉 + 逐级返回）；
@@ -61,6 +79,24 @@
           <el-icon><Setting /></el-icon>
           <span>设置</span>
         </button>
+
+        <!-- 账号区（沉底，与桌面侧栏同语义） -->
+        <div class="nav-drawer__footer">
+          <button v-if="!authStore.isLoggedIn" class="nav-drawer__item" @click="openLogin">
+            <el-icon><Lock /></el-icon>
+            <span>登录 / 注册</span>
+          </button>
+          <template v-else>
+            <div class="nav-drawer__user" :title="syncTitle" @click="goDataManage">
+              <span class="sync-dot" :class="syncState"></span>
+              <span>{{ displayName }}</span>
+            </div>
+            <button class="nav-drawer__item" @click="handleLogout">
+              <el-icon><SwitchButton /></el-icon>
+              <span>退出登录</span>
+            </button>
+          </template>
+        </div>
       </div>
     </Transition>
   </template>
@@ -68,17 +104,53 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Calendar, List, Clock, Setting, ArrowLeft, Menu, Timer } from '@element-plus/icons-vue'
+import { Calendar, List, Clock, Setting, ArrowLeft, Menu, Timer, Lock, SwitchButton } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
+import { ElMessage } from 'element-plus'
 import { useUIStore, type AppView } from '../stores'
+import { useAuthStore } from '../stores/auth'
+import { syncState } from '../services/syncManager'
 
 const uiStore = useUIStore()
+const authStore = useAuthStore()
 const { currentView, isMobile, settingsSection, navDrawerOpen, navRailCollapsed } = storeToRefs(uiStore) // state → storeToRefs
 const { switchView, setSettingsSection, setNavDrawerOpen, setNavRailCollapsed } = uiStore // action 直接解构
 
-// 移动端逐级返回：设置内页 → 设置列表 → 主页（任务/日程为单级，直接回主页）
+const displayName = computed(() => authStore.user?.nickname || authStore.user?.username || '')
+
+// 同步状态点文案（点击进数据管理页做手动操作）
+const SYNC_TEXT: Record<string, string> = {
+  off: '未登录',
+  idle: '待同步（自动进行）',
+  syncing: '同步中…',
+  synced: '已同步',
+  offline: '离线，联网后自动同步',
+  error: '同步失败，点击查看'
+}
+const syncTitle = computed(() => SYNC_TEXT[syncState.value] || syncState.value)
+
+const openLogin = () => {
+  setNavDrawerOpen(false)
+  uiStore.openAuth()
+}
+
+const goDataManage = () => {
+  setNavDrawerOpen(false)
+  switchView('settings')
+  setSettingsSection('data')
+}
+
+const handleLogout = () => {
+  authStore.logout()
+  setNavDrawerOpen(false)
+  ElMessage.success('已退出登录，数据保留本机')
+}
+
+// 移动端逐级返回：登录页 → 来源页；设置内页 → 设置列表 → 主页（任务/日程为单级，直接回主页）
 const handleBack = () => {
-  if (currentView.value === 'settings' && settingsSection.value !== 'list') {
+  if (currentView.value === 'auth') {
+    uiStore.closeAuth()
+  } else if (currentView.value === 'settings' && settingsSection.value !== 'list') {
     setSettingsSection('list')
   } else {
     switchView('home')
@@ -107,10 +179,11 @@ const go = (view: AppView) => {
 
 // 移动端非主页返回按钮标题
 const settingsTitle = computed(() => {
-  const map: Record<string, string> = { list: '设置', view: '视觉与外观', ai: 'AI 助理配置', usage: 'API 消耗记录', data: '数据管理', guide: '使用指南' }
+  const map: Record<string, string> = { list: '设置', view: '视觉与外观', ai: 'AI 助理', data: '数据管理', guide: '使用指南' }
   return map[settingsSection.value] || '设置'
 })
 const navTitle = computed(() => {
+  if (currentView.value === 'auth') return '登录 / 注册'
   if (currentView.value === 'settings') return settingsTitle.value
   if (currentView.value === 'task') return '任务管理'
   if (currentView.value === 'schedule') return '日程管理'
@@ -159,6 +232,69 @@ const navTitle = computed(() => {
 .logo-icon {
   font-size: 1.3rem;
   color: var(--el-color-primary);
+}
+
+/* ===== 同步状态点（桌面侧栏/移动抽屉共用） ===== */
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--el-text-color-placeholder);
+  flex-shrink: 0;
+}
+
+.sync-dot.syncing {
+  background: var(--el-color-primary);
+  animation: sync-pulse 1s ease-in-out infinite;
+}
+
+.sync-dot.synced {
+  background: var(--el-color-success);
+}
+
+.sync-dot.offline {
+  background: var(--el-color-warning);
+}
+
+.sync-dot.error {
+  background: var(--el-color-danger);
+}
+
+@keyframes sync-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ===== 桌面侧栏账号区（沉底） ===== */
+.nav-footer {
+  margin-top: auto; /* 侧栏 flex column 下推到底 */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-md);
+  color: var(--el-text-color-secondary);
+  font-size: var(--font-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.nav-user:hover {
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-primary);
+}
+
+.nav-user-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ===== 桌面侧边栏：240px 标准宽度，logo 顶部 + 导航纵向列表（图标+全名横排）。
@@ -298,6 +434,32 @@ const navTitle = computed(() => {
   background: var(--el-color-primary-light-9);
   color: var(--el-color-primary);
   font-weight: var(--weight-semibold);
+}
+
+/* 抽屉账号区（沉底，与桌面侧栏同语义） */
+.nav-drawer__footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  border-top: 1px solid var(--el-border-color-lighter);
+  padding-top: var(--space-sm);
+}
+
+.nav-drawer__user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-sm);
+  border-radius: var(--radius-md);
+  color: var(--el-text-color-secondary);
+  font-size: var(--font-base);
+  cursor: pointer;
+}
+
+.nav-drawer__user:hover {
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-primary);
 }
 
 /* 抽屉从左侧滑入/滑出（对称复用待办浮层的招牌弹性曲线，方向相反） */

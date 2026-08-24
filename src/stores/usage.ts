@@ -1,19 +1,11 @@
 import { ref, watch } from 'vue'
 import { defineStore } from 'pinia'
+import type { UsageRecord } from '../types/bundle'
 
 const LOCAL_STORAGE_USAGE = 'canvas_api_usage'
 
-export interface UsageRecord {
-  id: string
-  date: string
-  model: string
-  promptTokens: number
-  completionTokens: number
-  totalTokens: number
-  requestContent?: string
-  responseContent?: string
-  rawPrompt?: string
-}
+// 契约定义在 types/bundle.ts（前后端共享），此处 re-export 保持既有 import 路径兼容
+export type { UsageRecord } from '../types/bundle'
 
 export const useUsageStore = defineStore('usage', () => {
   const usageHistory = ref<UsageRecord[]>([])
