@@ -9,12 +9,24 @@
           <span style="margin-left: 8px;">{{ c.label }}</span>
         </el-option>
       </el-select>
+      <div class="view-tabs">
+        <span class="view-tab-indicator" :class="{ right: viewMode === 'done' }"></span>
+        <button
+          v-for="opt in viewOptions"
+          :key="opt.value"
+          class="view-tab"
+          :class="{ active: viewMode === opt.value }"
+          @click="viewMode = opt.value"
+        >
+          <span class="view-tab-label">{{ opt.label }}</span>
+        </button>
+      </div>
       <el-button type="primary" :icon="Link" @click="openFromTodoDialog"><span v-if="!isMobile">从待办新增</span></el-button>
       <el-button type="primary" :icon="Plus" @click="openCreateDialog"><span v-if="!isMobile">新增日程</span></el-button>
     </div>
 
     <!-- Table -->
-    <el-table :data="filteredSchedules" stripe border style="width: 100%;" empty-text="暂无日程">
+    <el-table :data="filteredSchedules" stripe border style="width: 100%;" :empty-text="emptyText">
       <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
       <el-table-column label="日期" width="130">
         <template #default="{ row }">
@@ -133,7 +145,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import Fuse from 'fuse.js'
 import { Plus, Search, Delete, Edit, Link } from '@element-plus/icons-vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
@@ -160,12 +172,32 @@ const taskTitle = (taskId: string) => activeTasks.value.find(t => t.id === taskI
 // ---- Search & filter ----
 const searchQuery = ref('')
 const filterColor = ref('')
+// 二段切换（对齐任务页 未完成|已完成 胶囊模式）：默认未进行，已结束日程不占默认视图
+type ViewMode = 'upcoming' | 'done'
+const viewMode = ref<ViewMode>('upcoming')
+const viewOptions = [
+  { value: 'upcoming' as const, label: '未进行' },
+  { value: 'done' as const, label: '已进行' }
+]
+
+// 已进行是时间推导态（结束时刻早于现在），无持久字段：
+// 分钟级心跳让页面常开时跨越结束时刻的日程自动归入"已进行"
+const nowTs = ref(Date.now())
+const nowTimer = window.setInterval(() => { nowTs.value = Date.now() }, 60_000)
+onUnmounted(() => clearInterval(nowTimer))
+
+/** 日程结束时刻（毫秒，本地时区）：date(YYYY-MM-DD) + endTime(HH:mm) */
+const endMs = (s: Schedule) => new Date(`${s.date}T${s.endTime}:00`).getTime()
 
 const fuse = computed(() => new Fuse(activeSchedules.value, { keys: ['title'], threshold: 0.4 }))
+
+const emptyText = computed(() => (viewMode.value === 'done' ? '暂无已进行日程' : '暂无未进行日程'))
 
 const filteredSchedules = computed(() => {
   let list = activeSchedules.value
   if (filterColor.value) list = list.filter(t => t.color === filterColor.value)
+  // 状态恒过滤（无"全部"档）：已进行=结束时刻早于现在
+  list = list.filter(s => (viewMode.value === 'done' ? endMs(s) < nowTs.value : endMs(s) >= nowTs.value))
   if (searchQuery.value.trim()) {
     list = fuse.value.search(searchQuery.value.trim()).map(r => r.item)
   }
@@ -305,6 +337,75 @@ html.platform-mobile .manage-page {
   align-items: center;
   gap: var(--space-lg);
   flex-shrink: 0;
+}
+
+/* 二段切换（照搬任务页 未完成|已完成 胶囊样式） */
+.view-tabs {
+  position: relative;
+  display: inline-flex;
+  padding: 3px; /* stylelint-disable-line declaration-property-value-disallowed-list -- 胶囊指示器几何偏移特例 */
+  background: var(--el-fill-color-light);
+  border: 1px solid var(--border-glass);
+  border-radius: 9999px;
+}
+
+.view-tab-indicator {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  height: calc(100% - 6px);
+  background: var(--color-primary);
+  border-radius: 9999px;
+  box-shadow: 0 2px 8px var(--color-primary-alpha);
+  transition: transform var(--duration-base) var(--ease-standard);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.view-tab-indicator.right {
+  transform: translateX(100%);
+}
+
+.view-tab {
+  position: relative;
+  z-index: 1;
+  min-width: 56px;
+  padding: 4px 12px;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  white-space: nowrap;
+  transition: color var(--duration-base) ease;
+}
+
+.view-tab:hover {
+  color: var(--text-primary);
+}
+
+.view-tab.active {
+  color: #fff;
+}
+
+/* 覆盖全局 button:not(.el-button) 的 :active 缩放，反馈交给滑动指示块 */
+.view-tab:active {
+  transform: none;
+}
+
+/* 桌面：胶囊放宽 */
+@media (width >= 769px) {
+  .view-tab {
+    min-width: 92px;
+    padding: 5px 14px;
+  }
 }
 
 .text-secondary {
