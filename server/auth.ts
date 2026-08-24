@@ -1,7 +1,7 @@
 /**
  * 认证路由：邮箱注册（验证码验真）/ 登录 / 忘记密码 / 改密 / 会话恢复。
  * 密码 scrypt（salt:hash hex）；登录限流内存 Map（自用规模足够，重启清零可接受）。
- * 人机验证=算术图形码（获取邮箱验证码前必过）；邮箱验证码 6 位、单次、10 分钟。
+ * 人机验证=滑块拼图（获取邮箱验证码前必过，一次性 sliderToken）；邮箱验证码 6 位、单次、10 分钟。
  * 弱口令策略前后端共享（src/types/password.ts，类型下沉模式同 bundle.ts）。
  */
 import { Router, type Request, type Response, type NextFunction } from 'express'
@@ -9,7 +9,7 @@ import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { db } from './db'
 import { signJwt, verifyJwt, type JwtPayload } from './jwt'
 import { isAdmin } from './roles'
-import { createCaptcha, verifyCaptcha } from './captcha'
+import { createChallenge, verifySlider, consumeSliderToken, type TrackPoint } from './sliderCaptcha'
 import { issueMailCode, verifyMailCode } from './mailCode'
 import { validatePassword, EMAIL_RE } from '../src/types/password'
 
@@ -91,30 +91,42 @@ const normEmail = (raw: unknown) => String(raw || '').trim().toLowerCase()
 
 /** 图形码校验失败统一文案（不区分过期/答错，反正已销毁需重取） */
 function badCaptcha(res: Response) {
-  return res.status(400).json({ ok: false, message: '图形验证码错误或已过期，请点击图片刷新后重试' })
+  return res.status(400).json({ ok: false, message: '人机验证未通过或已失效，请重新拖动滑块' })
 }
 
 // ===== 路由 =====
 
-/** GET /api/auth/captcha —— 算术图形验证码（注册/忘记密码共用） */
-router.get('/captcha', (_req, res) => {
-  res.json({ ok: true, data: createCaptcha() })
+/** GET /api/auth/slider/challenge —— 滑块拼图挑战（注册/忘记密码共用，IP 频控防 x 枚举） */
+router.get('/slider/challenge', (req, res) => {
+  const c = createChallenge(req.ip || 'unknown')
+  if (!c) return res.status(429).json({ ok: false, message: '操作过于频繁，请稍后再试' })
+  res.json({ ok: true, data: c })
 })
 
-/** POST /api/auth/register/code {email, password, captchaId, captchaCode, inviteCode?}
- *  注册第一步：图形码验人 → 格式/唯一/弱口令/邀请码预检 → 发邮箱验证码 */
+/** POST /api/auth/slider/verify {id, x, track:[{t,x}]}
+ *  位置容差 + 轨迹校验 → 通过签发一次性 sliderToken（业务接口消费） */
+router.post('/slider/verify', (req, res) => {
+  const { id, x, track } = req.body || {}
+  const r = verifySlider(String(id || ''), Number(x), Array.isArray(track) ? (track as TrackPoint[]) : [])
+  if (r.status === 'ok') return res.json({ ok: true, data: { token: r.token } })
+  return badCaptcha(res)
+})
+
+/** POST /api/auth/register/code {email, password, sliderToken, inviteCode?}
+ *  注册第一步：格式/邀请码/弱口令预检 → 滑块 token（消耗性，放可重试校验后、
+ *  唯一性查询前——token 不被格式小错浪费，也不给未验证者探测注册占用）→ 发邮箱验证码 */
 router.post('/register/code', async (req, res) => {
-  const { captchaId, captchaCode, inviteCode } = req.body || {}
+  const { sliderToken, inviteCode } = req.body || {}
   const email = normEmail(req.body?.email)
   const password = String(req.body?.password || '')
 
-  if (!verifyCaptcha(String(captchaId || ''), captchaCode)) return badCaptcha(res)
   if (!EMAIL_RE.test(email)) return res.status(400).json({ ok: false, message: '邮箱格式不正确' })
   if (INVITE_CODE && inviteCode !== INVITE_CODE) {
     return res.status(403).json({ ok: false, message: '邀请码错误' })
   }
   const pwdCheck = validatePassword(password, email)
   if (!pwdCheck.ok) return res.status(400).json({ ok: false, message: pwdCheck.reason })
+  if (!consumeSliderToken(String(sliderToken || ''))) return badCaptcha(res)
   const exists = db.prepare('SELECT 1 FROM users WHERE email = ?').get(email)
   if (exists) return res.status(409).json({ ok: false, message: '该邮箱已注册' })
 
@@ -177,14 +189,14 @@ router.post('/login', (req, res) => {
   res.json({ ok: true, data: { token: signJwt(row.id, row.email || email), user } })
 })
 
-/** POST /api/auth/forgot {email, captchaId, captchaCode}
- *  忘记密码第一步：图形码验人 → 发重置验证码。
+/** POST /api/auth/forgot {email, sliderToken}
+ *  忘记密码第一步：滑块验人 → 发重置验证码。
  *  防枚举：邮箱不存在时同样返回成功文案（不发码） */
 router.post('/forgot', async (req, res) => {
-  const { captchaId, captchaCode } = req.body || {}
+  const { sliderToken } = req.body || {}
   const email = normEmail(req.body?.email)
 
-  if (!verifyCaptcha(String(captchaId || ''), captchaCode)) return badCaptcha(res)
+  if (!consumeSliderToken(String(sliderToken || ''))) return badCaptcha(res)
 
   const exists = db.prepare('SELECT 1 FROM users WHERE email = ?').get(email)
   if (exists) {

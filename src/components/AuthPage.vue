@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * 登录/注册/忘记密码页（全屏，替代原弹窗）：游客随时可用全部功能，登录开启多设备云同步。
- * v4.2 邮箱体系：注册需邮箱验证码验真（先过图形人机验证），忘记密码走邮箱验证码重置。
+ * v4.2 邮箱体系：注册需邮箱验证码验真（先过滑块人机验证），忘记密码走邮箱验证码重置。
  * 弱口令策略与 server 共享（src/types/password.ts 类型下沉），失焦即时提示 + 提交时把关。
  */
 import { ref, reactive, computed, watch, onBeforeUnmount } from 'vue'
@@ -11,6 +11,7 @@ import { useUIStore } from '../stores'
 import { useAuthStore } from '../stores/auth'
 import { api, ApiError } from '../services/apiClient'
 import { validatePassword, EMAIL_RE } from '../types/password'
+import SliderCaptcha from './SliderCaptcha.vue'
 
 const uiStore = useUIStore()
 const authStore = useAuthStore()
@@ -24,9 +25,12 @@ const form = reactive({
   password: '',
   confirmPassword: '',
   inviteCode: '',
-  captcha: '',       // 图形码答案（算术题）
-  mailCode: ''       // 邮箱验证码
+  mailCode: ''      // 邮箱验证码
 })
+
+// ===== 滑块人机验证（v-model 拿一次性 token；注册取码/忘记密码取码共用） =====
+const sliderToken = ref<string | null>(null)
+const sliderRef = ref<InstanceType<typeof SliderCaptcha> | null>(null)
 
 /** 密码失焦弱口令即时提示（不阻断输入，提交时再把关） */
 const pwdHint = ref('')
@@ -35,18 +39,6 @@ const checkPwd = () => {
     ? validatePassword(form.password, form.email).reason
     : ''
 }
-
-// ===== 图形验证码（人机验证）：注册取码/忘记密码取码共用 =====
-const captcha = ref<{ id: string; svg: string } | null>(null)
-const loadCaptcha = async () => {
-  captcha.value = await api<{ id: string; svg: string }>('/auth/captcha')
-  form.captcha = ''
-}
-watch(mode, (m) => {
-  // 进入需要人机验证的形态时预取图形码；离开时清掉（旧码已随验证销毁）
-  if (m === 'register' || m === 'forgot') void loadCaptcha()
-  else captcha.value = null
-})
 
 // ===== 邮箱验证码发送（60s 倒计时；register/forgot 两形态分别调各自接口） =====
 const sending = ref(false)
@@ -67,8 +59,8 @@ const sendMailCode = async () => {
     ElMessage.warning('请先输入正确的邮箱')
     return
   }
-  if (!form.captcha.trim()) {
-    ElMessage.warning('请先输入图形验证码的答案')
+  if (!sliderToken.value) {
+    ElMessage.warning('请先完成滑块人机验证')
     return
   }
   sending.value = true
@@ -80,8 +72,7 @@ const sendMailCode = async () => {
         body: {
           email: form.email.trim().toLowerCase(),
           password: form.password,
-          captchaId: captcha.value?.id,
-          captchaCode: form.captcha.trim(),
+          sliderToken: sliderToken.value,
           inviteCode: form.inviteCode.trim() || undefined
         }
       })
@@ -90,18 +81,17 @@ const sendMailCode = async () => {
         method: 'POST',
         body: {
           email: form.email.trim().toLowerCase(),
-          captchaId: captcha.value?.id,
-          captchaCode: form.captcha.trim()
+          sliderToken: sliderToken.value
         }
       })
     }
     startCountdown()
     // 防枚举统一文案（与服务端一致；无论邮箱是否注册都这么提示）
     ElMessage.success(mode.value === 'register' ? '验证码已发送，请查收邮箱' : '若该邮箱已注册，验证码已发送，请查收')
-    void loadCaptcha() // 图形码已销毁，换新图
+    void sliderRef.value?.reset() // token 已被服务端消费，换新图备下次
   } catch (e) {
     ElMessage.error(e instanceof ApiError ? e.message : '发送失败，请稍后重试')
-    void loadCaptcha() // 答错/过期也已销毁，换新图重来
+    void sliderRef.value?.reset() // token 可能已被消费（预检在后），统一换新图
   } finally {
     sending.value = false
   }
@@ -179,7 +169,6 @@ const switchMode = (m: Mode) => {
   form.password = ''
   form.confirmPassword = ''
   form.mailCode = ''
-  form.captcha = ''
   pwdHint.value = ''
 }
 
@@ -263,17 +252,8 @@ const submitLabel = computed(() =>
             @keyup.enter="submit"
           />
 
-          <!-- 图形人机验证 -->
-          <div class="captcha-row">
-            <!-- eslint-disable-next-line vue/no-v-html -- 服务端生成的验证码 SVG，内容可信 -->
-            <div class="captcha-img" title="点击刷新" @click="loadCaptcha" v-html="captcha?.svg"></div>
-            <el-input
-              v-model="form.captcha"
-              placeholder="计算结果"
-              :disabled="loading"
-              @keyup.enter="sendMailCode"
-            />
-          </div>
+          <!-- 滑块人机验证（通过后自动持有一次性 token） -->
+          <SliderCaptcha ref="sliderRef" v-model="sliderToken" />
 
           <!-- 邮箱验证码 -->
           <div class="mail-code-row">
@@ -446,27 +426,6 @@ const submitLabel = computed(() =>
   font-size: var(--font-xs);
   color: var(--el-color-danger);
   line-height: 1.4;
-}
-
-/* 图形验证码行：图片 + 答案输入 */
-.captcha-row {
-  display: flex;
-  gap: var(--space-sm);
-  align-items: center;
-}
-
-.captcha-img {
-  flex-shrink: 0;
-  width: 120px;
-  height: 40px;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  cursor: pointer;
-  border: 1px solid var(--el-border-color-light);
-}
-
-.captcha-img :deep(svg) {
-  display: block;
 }
 
 /* 邮箱验证码行：输入 + 发送按钮 */
