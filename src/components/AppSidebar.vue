@@ -33,22 +33,25 @@
       </button>
     </nav>
 
-    <!-- 账号区（沉底）：游客显示登录入口；登录后显示昵称+同步状态点与退出 -->
+    <!-- 账号区（沉底）：游客显示登录入口；登录后点击昵称行向上弹菜单（退出等） -->
     <div class="nav-footer">
       <button v-if="!authStore.isLoggedIn" class="nav-tab" title="登录解锁语音助手与云同步" @click="openLogin">
         <el-icon class="tab-icon"><Lock /></el-icon>
         <span class="tab-label">登录</span>
       </button>
-      <template v-else>
-        <div class="nav-user" :title="syncTitle" @click="goDataManage">
+      <el-dropdown v-else placement="top-start" trigger="click" @command="handleLogout">
+        <div class="nav-user" :title="syncTitle">
           <span class="sync-dot" :class="syncState"></span>
           <span class="tab-label nav-user-name">{{ displayName }}</span>
         </div>
-        <button class="nav-tab" title="退出登录（数据保留本机，可继续游客使用）" @click="handleLogout">
-          <el-icon class="tab-icon"><SwitchButton /></el-icon>
-          <span class="tab-label">退出</span>
-        </button>
-      </template>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="logout">
+              <el-icon><SwitchButton /></el-icon>退出登录
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
     </div>
   </header>
 
@@ -102,22 +105,25 @@
           <span>{{ item.label }}</span>
         </button>
 
-        <!-- 账号区（沉底，与桌面侧栏同语义） -->
+        <!-- 账号区（沉底，与桌面侧栏同语义：点昵称行向上弹菜单） -->
         <div class="nav-drawer__footer">
           <button v-if="!authStore.isLoggedIn" class="nav-drawer__item" @click="openLogin">
             <el-icon><Lock /></el-icon>
             <span>登录 / 注册</span>
           </button>
-          <template v-else>
-            <div class="nav-drawer__user" :title="syncTitle" @click="goDataManage">
+          <el-dropdown v-else placement="top-start" trigger="click" @command="handleLogout">
+            <div class="nav-drawer__user" :title="syncTitle">
               <span class="sync-dot" :class="syncState"></span>
               <span>{{ displayName }}</span>
             </div>
-            <button class="nav-drawer__item" @click="handleLogout">
-              <el-icon><SwitchButton /></el-icon>
-              <span>退出登录</span>
-            </button>
-          </template>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="logout">
+                  <el-icon><SwitchButton /></el-icon>退出登录
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </div>
     </Transition>
@@ -154,11 +160,6 @@ const syncTitle = computed(() => SYNC_TEXT[syncState.value] || syncState.value)
 const openLogin = () => {
   setNavDrawerOpen(false)
   uiStore.openAuth()
-}
-
-const goDataManage = () => {
-  setNavDrawerOpen(false)
-  openSettingsSection('data')
 }
 
 const handleLogout = () => {
@@ -303,6 +304,13 @@ const navTitle = computed(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
+}
+
+/* 下拉包裹层撑满：昵称行整行可点击弹出菜单 */
+.nav-footer :deep(.el-dropdown),
+.nav-drawer__footer :deep(.el-dropdown) {
+  display: block;
+  width: 100%;
 }
 
 .nav-user {
