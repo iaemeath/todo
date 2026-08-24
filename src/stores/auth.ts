@@ -6,6 +6,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { api, onUnauthorized } from '../services/apiClient'
 import { getToken, setToken } from '../services/tokenStore'
+import { clearAllStores } from './index'
 
 export interface AuthUser {
   id: string
@@ -20,6 +21,8 @@ interface AuthFeatures {
 }
 
 const USER_KEY = 'shiguang_user'
+/** 上次登录账号标记：账号隔离的依据（本地数据无账号归属） */
+const LAST_USER_KEY = 'shiguang_last_user'
 
 export const useAuthStore = defineStore('auth', () => {
   // ===== State =====
@@ -49,6 +52,18 @@ export const useAuthStore = defineStore('auth', () => {
   // 任何接口 401 → 统一清登录态（token 过期唯一出口；setup 只执行一次不会重复注册）
   onUnauthorized(clear)
 
+  /**
+   * 账号切换检测：本地数据无账号归属，切换账号必须先清空业务数据，
+   * 否则 A 的数据会在下次全量推送时被推给 B。
+   * - 游客→首次登录：不清（游客数据归属首个登录者是既有语义）
+   * - 同账号重登（含 401 过期后重登）：不清（保留未同步数据，登录后补推）
+   */
+  const onAccountSwitch = (userId: string) => {
+    const prev = localStorage.getItem(LAST_USER_KEY)
+    localStorage.setItem(LAST_USER_KEY, userId)
+    if (prev && prev !== userId) clearAllStores()
+  }
+
   // ===== Actions =====
 
   /** 启动会话恢复：有 token 则校验并刷新 user/features；网络失败保留本地态下次再试 */
@@ -71,6 +86,7 @@ export const useAuthStore = defineStore('auth', () => {
       method: 'POST',
       body: { email, password }
     })
+    onAccountSwitch(r.user.id)
     token.value = r.token
     user.value = r.user
     persist()
@@ -87,14 +103,20 @@ export const useAuthStore = defineStore('auth', () => {
       method: 'POST',
       body: { email, password, inviteCode, code }
     })
+    onAccountSwitch(r.user.id)
     token.value = r.token
     user.value = r.user
     persist()
     void bootstrap()
   }
 
-  /** JWT 无状态，退出即清本地凭据 */
+  /**
+   * 退出即清本机业务数据（隐私默认：公用电脑不留痕；云端数据不受影响，
+   * 重新登录会从云端全量恢复）。无状态 JWT，本地凭据随清。
+   */
   function logout() {
+    clearAllStores()
+    localStorage.removeItem(LAST_USER_KEY)
     clear()
   }
 

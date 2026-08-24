@@ -95,7 +95,13 @@ const activeTodos = computed({
     // 重排只作用于可见（未完成）叶子；已完成的沉底保持相对顺序。
     // 若只给可见子集编号 0..n-1，完成→取消完成后 order 会与未重编号的混叠穿插
     const hidden = leafTasks.value.filter(t => t.completed)
-    ;[...val, ...hidden].forEach((t, i) => { t.order = i })
+    const now = Date.now()
+    ;[...val, ...hidden].forEach((t, i) => {
+      if (t.order === i) return
+      t.order = i
+      // order 是记录内容的一部分：必须重打修订时间，否则对端按 revTime 裁决会忽略重排
+      t.revTime = now
+    })
   }
 })
 

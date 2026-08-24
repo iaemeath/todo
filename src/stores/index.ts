@@ -9,15 +9,13 @@ export { useUsageStore, type UsageRecord } from './usage'
 export { parseBundle, type ExportBundle } from '../types/bundle'
 
 import { useTaskStore } from './task'
-import { useSettingsStore } from './settings'
+import { useSettingsStore, defaultSettings } from './settings'
 import { useThemeStore } from './theme'
 import { useUIStore } from './ui'
 import { useUsageStore } from './usage'
 import {
   BUNDLE_VERSION,
   deepClone,
-  sanitizeSchedules,
-  sanitizeTasks,
   type ExportBundle
 } from '../types/bundle'
 
@@ -49,27 +47,26 @@ export function exportAllData(): ExportBundle {
 }
 
 /**
- * 全量覆盖导入：直接写各 store state，
- * 各 store 已有的持久化 watcher 自动落盘，UI 响应式更新，无需刷新页面。
- * 注意：bundle.settings.apiKey 通常为空（导出时剔除）——云同步拉取场景
- * 由 SyncManager 在调用前回填本机 apiKey，避免登录后丢密钥。
- * 导入数据统一打 revTime=now：导入是显式覆盖动作，"本机所见即真相"，
- * 让后续同步把导入内容作为最新修订推给对端。
+ * 全量覆盖导入已收敛到 SyncManager.importBundle（文件导入/备份回滚同一语义入口）：
+ * 含 sanitize、差集墓碑（防云端旧记录复活）、本机 apiKey 保留、同步基线作废。
+ * 此处不再重复实现——两条导入路径分叉曾是数据不一致的来源。
  */
-export function importAllData(bundle: ExportBundle): void {
+
+/**
+ * 账号隔离：清空全部业务数据到初始状态（各 store 持久化 watcher 自动落盘，
+ * 下次启动不会误触种子数据——存储值为 '[]' 而非 null）。
+ * 登出/账号切换时调用：本地数据无账号归属，不清会把 A 的数据全量推给 B。
+ * apiKey 是本机级配置（不出现在导出/同步中），保留。
+ */
+export function clearAllStores(): void {
   const taskStore = useTaskStore()
   const settingsStore = useSettingsStore()
   const themeStore = useThemeStore()
   const usageStore = useUsageStore()
-  const uiStore = useUIStore()
-
-  const now = Date.now()
-  const tasks = sanitizeTasks(bundle.tasks).map((t) => ({ ...t, revTime: now, deletedAt: undefined }))
-  const schedules = sanitizeSchedules(bundle.schedules).map((s) => ({ ...s, revTime: now, deletedAt: undefined }))
-  taskStore.tasks = tasks
-  taskStore.schedules = schedules
-  settingsStore.settings = bundle.settings
-  themeStore.isDark = bundle.theme.isDark
-  usageStore.usageHistory = bundle.usage
-  uiStore.setTodoVisible(bundle.todoVisible)
+  taskStore.tasks = []
+  taskStore.schedules = []
+  settingsStore.settings = { ...defaultSettings, apiKey: settingsStore.settings.apiKey }
+  // 主题回到系统偏好（与 loadTheme 无存储分支同语义），watcher 负责落盘与 DOM 应用
+  themeStore.isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+  usageStore.usageHistory = []
 }

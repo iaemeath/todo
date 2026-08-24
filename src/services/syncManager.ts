@@ -27,6 +27,7 @@ import {
   type UsageRecord
 } from '../stores'
 import type { Schedule } from '../types/bundle'
+import { sanitizeSchedules, sanitizeTasks } from '../types/bundle'
 import { api, ApiError } from './apiClient'
 
 const LS_LAST_SYNC = 'shiguang_last_synced_at'
@@ -126,14 +127,16 @@ export function getLocalBackups(): ExportBundle[] {
   }
 }
 
-/** 回滚到某份本地备份（数据管理页入口） */
-export function restoreLocalBackup(bundle: ExportBundle): void {
-  applyBundleImport(bundle)
-  lastSyncedMap.clear() // 基线作废 → 下轮全量 diff（导入内容 revTime 已重打为最新，作为新修订上行）
-}
-
-/** 导入式覆盖：整包写入并统一打 revTime=now（导入/回滚都是"本机所见即真相"语义） */
-function applyBundleImport(bundle: ExportBundle): void {
+/**
+ * 导入式覆盖：整包写入并统一打 revTime=now（文件导入/本地备份回滚都是"本机所见即真相"语义）。
+ * - 本机 apiKey 永不导入（导出文件已剔除）：保留本机现值，避免登录态丢密钥
+ * - 差集墓碑：本地有（活跃）而导入包没有的 tasks/schedules 打墓碑（revTime=now）
+ *   并保留在数组中——墓碑随全量推送覆盖云端同名记录，否则重新登录全量拉取时
+ *   云端旧记录会"复活"混入，破坏覆盖语义
+ * - usage 是追加型流水，不做差集墓碑：云端多出的记录拉取时按 id 合并回来（无裁决危害）
+ * - 同步基线作废 → 下轮全量 diff 上行（含墓碑），服务端幂等裁决
+ */
+export function importBundle(bundle: ExportBundle): void {
   const taskStore = useTaskStore()
   const settingsStore = useSettingsStore()
   const themeStore = useThemeStore()
@@ -141,12 +144,33 @@ function applyBundleImport(bundle: ExportBundle): void {
   const uiStore = useUIStore()
   const localApiKey = settingsStore.settings.apiKey
   const now = Date.now()
-  taskStore.tasks = bundle.tasks.map(t => ({ ...t, revTime: now, deletedAt: undefined }))
-  taskStore.schedules = bundle.schedules.map(s => ({ ...s, revTime: now, deletedAt: undefined }))
+
+  const inBundleTasks = new Set<string>()
+  const inBundleSchedules = new Set<string>()
+  const tasks = sanitizeTasks(bundle.tasks).map(t => {
+    inBundleTasks.add(t.id)
+    return { ...t, revTime: now, deletedAt: undefined }
+  })
+  const schedules = sanitizeSchedules(bundle.schedules).map(s => {
+    inBundleSchedules.add(s.id)
+    return { ...s, revTime: now, deletedAt: undefined }
+  })
+  // 差集墓碑（已墓碑的不重打——刷新 revTime 会制造无谓的上行变更）
+  for (const t of taskStore.tasks) {
+    if (!inBundleTasks.has(t.id) && !t.deletedAt) { t.deletedAt = now; t.revTime = now }
+  }
+  for (const s of taskStore.schedules) {
+    if (!inBundleSchedules.has(s.id) && !s.deletedAt) { s.deletedAt = now; s.revTime = now }
+  }
+  // 墓碑记录随活跃记录一起写入（同步层全集）
+  taskStore.tasks = [...tasks, ...taskStore.tasks.filter(t => t.deletedAt)]
+  taskStore.schedules = [...schedules, ...taskStore.schedules.filter(s => s.deletedAt)]
   settingsStore.settings = { ...bundle.settings, apiKey: localApiKey }
   themeStore.isDark = bundle.theme.isDark
   usageStore.usageHistory = bundle.usage
   uiStore.setTodoVisible(bundle.todoVisible)
+
+  lastSyncedMap.clear() // 基线作废 → 下轮全量 diff（导入内容 revTime 已重打为最新，作为新修订上行）
 }
 
 // ===== 推送 =====
@@ -318,6 +342,11 @@ export function stopSync(): void {
   syncState.value = 'off'
   lastSyncedMap.clear()
   localStorage.removeItem(LS_CURSOR)
+  // 账号产物一并清除（含 401 被动登出路径）：本地备份/最近同步时间属于上一账号，
+  // 防止下一账号在数据管理页误恢复上一账号的备份
+  localStorage.removeItem(LS_BACKUPS)
+  localStorage.removeItem(LS_LAST_SYNC)
+  lastSyncAt.value = null
 }
 
 // ===== 手动操作（数据管理页/同步指示器入口） =====

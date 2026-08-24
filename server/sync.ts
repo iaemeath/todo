@@ -66,8 +66,10 @@ router.get('/pull', (req, res) => {
   const since = Number(req.query.since || 0) || 0
   const now = Date.now()
 
+  // >= 而非 >：pull 返回 serverNow 与紧随的 push 写入可能落在同一毫秒，
+  // 用 > 会让该记录永远不满足条件被增量漏掉；>= 最多重拉一批边界记录（客户端按 rev 幂等合并）
   const rows = db.prepare(
-    'SELECT collection, record_id, data, rev_time FROM records WHERE user_id = ? AND recv_time > ?'
+    'SELECT collection, record_id, data, rev_time FROM records WHERE user_id = ? AND recv_time >= ?'
   ).all(uid, since) as { collection: string; record_id: string; data: string; rev_time: number }[]
 
   res.json({

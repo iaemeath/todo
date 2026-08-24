@@ -139,10 +139,12 @@ import FullCalendar from '@fullcalendar/vue3'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import dayGridPlugin from '@fullcalendar/daygrid'
-import type { CalendarOptions, DateSelectArg, DatesSetArg, DayHeaderContentArg, EventChangeArg, EventClickArg, EventMountArg } from '@fullcalendar/core'
+import type { CalendarOptions, DateSelectArg, DatesSetArg, DayHeaderContentArg, EventClickArg, EventDropArg, EventMountArg } from '@fullcalendar/core'
 
 // FC v6 core 未直接导出 eventReceive 回调的 Arg 类型，从 CalendarOptions 推导
 type EventReceiveArg = Parameters<NonNullable<CalendarOptions['eventReceive']>>[0]
+// v6 的 eventResize 参数类型（EventResizeDoneArg）未从 core 导出，同法取形
+type EventResizeArg = Parameters<NonNullable<CalendarOptions['eventResize']>>[0]
 import { storeToRefs } from 'pinia'
 import { useTaskStore, useSettingsStore, useThemeStore, useUIStore } from '../stores'
 import { PanelRight, PanelRightClose, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight, Menu } from 'lucide-vue-next'
@@ -233,19 +235,28 @@ const calendarEvents = computed(() => {
   })
 })
 
-const handleEventChange = (changeInfo: EventChangeArg) => {
-  const event = changeInfo.event
-  const id = event.id
-  
+/**
+ * 日程移动/拉伸后的落库（eventDrop / eventResize 共用，两回调才带 revert 能力）。
+ * Schedule 模型无跨天字段（date + 同日 start/end）：拖过零点会解析出
+ * endTime < startTime 的非法数据——校验失败 revert 回原位，不落库。
+ */
+const applyEventMove = (info: EventDropArg | EventResizeArg) => {
+  const event = info.event
+
   // Format dates back to our custom format
   const startDate = new Date(event.start as Date)
   const endDate = event.end ? new Date(event.end as Date) : new Date(startDate.getTime() + 60 * 60 * 1000)
-  
+
   const dateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`
   const startTimeStr = startDate.toTimeString().substring(0, 5)
   const endTimeStr = endDate.toTimeString().substring(0, 5)
 
-  updateSchedule(id, {
+  if (endTimeStr <= startTimeStr) {
+    info.revert()
+    ElMessage.warning('日程不能跨零点，请调整到更早的时段')
+    return
+  }
+  updateSchedule(event.id, {
     date: dateStr,
     startTime: startTimeStr,
     endTime: endTimeStr
@@ -263,6 +274,13 @@ const handleEventReceive = (info: EventReceiveArg) => {
     const dateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`
     const startTimeStr = startDate.toTimeString().substring(0, 5)
     const endTimeStr = endDate.toTimeString().substring(0, 5)
+
+    // 跨零点时段（如 23:30 拖入默认时长越过零点）非法——不排期，弹回临时事件
+    if (endTimeStr <= startTimeStr) {
+      info.revert()
+      ElMessage.warning('日程不能跨零点，请拖到更早的时段')
+      return
+    }
 
     // 将叶子任务排期为日程
     addScheduleFromTask(taskId, dateStr, startTimeStr, endTimeStr, event.extendedProps.color || 'blue')
@@ -498,7 +516,8 @@ const calendarOptions = computed(() => ({
   height: '100%',
   allDaySlot: false,
   nowIndicator: true,
-  eventChange: handleEventChange, // When event is dragged or resized
+  eventDrop: applyEventMove, // 日程拖动落库（跨零点校验失败 revert）
+  eventResize: applyEventMove, // 日程拉伸落库（跨零点校验失败 revert）
   eventReceive: handleEventReceive, // When external event is dropped
   select: handleSelect, // 拖选时段新增日程（唯一新增入口；单击被时长闸门过滤，防误触）
   eventClick: handleEventClick, // 移动端：双击事件编辑（自判定）

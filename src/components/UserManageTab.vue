@@ -138,7 +138,7 @@ const removeUser = async (u: AdminUser) => {
       <el-table-column label="最后同步" min-width="150">
         <template #default="{ row }">{{ fmtTime(row.syncedAt) }}</template>
       </el-table-column>
-      <el-table-column label="快照" width="80" align="right">
+      <el-table-column label="数据" width="80" align="right">
         <template #default="{ row }">{{ row.snapshotKb ? row.snapshotKb + ' KB' : '—' }}</template>
       </el-table-column>
       <el-table-column label="操作" width="200" fixed="right">

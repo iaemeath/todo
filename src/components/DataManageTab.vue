@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { Download, Upload, FolderOpened, Refresh } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { exportAllData, parseBundle, importAllData, useUIStore, type ExportBundle } from '../stores'
+import { exportAllData, parseBundle, useUIStore, type ExportBundle } from '../stores'
 import { useAuthStore } from '../stores/auth'
 import {
   syncState,
@@ -10,7 +10,7 @@ import {
   syncNow,
   restoreFromCloud,
   getLocalBackups,
-  restoreLocalBackup
+  importBundle
 } from '../services/syncManager'
 
 const uiStore = useUIStore()
@@ -87,7 +87,7 @@ const handleRestoreBackup = async () => {
   } catch {
     return
   }
-  restoreLocalBackup(b)
+  importBundle(b)
   ElMessage.success('已回滚，稍后自动同步到云端')
 }
 
@@ -136,7 +136,7 @@ const handleFileChange = async (e: Event) => {
       '导入数据',
       { type: 'warning', confirmButtonText: '覆盖导入', cancelButtonText: '取消' }
     )
-    importAllData(bundle)
+    importBundle(bundle)
     ElMessage.success('数据已恢复')
   } catch {
     // 用户取消确认弹窗

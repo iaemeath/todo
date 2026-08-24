@@ -27,18 +27,23 @@ interface AdminUserRow {
   email: string | null
   username: string | null
   created_at: string
-  synced_at: string | null
-  snapshot_chars: number | null
+  synced_ms: number | null
+  data_chars: number | null
 }
 
-/** GET /api/admin/users —— 全量用户列表（含快照概览） */
+/** GET /api/admin/users —— 全量用户列表（含记录存储概览） */
 router.get('/users', (_req, res) => {
+  // v4.5 记录级同步后 snapshots 表恒空，概览改从 records 聚合：
+  // 最近同步 = MAX(recv_time)（最后收到推送的时刻），占用 = SUM(length(data))
   const rows = db.prepare(`
     SELECT u.id, u.email, u.username, u.created_at,
-           s.updated_at AS synced_at,
-           length(s.data) AS snapshot_chars
+           r.synced_ms AS synced_ms,
+           r.data_chars AS data_chars
     FROM users u
-    LEFT JOIN snapshots s ON s.user_id = u.id
+    LEFT JOIN (
+      SELECT user_id, MAX(recv_time) AS synced_ms, SUM(length(data)) AS data_chars
+      FROM records GROUP BY user_id
+    ) r ON r.user_id = u.id
     ORDER BY u.created_at
   `).all() as unknown as AdminUserRow[]
 
@@ -50,8 +55,9 @@ router.get('/users', (_req, res) => {
         email: r.email,
         username: r.username,
         createdAt: r.created_at,
-        syncedAt: r.synced_at,
-        snapshotKb: r.snapshot_chars ? Math.round(r.snapshot_chars / 1024) : 0
+        // 对齐旧 snapshots.updated_at 的 localtime 文本格式，前端 fmtTime 无需改动
+        syncedAt: r.synced_ms ? new Date(r.synced_ms).toLocaleString('sv-SE').replace(' ', 'T') : null,
+        snapshotKb: r.data_chars ? Math.round(r.data_chars / 1024) : 0
       }))
     }
   })
