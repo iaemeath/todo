@@ -10,7 +10,8 @@ import { getToken, setToken } from '../services/tokenStore'
 
 export interface AuthUser {
   id: string
-  username: string
+  email: string | null
+  username: string | null
   nickname: string | null
 }
 
@@ -68,10 +69,10 @@ export const useAuthStore = defineStore('auth', () => {
     ready.value = true
   }
 
-  async function login(username: string, password: string): Promise<void> {
+  async function login(email: string, password: string): Promise<void> {
     const r = await api<{ token: string; user: AuthUser }>('/auth/login', {
       method: 'POST',
-      body: { username, password }
+      body: { email, password }
     })
     token.value = r.token
     user.value = r.user
@@ -80,14 +81,15 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function register(
-    username: string,
+    email: string,
     password: string,
     nickname?: string,
-    inviteCode?: string
+    inviteCode?: string,
+    code?: string
   ): Promise<void> {
     const r = await api<{ token: string; user: AuthUser }>('/auth/register', {
       method: 'POST',
-      body: { username, password, nickname, inviteCode }
+      body: { email, password, nickname, inviteCode, code }
     })
     token.value = r.token
     user.value = r.user
@@ -95,10 +97,18 @@ export const useAuthStore = defineStore('auth', () => {
     void bootstrap()
   }
 
+  /** 自助改昵称成功后同步本地登录态（服务端已是最新值） */
+  function updateUser(patch: Partial<Pick<AuthUser, 'nickname'>>) {
+    if (user.value) {
+      user.value = { ...user.value, ...patch }
+      persist()
+    }
+  }
+
   /** JWT 无状态，退出即清本地凭据 */
   function logout() {
     clear()
   }
 
-  return { token, user, ready, features, isLoggedIn, bootstrap, login, register, logout }
+  return { token, user, ready, features, isLoggedIn, bootstrap, login, register, logout, updateUser }
 })

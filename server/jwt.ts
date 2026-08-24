@@ -1,6 +1,7 @@
 /**
  * JWT（HS256）——node:crypto 手写，不引第三方库。
  * 签名密钥首次启动随机生成并持久化到 data/secret.key（重启不失效，否则全部 token 作废）。
+ * v4.2 起登录标识为邮箱：payload 携带 email（旧 username token 随存量账号清空一并作废）。
  */
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
@@ -18,17 +19,17 @@ const SECRET = loadSecret()
 
 export interface JwtPayload {
   uid: string
-  username: string
+  email: string
   iat: number
   exp: number // 秒级 unix
 }
 
 const b64url = (input: string) => Buffer.from(input, 'utf8').toString('base64url')
 
-export function signJwt(uid: string, username: string, ttlSec = 7 * 24 * 3600): string {
+export function signJwt(uid: string, email: string, ttlSec = 7 * 24 * 3600): string {
   const now = Math.floor(Date.now() / 1000)
   const header = b64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
-  const payload = b64url(JSON.stringify({ uid, username, iat: now, exp: now + ttlSec }))
+  const payload = b64url(JSON.stringify({ uid, email, iat: now, exp: now + ttlSec }))
   const sig = createHmac('sha256', SECRET).update(`${header}.${payload}`).digest('base64url')
   return `${header}.${payload}.${sig}`
 }

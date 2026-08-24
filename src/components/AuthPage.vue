@@ -1,62 +1,188 @@
 <script setup lang="ts">
 /**
- * 登录/注册页（全屏，替代原弹窗）：游客随时可用全部功能，登录开启多设备云同步。
- * 登录成功回来源页（ui store openAuth 记录）；已登录误入时直接送回。
+ * 登录/注册/忘记密码页（全屏，替代原弹窗）：游客随时可用全部功能，登录开启多设备云同步。
+ * v4.2 邮箱体系：注册需邮箱验证码验真（先过图形人机验证），忘记密码走邮箱验证码重置。
+ * 弱口令策略与 server 共享（src/types/password.ts 类型下沉），失焦即时提示 + 提交时把关。
  */
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, computed, watch, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
-import { User, Lock, Postcard, Key } from '@element-plus/icons-vue'
+import { Lock, Postcard, Key, Message, CircleCheck } from '@element-plus/icons-vue'
 import { useUIStore } from '../stores'
 import { useAuthStore } from '../stores/auth'
-import { ApiError } from '../services/apiClient'
+import { api, ApiError } from '../services/apiClient'
+import { validatePassword, EMAIL_RE } from '../types/password'
 
 const uiStore = useUIStore()
 const authStore = useAuthStore()
 
-const mode = ref<'login' | 'register'>('login')
+type Mode = 'login' | 'register' | 'forgot'
+const mode = ref<Mode>('login')
 const loading = ref(false)
+
 const form = reactive({
-  username: '',
+  email: '',
   password: '',
+  confirmPassword: '',
   nickname: '',
-  inviteCode: ''
+  inviteCode: '',
+  captcha: '',       // 图形码答案（算术题）
+  mailCode: ''       // 邮箱验证码
 })
 
-const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/
+/** 密码失焦弱口令即时提示（不阻断输入，提交时再把关） */
+const pwdHint = ref('')
+const checkPwd = () => {
+  pwdHint.value = form.password && !validatePassword(form.password, form.email).ok
+    ? validatePassword(form.password, form.email).reason
+    : ''
+}
 
-const submit = async () => {
-  const username = form.username.trim()
-  const password = form.password
+// ===== 图形验证码（人机验证）：注册取码/忘记密码取码共用 =====
+const captcha = ref<{ id: string; svg: string } | null>(null)
+const loadCaptcha = async () => {
+  captcha.value = await api<{ id: string; svg: string }>('/auth/captcha')
+  form.captcha = ''
+}
+watch(mode, (m) => {
+  // 进入需要人机验证的形态时预取图形码；离开时清掉（旧码已随验证销毁）
+  if (m === 'register' || m === 'forgot') void loadCaptcha()
+  else captcha.value = null
+})
 
-  if (!USERNAME_RE.test(username)) {
-    ElMessage.warning('用户名需 3~20 位字母/数字/下划线')
+// ===== 邮箱验证码发送（60s 倒计时；register/forgot 两形态分别调各自接口） =====
+const sending = ref(false)
+const countdown = ref(0)
+let timer: ReturnType<typeof setInterval> | null = null
+onBeforeUnmount(() => { if (timer) clearInterval(timer) })
+
+const startCountdown = () => {
+  countdown.value = 60
+  timer = setInterval(() => {
+    countdown.value -= 1
+    if (countdown.value <= 0 && timer) { clearInterval(timer); timer = null }
+  }, 1000)
+}
+
+const sendMailCode = async () => {
+  if (!EMAIL_RE.test(form.email.trim().toLowerCase())) {
+    ElMessage.warning('请先输入正确的邮箱')
     return
   }
-  if (password.length < 6 || password.length > 64) {
-    ElMessage.warning('密码长度需 6~64 位')
+  if (!form.captcha.trim()) {
+    ElMessage.warning('请先输入图形验证码的答案')
+    return
+  }
+  sending.value = true
+  try {
+    if (mode.value === 'register') {
+      // 注册取码带上密码/邀请码：服务端做弱口令与唯一性预检，避免明显无效的注册发码
+      await api('/auth/register/code', {
+        method: 'POST',
+        body: {
+          email: form.email.trim().toLowerCase(),
+          password: form.password,
+          captchaId: captcha.value?.id,
+          captchaCode: form.captcha.trim(),
+          inviteCode: form.inviteCode.trim() || undefined
+        }
+      })
+    } else {
+      await api('/auth/forgot', {
+        method: 'POST',
+        body: {
+          email: form.email.trim().toLowerCase(),
+          captchaId: captcha.value?.id,
+          captchaCode: form.captcha.trim()
+        }
+      })
+    }
+    startCountdown()
+    // 防枚举统一文案（与服务端一致；无论邮箱是否注册都这么提示）
+    ElMessage.success(mode.value === 'register' ? '验证码已发送，请查收邮箱' : '若该邮箱已注册，验证码已发送，请查收')
+    void loadCaptcha() // 图形码已销毁，换新图
+  } catch (e) {
+    ElMessage.error(e instanceof ApiError ? e.message : '发送失败，请稍后重试')
+    void loadCaptcha() // 答错/过期也已销毁，换新图重来
+  } finally {
+    sending.value = false
+  }
+}
+
+// ===== 提交 =====
+const submit = async () => {
+  const email = form.email.trim().toLowerCase()
+
+  if (!EMAIL_RE.test(email)) {
+    ElMessage.warning('请输入正确的邮箱')
+    return
+  }
+
+  if (mode.value === 'login') {
+    if (!form.password) { ElMessage.warning('请输入密码'); return }
+    loading.value = true
+    try {
+      await authStore.login(email, form.password)
+      ElMessage.success(`欢迎回来，${authStore.user?.nickname || email}`)
+      uiStore.closeAuth()
+    } catch (e) {
+      ElMessage.error(e instanceof ApiError ? e.message : '登录失败，请稍后重试')
+    } finally {
+      loading.value = false
+    }
+    return
+  }
+
+  // register / forgot 共用：弱口令 + 两次密码一致
+  const pwdCheck = validatePassword(form.password, email)
+  if (!pwdCheck.ok) { ElMessage.warning(pwdCheck.reason); return }
+  if (form.password !== form.confirmPassword) {
+    ElMessage.warning('两次输入的密码不一致')
+    return
+  }
+  if (!form.mailCode.trim()) {
+    ElMessage.warning('请输入邮箱验证码')
     return
   }
 
   loading.value = true
   try {
-    if (mode.value === 'login') {
-      await authStore.login(username, password)
-      ElMessage.success(`欢迎回来，${authStore.user?.nickname || authStore.user?.username}`)
-    } else {
+    if (mode.value === 'register') {
       await authStore.register(
-        username,
-        password,
+        email,
+        form.password,
         form.nickname.trim() || undefined,
-        form.inviteCode.trim() || undefined
+        form.inviteCode.trim() || undefined,
+        form.mailCode.trim()
       )
       ElMessage.success('注册成功，已自动登录')
+      uiStore.closeAuth()
+    } else {
+      await api('/auth/reset', {
+        method: 'POST',
+        body: { email, code: form.mailCode.trim(), password: form.password }
+      })
+      ElMessage.success('密码已重置，请用新密码登录')
+      mode.value = 'login'
+      form.password = ''
+      form.confirmPassword = ''
+      form.mailCode = ''
+      pwdHint.value = ''
     }
-    uiStore.closeAuth()
   } catch (e) {
     ElMessage.error(e instanceof ApiError ? e.message : '操作失败，请稍后重试')
   } finally {
     loading.value = false
   }
+}
+
+// 切形态清敏感字段（邮箱保留方便连续操作）
+const switchMode = (m: Mode) => {
+  mode.value = m
+  form.password = ''
+  form.confirmPassword = ''
+  form.mailCode = ''
+  form.captcha = ''
+  pwdHint.value = ''
 }
 
 // 已登录状态误入登录页 → 直接送回来源页
@@ -66,6 +192,10 @@ watch(
     if (v && uiStore.currentView === 'auth') uiStore.closeAuth()
   },
   { immediate: true }
+)
+
+const submitLabel = computed(() =>
+  mode.value === 'login' ? '登录' : mode.value === 'register' ? '注册并登录' : '重置密码'
 )
 </script>
 
@@ -79,42 +209,105 @@ watch(
         <span class="auth-subtitle">登录后开启 ☁️ 多设备云同步</span>
       </div>
 
-      <!-- 模式切换（贴合项目 segmented 风格） -->
-      <div class="auth-tabs">
-        <button class="auth-tab" :class="{ active: mode === 'login' }" @click="mode = 'login'">
+      <!-- 模式切换（忘记密码形态收起，用返回链接回登录） -->
+      <div v-if="mode !== 'forgot'" class="auth-tabs">
+        <button class="auth-tab" :class="{ active: mode === 'login' }" @click="switchMode('login')">
           登录
         </button>
-        <button class="auth-tab" :class="{ active: mode === 'register' }" @click="mode = 'register'">
+        <button class="auth-tab" :class="{ active: mode === 'register' }" @click="switchMode('register')">
           注册
         </button>
       </div>
+      <button v-else class="auth-link auth-back" @click="switchMode('login')">
+        ← 返回登录
+      </button>
 
       <div class="auth-form">
         <el-input
-          v-model="form.username"
-          placeholder="用户名（3~20 位字母/数字/下划线）"
-          :prefix-icon="User"
+          v-model="form.email"
+          placeholder="邮箱"
+          :prefix-icon="Message"
           :disabled="loading"
           @keyup.enter="submit"
         />
+
+        <!-- 登录态：仅密码 -->
         <el-input
+          v-if="mode === 'login'"
           v-model="form.password"
           type="password"
-          placeholder="密码（6~64 位）"
+          placeholder="密码"
           :prefix-icon="Lock"
           show-password
           :disabled="loading"
           @keyup.enter="submit"
         />
-        <template v-if="mode === 'register'">
+
+        <template v-else>
+          <template v-if="mode === 'register'">
+            <el-input
+              v-model="form.nickname"
+              placeholder="昵称（选填）"
+              :prefix-icon="Postcard"
+              :disabled="loading"
+              maxlength="30"
+            />
+          </template>
+
+          <!-- 密码 + 弱口令即时提示 + 确认密码 -->
           <el-input
-            v-model="form.nickname"
-            placeholder="昵称（选填）"
-            :prefix-icon="Postcard"
+            v-model="form.password"
+            type="password"
+            :placeholder="mode === 'register' ? '密码（8~64 位，含字母和数字）' : '新密码（8~64 位，含字母和数字）'"
+            :prefix-icon="Lock"
+            show-password
             :disabled="loading"
-            maxlength="30"
+            @blur="checkPwd"
           />
+          <div v-if="pwdHint" class="pwd-hint">{{ pwdHint }}</div>
           <el-input
+            v-model="form.confirmPassword"
+            type="password"
+            placeholder="确认密码（再输入一遍）"
+            :prefix-icon="Lock"
+            show-password
+            :disabled="loading"
+            @keyup.enter="submit"
+          />
+
+          <!-- 图形人机验证 -->
+          <div class="captcha-row">
+            <!-- eslint-disable-next-line vue/no-v-html -- 服务端生成的验证码 SVG，内容可信 -->
+            <div class="captcha-img" title="点击刷新" @click="loadCaptcha" v-html="captcha?.svg"></div>
+            <el-input
+              v-model="form.captcha"
+              placeholder="计算结果"
+              :disabled="loading"
+              @keyup.enter="sendMailCode"
+            />
+          </div>
+
+          <!-- 邮箱验证码 -->
+          <div class="mail-code-row">
+            <el-input
+              v-model="form.mailCode"
+              placeholder="邮箱验证码"
+              :prefix-icon="CircleCheck"
+              :disabled="loading"
+              maxlength="6"
+              @keyup.enter="submit"
+            />
+            <el-button
+              :disabled="countdown > 0 || sending || loading"
+              :loading="sending"
+              @click="sendMailCode"
+            >
+              {{ countdown > 0 ? `${countdown}s 后重发` : '获取验证码' }}
+            </el-button>
+          </div>
+
+          <el-input
+            v-if="mode === 'register'"
             v-model="form.inviteCode"
             placeholder="邀请码（未开启邀请制可留空）"
             :prefix-icon="Key"
@@ -124,8 +317,12 @@ watch(
         </template>
 
         <el-button type="primary" class="auth-submit" :loading="loading" @click="submit">
-          {{ mode === 'login' ? '登录' : '注册并登录' }}
+          {{ submitLabel }}
         </el-button>
+
+        <button v-if="mode === 'login'" class="auth-link" @click="switchMode('forgot')">
+          忘记密码？
+        </button>
       </div>
 
       <div class="auth-hint">
@@ -162,6 +359,8 @@ watch(
   z-index: 1;
   width: 100%;
   max-width: 380px;
+  max-height: 100%; /* 注册表单较长时卡片内滚 */
+  overflow-y: auto;
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
   box-sizing: border-box;
@@ -251,5 +450,63 @@ watch(
   line-height: 1.5;
   color: var(--el-text-color-secondary);
   text-align: center;
+}
+
+/* 弱口令即时提示 */
+.pwd-hint {
+  margin-top: calc(var(--space-xs) * -0.5);
+  font-size: var(--font-xs);
+  color: var(--el-color-danger);
+  line-height: 1.4;
+}
+
+/* 图形验证码行：图片 + 答案输入 */
+.captcha-row {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.captcha-img {
+  flex-shrink: 0;
+  width: 120px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid var(--el-border-color-light);
+}
+
+.captcha-img :deep(svg) {
+  display: block;
+}
+
+/* 邮箱验证码行：输入 + 发送按钮 */
+.mail-code-row {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.mail-code-row .el-button {
+  flex-shrink: 0;
+}
+
+/* 文字链接（忘记密码 / 返回登录） */
+.auth-link {
+  border: none;
+  background: transparent;
+  color: var(--el-color-primary);
+  font-size: var(--font-xs);
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
+}
+
+.auth-back {
+  align-self: flex-start;
+  margin-bottom: var(--space-md);
 }
 </style>

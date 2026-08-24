@@ -8,13 +8,14 @@ import { db } from './db'
 import { requireAuth, hashPassword } from './auth'
 import { isAdmin } from './roles'
 import type { JwtPayload } from './jwt'
+import { EMAIL_RE } from '../src/types/password'
 
 export const router = Router()
 
 /** 管理员守卫：requireAuth 之后校验白名单（401 优先于 403，不泄漏角色信息给未登录者） */
 function requireAdmin(_req: Request, res: Response, next: NextFunction) {
   const payload = res.locals.user as JwtPayload
-  if (!isAdmin(payload.username)) {
+  if (!isAdmin(payload.email)) {
     return res.status(403).json({ ok: false, message: '需要管理员权限' })
   }
   next()
@@ -24,7 +25,8 @@ router.use(requireAuth, requireAdmin)
 
 interface AdminUserRow {
   id: string
-  username: string
+  email: string | null
+  username: string | null
   nickname: string | null
   created_at: string
   synced_at: string | null
@@ -34,7 +36,7 @@ interface AdminUserRow {
 /** GET /api/admin/users —— 全量用户列表（含快照概览） */
 router.get('/users', (_req, res) => {
   const rows = db.prepare(`
-    SELECT u.id, u.username, u.nickname, u.created_at,
+    SELECT u.id, u.email, u.username, u.nickname, u.created_at,
            s.updated_at AS synced_at,
            length(s.data) AS snapshot_chars
     FROM users u
@@ -47,6 +49,7 @@ router.get('/users', (_req, res) => {
     data: {
       users: rows.map(r => ({
         id: r.id,
+        email: r.email,
         username: r.username,
         nickname: r.nickname,
         createdAt: r.created_at,
@@ -57,12 +60,26 @@ router.get('/users', (_req, res) => {
   })
 })
 
-/** PATCH /api/admin/users/:id {nickname} —— 改昵称 */
+/** PATCH /api/admin/users/:id {nickname?, email?} —— 改昵称 / 补绑改邮箱 */
 router.patch('/users/:id', (req, res) => {
-  const nickname = String((req.body || {}).nickname || '').trim().slice(0, 30)
-  if (!nickname) return res.status(400).json({ ok: false, message: '昵称不能为空' })
+  const body = req.body || {}
+  const nickname = body.nickname !== undefined ? String(body.nickname).trim().slice(0, 30) : undefined
+  const email = body.email !== undefined ? String(body.email).trim().toLowerCase() : undefined
 
-  const r = db.prepare('UPDATE users SET nickname = ? WHERE id = ?').run(nickname, req.params.id)
+  if (nickname !== undefined && !nickname) {
+    return res.status(400).json({ ok: false, message: '昵称不能为空' })
+  }
+  if (email !== undefined) {
+    if (!EMAIL_RE.test(email)) return res.status(400).json({ ok: false, message: '邮箱格式不正确' })
+    const dup = db.prepare('SELECT 1 FROM users WHERE email = ? AND id != ?').get(email, req.params.id)
+    if (dup) return res.status(409).json({ ok: false, message: '该邮箱已被其他账号使用' })
+  }
+
+  const sets: string[] = []
+  const vals: string[] = []
+  if (nickname !== undefined) { sets.push('nickname = ?'); vals.push(nickname) }
+  if (email !== undefined) { sets.push('email = ?'); vals.push(email) }
+  const r = db.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`).run(...vals, req.params.id)
   if (r.changes === 0) return res.status(404).json({ ok: false, message: '用户不存在' })
   res.json({ ok: true, data: null })
 })

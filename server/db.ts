@@ -20,7 +20,8 @@ db.exec('PRAGMA foreign_keys = ON')
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id         TEXT PRIMARY KEY,
-    username   TEXT NOT NULL UNIQUE,
+    email      TEXT,
+    username   TEXT,
     password   TEXT NOT NULL,
     nickname   TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
@@ -33,3 +34,11 @@ db.exec(`
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
 `)
+
+// 旧库迁移：v4.2 前的表无 email 列（ALTER 不能加 NOT NULL 无默认值，故列可空、应用层强制注册必填）
+const hasEmail = (db.prepare('PRAGMA table_info(users)').all() as { name: string }[])
+  .some(c => c.name === 'email')
+if (!hasEmail) db.exec('ALTER TABLE users ADD COLUMN email TEXT')
+
+// email 唯一（部分索引：历史/未绑邮箱的 NULL 不参与唯一约束）
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL')

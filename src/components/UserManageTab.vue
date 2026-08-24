@@ -12,7 +12,8 @@ import { useAuthStore } from '../stores/auth'
 
 interface AdminUser {
   id: string
-  username: string
+  email: string | null
+  username: string | null
   nickname: string | null
   createdAt: string
   syncedAt: string | null
@@ -132,7 +133,9 @@ const removeUser = async (u: AdminUser) => {
         class="err-alert"
       />
       <el-table v-else v-loading="loading" :data="users">
-        <el-table-column prop="username" label="用户名" min-width="110" />
+        <el-table-column prop="email" label="邮箱" min-width="170">
+          <template #default="{ row }">{{ row.email || '—' }}</template>
+        </el-table-column>
         <el-table-column label="昵称" min-width="110">
           <template #default="{ row }">{{ row.nickname || '—' }}</template>
         </el-table-column>

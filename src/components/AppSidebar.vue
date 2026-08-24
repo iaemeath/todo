@@ -185,7 +185,8 @@ const mainItems: { key: AppView; label: string; icon: any }[] = [
 ]
 
 // 设置子项直达（桌面一级导航；移动端仍走抽屉「设置」→ 列表二级）；
-// 用户管理仅管理员可见（features.admin 由服务端 ADMIN_USERS 白名单下发，显隐非安全边界）
+// 用户管理仅管理员可见（features.admin 由服务端 ADMIN_USERS 邮箱白名单下发，显隐非安全边界）；
+// 账号安全仅登录用户可见（游客无账号可管理）
 const settingItems = computed(() => {
   const items: { key: SettingsSection; label: string; icon: any }[] = [
     { key: 'view', label: '视觉与外观', icon: Monitor },
@@ -193,6 +194,7 @@ const settingItems = computed(() => {
     { key: 'data', label: '数据管理', icon: FolderOpened },
     { key: 'guide', label: '使用指南', icon: QuestionFilled }
   ]
+  if (authStore.isLoggedIn) items.push({ key: 'security', label: '账号安全', icon: Lock })
   if (authStore.features.admin) items.push({ key: 'users', label: '用户管理', icon: User })
   return items
 })
@@ -216,7 +218,7 @@ const goSettings = (section: SettingsSection) => {
 
 // 移动端非主页返回按钮标题
 const settingsTitle = computed(() => {
-  const map: Record<string, string> = { view: '视觉与外观', ai: 'AI 助理', data: '数据管理', guide: '使用指南', users: '用户管理' }
+  const map: Record<string, string> = { view: '视觉与外观', ai: 'AI 助理', data: '数据管理', guide: '使用指南', users: '用户管理', security: '账号安全' }
   return map[settingsSection.value] || '设置'
 })
 const navTitle = computed(() => {
