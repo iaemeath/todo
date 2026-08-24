@@ -3,12 +3,37 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
     "lint:css": "stylelint \"src/**/*.{css,vue}\"",
-    "lint:css:fix": "stylelint \"src/**/*.{css,vue}\" --fix"
+    "lint:css:fix": "stylelint \"src/**/*.{css,vue}\" --fix",
+    "electron:dev": "npm run build && electron electron/main.js",
+    "electron:build": "npm run build && electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "pub.ylh.shiguang",
+    "productName": "拾光",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "dist/**/*",
+      "!node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "拾光-Setup-${version}.exe"
+    }
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
@@ -29,6 +54,8 @@
     "@types/node": "^24.13.2",
     "@vitejs/plugin-vue": "^6.0.7",
     "@vue/tsconfig": "^0.9.1",
+    "electron": "^43.4.1",
+    "electron-builder": "^26.15.3",
     "postcss-html": "^2.0.0",
     "stylelint": "^17.14.1",
     "stylelint-config-standard": "^40.0.0",
