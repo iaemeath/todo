@@ -1,24 +1,51 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { router } from '../router'
 
 /**
  * Global UI state.
  *
- * Centralises view navigation + mobile device detection + the current settings
- * sub-section (shared between AppSidebar's back-button title and SettingsPage).
+ * 视图导航（currentView/settingsSection）从 hash 路由派生——URL 是唯一真相源，
+ * 刷新保持位置、浏览器返回键自然工作；导航 actions 桥接为 router.push，
+ * 组件层调用签名不变。局部 UI 状态（抽屉/待办栏显隐等）仍为本店状态。
  */
 
 export type AppView = 'home' | 'task' | 'schedule' | 'settings' | 'auth'
 export type SettingsSection = 'view' | 'ai' | 'data' | 'guide'
 
+/** AppView → 路由路径（settings 恒带 section，URL 完整表达视图状态） */
+const viewPath = (v: AppView, section?: SettingsSection): string => {
+  switch (v) {
+    case 'task': return '/task'
+    case 'schedule': return '/schedule'
+    case 'settings': return `/settings/${section || 'view'}`
+    case 'auth': return '/auth'
+    default: return '/'
+  }
+}
+
+const VALID_SECTIONS: SettingsSection[] = ['view', 'ai', 'data', 'guide']
+
 const MOBILE_BREAKPOINT = 768
 const LS_TODO_VISIBLE = 'todo_visible'
 
 export const useUIStore = defineStore('ui', () => {
-  const currentView = ref<AppView>('home')
+  // ===== 视图状态（路由派生，只读） =====
+  const currentView = computed<AppView>(() => {
+    const path = router.currentRoute.value.path
+    if (path === '/task') return 'task'
+    if (path === '/schedule') return 'schedule'
+    if (path.startsWith('/settings')) return 'settings'
+    if (path === '/auth') return 'auth'
+    return 'home'
+  })
+
+  const settingsSection = computed<SettingsSection>(() => {
+    const s = router.currentRoute.value.params.section as string | undefined
+    return VALID_SECTIONS.includes(s as SettingsSection) ? (s as SettingsSection) : 'view'
+  })
+
   const isMobile = ref(false)
-  // 设置子页：两端均由导航直达（桌面侧栏/移动抽屉），AppSidebar 据此显示返回按钮标题
-  const settingsSection = ref<SettingsSection>('view')
 
   // 主页待办可见性（web 常驻侧栏 / 移动 60% 浮层，同一状态），持久化保留用户偏好。
   const readTodoVisible = (): boolean => {
@@ -55,17 +82,6 @@ export const useUIStore = defineStore('ui', () => {
     }
   }
 
-  // 登录/注册页：openAuth 记录来源视图，登录成功/返回时回到来源
-  // （不走 switchView：避免 settings 重置逻辑误伤；直接改 currentView）
-  const authReturnView = ref<AppView>('home')
-  const openAuth = () => {
-    if (currentView.value !== 'auth') authReturnView.value = currentView.value
-    currentView.value = 'auth'
-  }
-  const closeAuth = () => {
-    if (currentView.value === 'auth') currentView.value = authReturnView.value || 'home'
-  }
-
   const setTodoVisible = (v: boolean) => {
     todoVisible.value = v
     if (!v) mobileTodoDragging.value = false // 关闭时复位拖拽透明态
@@ -99,20 +115,25 @@ export const useUIStore = defineStore('ui', () => {
   }
   initResize()
 
+  // ===== 导航 actions（桥接 router.push，组件层调用签名不变） =====
+
   const switchView = (view: AppView) => {
-    currentView.value = view
-    // 直接进入设置页（无指定子页，如旧书签路径）：默认视觉与外观
-    if (view === 'settings') settingsSection.value = 'view'
+    void router.push(viewPath(view))
   }
 
-  // 桌面侧栏设置子项直达（绕过 switchView 的 list 重置；移动端列表页不使用）
+  // 设置子页直达（桌面侧栏/移动抽屉共用）
   const openSettingsSection = (s: SettingsSection) => {
-    currentView.value = 'settings'
-    settingsSection.value = s
+    void router.push(`/settings/${s}`)
   }
 
-  const setSettingsSection = (s: SettingsSection) => {
-    settingsSection.value = s
+  // 登录/注册页：openAuth 记录来源视图，登录成功/返回时回到来源
+  const authReturnView = ref<AppView>('home')
+  const openAuth = () => {
+    if (currentView.value !== 'auth') authReturnView.value = currentView.value
+    void router.push('/auth')
+  }
+  const closeAuth = () => {
+    if (currentView.value === 'auth') void router.push(viewPath(authReturnView.value || 'home'))
   }
 
   return {
@@ -121,7 +142,6 @@ export const useUIStore = defineStore('ui', () => {
     openSettingsSection,
     isMobile,
     settingsSection,
-    setSettingsSection,
     todoVisible,
     setTodoVisible,
     mobileTodoDragging,
