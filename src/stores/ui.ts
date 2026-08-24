@@ -11,7 +11,7 @@ import { router } from '../router'
  */
 
 export type AppView = 'home' | 'task' | 'schedule' | 'settings' | 'auth'
-export type SettingsSection = 'view' | 'ai' | 'data' | 'guide' | 'users' | 'security'
+export type SettingsSection = 'view' | 'ai' | 'data' | 'guide' | 'users'
 
 /** AppView → 路由路径（settings 恒带 section，URL 完整表达视图状态） */
 const viewPath = (v: AppView, section?: SettingsSection): string => {
@@ -24,7 +24,7 @@ const viewPath = (v: AppView, section?: SettingsSection): string => {
   }
 }
 
-const VALID_SECTIONS: SettingsSection[] = ['view', 'ai', 'data', 'guide', 'users', 'security']
+const VALID_SECTIONS: SettingsSection[] = ['view', 'ai', 'data', 'guide', 'users']
 
 const MOBILE_BREAKPOINT = 768
 const LS_TODO_VISIBLE = 'todo_visible'

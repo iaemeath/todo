@@ -6,7 +6,7 @@
  * 布局对齐任务/日程管理页：上方筛选栏（搜索+刷新）+ 下方全宽列表。
  */
 import { ref, computed, onMounted } from 'vue'
-import { Refresh, Edit, Key, Delete, Search } from '@element-plus/icons-vue'
+import { Refresh, Key, Delete, Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api, ApiError } from '../services/apiClient'
 import { useAuthStore } from '../stores/auth'
@@ -60,27 +60,6 @@ const fmtTime = (t: string | null) =>
 
 const apiErr = (e: unknown) =>
   ElMessage.error(e instanceof ApiError ? e.message : '操作失败，请稍后重试')
-
-/** 改昵称：prompt 取消静默返回，API 失败才报错 */
-const renameUser = async (u: AdminUser) => {
-  let nickname: string
-  try {
-    ;({ value: nickname } = await ElMessageBox.prompt(
-      `修改用户「${u.email || u.username}」的昵称`,
-      '改昵称',
-      { inputValue: u.nickname || '', inputPattern: /\S+/, inputErrorMessage: '昵称不能为空' }
-    ))
-  } catch {
-    return
-  }
-  try {
-    await api(`/admin/users/${u.id}`, { method: 'PATCH', body: { nickname } })
-    ElMessage.success('昵称已更新')
-    void load()
-  } catch (e) {
-    apiErr(e)
-  }
-}
 
 /** 重置密码：明文输入由管理员线下转达对方（6~64 位，与注册同规） */
 const resetPassword = async (u: AdminUser) => {
@@ -152,11 +131,8 @@ const removeUser = async (u: AdminUser) => {
       class="err-alert"
     />
     <el-table v-else v-loading="loading" :data="filteredUsers" stripe>
-      <el-table-column prop="email" label="邮箱" min-width="200" show-overflow-tooltip>
+      <el-table-column prop="email" label="邮箱" min-width="220" show-overflow-tooltip>
         <template #default="{ row }">{{ row.email || '—' }}</template>
-      </el-table-column>
-      <el-table-column label="昵称" min-width="120">
-        <template #default="{ row }">{{ row.nickname || '—' }}</template>
       </el-table-column>
       <el-table-column label="注册时间" min-width="150">
         <template #default="{ row }">{{ fmtTime(row.createdAt) }}</template>
@@ -167,10 +143,9 @@ const removeUser = async (u: AdminUser) => {
       <el-table-column label="快照" width="80" align="right">
         <template #default="{ row }">{{ row.snapshotKb ? row.snapshotKb + ' KB' : '—' }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="230" fixed="right">
+      <el-table-column label="操作" width="160" fixed="right">
         <template #default="{ row }">
-          <el-button :icon="Edit" link type="primary" @click="renameUser(row as AdminUser)">昵称</el-button>
-          <el-button :icon="Key" link type="primary" @click="resetPassword(row as AdminUser)">密码</el-button>
+          <el-button :icon="Key" link type="primary" @click="resetPassword(row as AdminUser)">重置密码</el-button>
           <el-tooltip
             v-if="isMe(row as AdminUser)"
             content="不能删除自己的账号"

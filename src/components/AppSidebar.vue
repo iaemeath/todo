@@ -39,14 +39,20 @@
         <el-icon class="tab-icon"><Lock /></el-icon>
         <span class="tab-label">登录</span>
       </button>
-      <el-dropdown v-else placement="top-start" trigger="click" @command="handleLogout">
+      <el-dropdown v-else placement="top-start" trigger="click" @command="handleCommand">
         <div class="nav-user" :title="syncTitle">
           <span class="sync-dot" :class="syncState"></span>
           <span class="tab-label nav-user-name">{{ displayName }}</span>
         </div>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="logout">
+            <el-dropdown-item command="rename">
+              <el-icon><Postcard /></el-icon>修改昵称
+            </el-dropdown-item>
+            <el-dropdown-item command="password">
+              <el-icon><Lock /></el-icon>修改密码
+            </el-dropdown-item>
+            <el-dropdown-item command="logout" divided>
               <el-icon><SwitchButton /></el-icon>退出登录
             </el-dropdown-item>
           </el-dropdown-menu>
@@ -111,14 +117,20 @@
             <el-icon><Lock /></el-icon>
             <span>登录 / 注册</span>
           </button>
-          <el-dropdown v-else placement="top-start" trigger="click" @command="handleLogout">
+          <el-dropdown v-else placement="top-start" trigger="click" @command="handleCommand">
             <div class="nav-drawer__user" :title="syncTitle">
               <span class="sync-dot" :class="syncState"></span>
               <span>{{ displayName }}</span>
             </div>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="logout">
+                <el-dropdown-item command="rename">
+                  <el-icon><Postcard /></el-icon>修改昵称
+                </el-dropdown-item>
+                <el-dropdown-item command="password">
+                  <el-icon><Lock /></el-icon>修改密码
+                </el-dropdown-item>
+                <el-dropdown-item command="logout" divided>
                   <el-icon><SwitchButton /></el-icon>退出登录
                 </el-dropdown-item>
               </el-dropdown-menu>
@@ -128,16 +140,49 @@
       </div>
     </Transition>
   </template>
+
+  <!-- 修改密码弹窗（账号菜单入口；根级渲染避免移动端条件块吞掉；append-to-body 不受侧栏/抽屉裁剪） -->
+  <el-dialog
+    v-model="pwdDialogVisible"
+    title="修改密码"
+    :width="isMobile ? '92vw' : '420px'"
+    append-to-body
+  >
+    <div class="pwd-dialog-form">
+      <el-input v-model="pwdForm.oldPassword" type="password" placeholder="原密码" show-password />
+      <el-input
+        v-model="pwdForm.newPassword"
+        type="password"
+        placeholder="新密码（8~64 位，含字母和数字）"
+        show-password
+        @blur="checkPwd"
+      />
+      <div v-if="pwdHint" class="pwd-hint">{{ pwdHint }}</div>
+      <el-input
+        v-model="pwdForm.confirmPassword"
+        type="password"
+        placeholder="确认新密码（再输入一遍）"
+        show-password
+        @keyup.enter="submitPassword"
+      />
+    </div>
+    <template #footer>
+      <el-button @click="pwdDialogVisible = false">取消</el-button>
+      <el-button type="primary" :loading="savingPwd" @click="submitPassword">修改密码</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Calendar, List, Clock, ArrowLeft, Menu, Timer, Lock, SwitchButton, Monitor, ChatDotRound, FolderOpened, QuestionFilled, User } from '@element-plus/icons-vue'
+import { computed, ref, reactive } from 'vue'
+import { Calendar, List, Clock, ArrowLeft, Menu, Timer, Lock, SwitchButton, Monitor, ChatDotRound, FolderOpened, QuestionFilled, User, Postcard } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUIStore, type AppView, type SettingsSection } from '../stores'
 import { useAuthStore } from '../stores/auth'
 import { syncState } from '../services/syncManager'
+import { api, ApiError } from '../services/apiClient'
+import { validatePassword } from '../types/password'
 
 const uiStore = useUIStore()
 const authStore = useAuthStore()
@@ -168,6 +213,80 @@ const handleLogout = () => {
   ElMessage.success('已退出登录，数据保留本机')
 }
 
+// ===== 账号菜单：改昵称（prompt）/ 改密码（弹窗）/ 退出 =====
+
+const handleCommand = (cmd: string) => {
+  setNavDrawerOpen(false)
+  if (cmd === 'logout') return handleLogout()
+  if (cmd === 'rename') return changeNickname()
+  if (cmd === 'password') {
+    pwdDialogVisible.value = true
+  }
+}
+
+/** 修改昵称：prompt 取消静默返回，API 失败才报错 */
+const changeNickname = async () => {
+  let nickname: string
+  try {
+    ;({ value: nickname } = await ElMessageBox.prompt('修改显示昵称', '修改昵称', {
+      inputValue: authStore.user?.nickname || '',
+      inputPattern: /\S+/,
+      inputErrorMessage: '昵称不能为空'
+    }))
+  } catch {
+    return
+  }
+  try {
+    await api('/auth/profile', { method: 'PUT', body: { nickname } })
+    authStore.updateUser({ nickname })
+    ElMessage.success('昵称已更新')
+  } catch (e) {
+    ElMessage.error(e instanceof ApiError ? e.message : '操作失败，请稍后重试')
+  }
+}
+
+/** 修改密码弹窗：原密码 + 新密码×2（前后端共享弱口令策略） */
+const pwdDialogVisible = ref(false)
+const pwdForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
+const savingPwd = ref(false)
+const pwdHint = ref('')
+
+const checkPwd = () => {
+  const r = validatePassword(pwdForm.newPassword, authStore.user?.email || '')
+  pwdHint.value = pwdForm.newPassword && !r.ok ? r.reason : ''
+}
+
+const submitPassword = async () => {
+  if (!pwdForm.oldPassword) { ElMessage.warning('请输入原密码'); return }
+  const check = validatePassword(pwdForm.newPassword, authStore.user?.email || '')
+  if (!check.ok) { ElMessage.warning(check.reason); return }
+  if (pwdForm.newPassword !== pwdForm.confirmPassword) {
+    ElMessage.warning('两次输入的新密码不一致')
+    return
+  }
+  if (pwdForm.newPassword === pwdForm.oldPassword) {
+    ElMessage.warning('新密码不能与原密码相同')
+    return
+  }
+  savingPwd.value = true
+  try {
+    await api('/auth/password', {
+      method: 'PUT',
+      body: { oldPassword: pwdForm.oldPassword, newPassword: pwdForm.newPassword }
+    })
+    ElMessage.success('密码已修改')
+    pwdDialogVisible.value = false
+    pwdForm.oldPassword = ''
+    pwdForm.newPassword = ''
+    pwdForm.confirmPassword = ''
+    pwdHint.value = ''
+  } catch (e) {
+    ElMessage.error(e instanceof ApiError ? e.message : '操作失败，请稍后重试')
+  } finally {
+    savingPwd.value = false
+  }
+}
+
 // 移动端逐级返回：登录页 → 来源页；其余（任务/日程/设置子页）单级，直接回主页
 const handleBack = () => {
   if (currentView.value === 'auth') {
@@ -185,8 +304,7 @@ const mainItems: { key: AppView; label: string; icon: any }[] = [
 ]
 
 // 设置子项直达（桌面一级导航；移动端仍走抽屉「设置」→ 列表二级）；
-// 用户管理仅管理员可见（features.admin 由服务端 ADMIN_USERS 邮箱白名单下发，显隐非安全边界）；
-// 账号安全仅登录用户可见（游客无账号可管理）
+// 用户管理仅管理员可见（features.admin 由服务端 ADMIN_USERS 邮箱白名单下发，显隐非安全边界）
 const settingItems = computed(() => {
   const items: { key: SettingsSection; label: string; icon: any }[] = [
     { key: 'view', label: '视觉与外观', icon: Monitor },
@@ -194,7 +312,6 @@ const settingItems = computed(() => {
     { key: 'data', label: '数据管理', icon: FolderOpened },
     { key: 'guide', label: '使用指南', icon: QuestionFilled }
   ]
-  if (authStore.isLoggedIn) items.push({ key: 'security', label: '账号安全', icon: Lock })
   if (authStore.features.admin) items.push({ key: 'users', label: '用户管理', icon: User })
   return items
 })
@@ -218,7 +335,7 @@ const goSettings = (section: SettingsSection) => {
 
 // 移动端非主页返回按钮标题
 const settingsTitle = computed(() => {
-  const map: Record<string, string> = { view: '视觉与外观', ai: 'AI 助理', data: '数据管理', guide: '使用指南', users: '用户管理', security: '账号安全' }
+  const map: Record<string, string> = { view: '视觉与外观', ai: 'AI 助理', data: '数据管理', guide: '使用指南', users: '用户管理' }
   return map[settingsSection.value] || '设置'
 })
 const navTitle = computed(() => {
@@ -231,6 +348,19 @@ const navTitle = computed(() => {
 </script>
 
 <style scoped>
+/* 修改密码弹窗表单：纵向排列 */
+.pwd-dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.pwd-hint {
+  margin-top: calc(var(--space-xs) * -0.5);
+  font-size: var(--font-xs);
+  color: var(--el-color-danger);
+  line-height: 1.4;
+}
 /* 移动优先：基础样式 = 移动端二级页返回条（横条），桌面 rail 形态在 min-width 断点增强 */
 .app-navbar {
   display: flex;
