@@ -15,7 +15,6 @@ interface AdminUser {
   id: string
   email: string | null
   username: string | null
-  nickname: string | null
   createdAt: string
   syncedAt: string | null
   snapshotKb: number
@@ -26,14 +25,13 @@ const users = ref<AdminUser[]>([])
 const loading = ref(false)
 const errMsg = ref('')
 
-// ---- 筛选：按邮箱/昵称/用户名模糊匹配 ----
+// ---- 筛选：按邮箱/用户名模糊匹配 ----
 const searchQuery = ref('')
 const filteredUsers = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
   if (!q) return users.value
   return users.value.filter(u =>
     (u.email || '').toLowerCase().includes(q) ||
-    (u.nickname || '').toLowerCase().includes(q) ||
     (u.username || '').toLowerCase().includes(q)
   )
 })
@@ -113,7 +111,7 @@ const removeUser = async (u: AdminUser) => {
       <el-input
         v-model="searchQuery"
         :prefix-icon="Search"
-        placeholder="搜索邮箱或昵称..."
+        placeholder="搜索邮箱..."
         clearable
         style="width: 240px"
       />

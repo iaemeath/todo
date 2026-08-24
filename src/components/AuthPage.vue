@@ -6,7 +6,7 @@
  */
 import { ref, reactive, computed, watch, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Lock, Postcard, Key, Message, CircleCheck } from '@element-plus/icons-vue'
+import { Lock, Key, Message, CircleCheck } from '@element-plus/icons-vue'
 import { useUIStore } from '../stores'
 import { useAuthStore } from '../stores/auth'
 import { api, ApiError } from '../services/apiClient'
@@ -23,7 +23,6 @@ const form = reactive({
   email: '',
   password: '',
   confirmPassword: '',
-  nickname: '',
   inviteCode: '',
   captcha: '',       // 图形码答案（算术题）
   mailCode: ''       // 邮箱验证码
@@ -122,7 +121,7 @@ const submit = async () => {
     loading.value = true
     try {
       await authStore.login(email, form.password)
-      ElMessage.success(`欢迎回来，${authStore.user?.nickname || email}`)
+      ElMessage.success(`欢迎回来，${authStore.user?.username || email}`)
       uiStore.closeAuth()
     } catch (e) {
       ElMessage.error(e instanceof ApiError ? e.message : '登录失败，请稍后重试')
@@ -150,7 +149,6 @@ const submit = async () => {
       await authStore.register(
         email,
         form.password,
-        form.nickname.trim() || undefined,
         form.inviteCode.trim() || undefined,
         form.mailCode.trim()
       )
@@ -244,16 +242,6 @@ const submitLabel = computed(() =>
         />
 
         <template v-else>
-          <template v-if="mode === 'register'">
-            <el-input
-              v-model="form.nickname"
-              placeholder="昵称（选填）"
-              :prefix-icon="Postcard"
-              :disabled="loading"
-              maxlength="30"
-            />
-          </template>
-
           <!-- 密码 + 弱口令即时提示 + 确认密码 -->
           <el-input
             v-model="form.password"

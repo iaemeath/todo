@@ -25,7 +25,7 @@ const SYNC_TEXT: Record<string, string> = {
   error: '同步失败，稍后自动重试'
 }
 const syncText = computed(() => SYNC_TEXT[syncState.value] || syncState.value)
-const displayName = computed(() => authStore.user?.nickname || authStore.user?.username || '')
+const displayName = computed(() => authStore.user?.username || authStore.user?.email || '')
 const lastSyncText = computed(() =>
   lastSyncAt.value ? new Date(lastSyncAt.value).toLocaleString('zh-CN') : '从未'
 )

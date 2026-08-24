@@ -23,7 +23,6 @@ db.exec(`
     email      TEXT,
     username   TEXT,
     password   TEXT NOT NULL,
-    nickname   TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
   );
 
@@ -36,9 +35,10 @@ db.exec(`
 `)
 
 // 旧库迁移：v4.2 前的表无 email 列（ALTER 不能加 NOT NULL 无默认值，故列可空、应用层强制注册必填）
-const hasEmail = (db.prepare('PRAGMA table_info(users)').all() as { name: string }[])
-  .some(c => c.name === 'email')
-if (!hasEmail) db.exec('ALTER TABLE users ADD COLUMN email TEXT')
+const userCols = db.prepare('PRAGMA table_info(users)').all() as { name: string }[]
+if (!userCols.some(c => c.name === 'email')) db.exec('ALTER TABLE users ADD COLUMN email TEXT')
+// v4.4：昵称概念移除，DROP 旧列（SQLite ≥3.35 支持；Node 24 内置版本满足）
+if (userCols.some(c => c.name === 'nickname')) db.exec('ALTER TABLE users DROP COLUMN nickname')
 
 // email 唯一（部分索引：历史/未绑邮箱的 NULL 不参与唯一约束）
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL')

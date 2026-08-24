@@ -1,5 +1,5 @@
 /**
- * 认证路由：邮箱注册（验证码验真）/ 登录 / 忘记密码 / 改密 / 改昵称 / 会话恢复。
+ * 认证路由：邮箱注册（验证码验真）/ 登录 / 忘记密码 / 改密 / 会话恢复。
  * 密码 scrypt（salt:hash hex）；登录限流内存 Map（自用规模足够，重启清零可接受）。
  * 人机验证=算术图形码（获取邮箱验证码前必过）；邮箱验证码 6 位、单次、10 分钟。
  * 弱口令策略前后端共享（src/types/password.ts，类型下沉模式同 bundle.ts）。
@@ -20,7 +20,6 @@ interface UserRow {
   email: string | null
   username: string | null
   password: string
-  nickname: string | null
 }
 
 /** 从请求头解出 JWT payload；无效返回 null */
@@ -118,10 +117,10 @@ router.post('/register/code', async (req, res) => {
   res.json({ ok: true, data: null })
 })
 
-/** POST /api/auth/register {email, password, nickname?, inviteCode?, code}
+/** POST /api/auth/register {email, password, inviteCode?, code}
  *  注册第二步：邮箱验证码单次校验 → 建号 → 发 JWT */
 router.post('/register', (req, res) => {
-  const { nickname, inviteCode, code } = req.body || {}
+  const { inviteCode, code } = req.body || {}
   const email = normEmail(req.body?.email)
   const password = String(req.body?.password || '')
 
@@ -138,12 +137,12 @@ router.post('/register', (req, res) => {
   }
 
   const id = 'u-' + randomBytes(8).toString('hex')
-  // username 保留为兼容字段（展示名走 nickname）：默认取邮箱前缀
+  // username 为展示名（邮箱前缀），登录标识是 email
   const username = email.split('@')[0].slice(0, 30)
-  db.prepare('INSERT INTO users (id, email, username, password, nickname) VALUES (?, ?, ?, ?, ?)')
-    .run(id, email, username, hashPassword(password), nickname ? String(nickname).slice(0, 30) : null)
+  db.prepare('INSERT INTO users (id, email, username, password) VALUES (?, ?, ?, ?)')
+    .run(id, email, username, hashPassword(password))
 
-  const user = { id, email, username, nickname: nickname || null }
+  const user = { id, email, username }
   res.json({ ok: true, data: { token: signJwt(id, email), user } })
 })
 
@@ -158,7 +157,7 @@ router.post('/login', (req, res) => {
     return res.status(429).json({ ok: false, message: `失败次数过多，请 ${mins} 分钟后再试` })
   }
 
-  const row = db.prepare('SELECT id, email, username, password, nickname FROM users WHERE email = ?')
+  const row = db.prepare('SELECT id, email, username, password FROM users WHERE email = ?')
     .get(email) as UserRow | undefined
 
   // 统一错误文案，不区分「邮箱未注册/密码错误」，避免枚举用户
@@ -168,7 +167,7 @@ router.post('/login', (req, res) => {
   }
 
   loginFails.delete(email)
-  const user = { id: row.id, email: row.email, username: row.username, nickname: row.nickname }
+  const user = { id: row.id, email: row.email, username: row.username }
   res.json({ ok: true, data: { token: signJwt(row.id, row.email || email), user } })
 })
 
@@ -227,27 +226,16 @@ router.put('/password', requireAuth, (req, res) => {
   res.json({ ok: true, data: null })
 })
 
-/** PUT /api/auth/profile {nickname} —— 自助改昵称 */
-router.put('/profile', requireAuth, (req, res) => {
-  const payload = res.locals.user as JwtPayload
-  const nickname = String((req.body || {}).nickname || '').trim().slice(0, 30)
-  if (!nickname) return res.status(400).json({ ok: false, message: '昵称不能为空' })
-
-  const r = db.prepare('UPDATE users SET nickname = ? WHERE id = ?').run(nickname, payload.uid)
-  if (r.changes === 0) return res.status(404).json({ ok: false, message: '账号不存在' })
-  res.json({ ok: true, data: null })
-})
-
 /** GET /api/auth/me —— 刷新页面恢复会话 */
 router.get('/me', requireAuth, (req, res) => {
   const payload = res.locals.user as JwtPayload
-  const row = db.prepare('SELECT id, email, username, nickname FROM users WHERE id = ?')
-    .get(payload.uid) as UserRow | undefined
+  const row = db.prepare('SELECT id, email, username FROM users WHERE id = ?')
+    .get(payload.uid) as Omit<UserRow, 'password'> | undefined
   if (!row) return res.status(401).json({ ok: false, message: '账号不存在' })
   res.json({
     ok: true,
     data: {
-      user: { id: row.id, email: row.email, username: row.username, nickname: row.nickname },
+      user: { id: row.id, email: row.email, username: row.username },
       // 服务端可控特性开关（当前恒开；将来语音走后端代理时可远程关）。
       // admin 仅控前端管理入口显隐，真正的权限边界在 /api/admin 的 requireAdmin
       features: { voice: true, sync: true, admin: isAdmin(row.email || '') }

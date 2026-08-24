@@ -1,5 +1,5 @@
 /**
- * 用户管理（管理员）：列表 / 改昵称 / 重置密码 / 删除。
+ * 用户管理（管理员）：列表 / 补绑改邮箱 / 重置密码 / 删除。
  * 权限=白名单角色（roles.ts），前端 features.admin 仅控入口显隐，安全边界在此。
  * 删除用户时快照由 FK ON DELETE CASCADE 级联清除；对方浏览器本地数据不受影响（本地优先架构）。
  */
@@ -27,7 +27,6 @@ interface AdminUserRow {
   id: string
   email: string | null
   username: string | null
-  nickname: string | null
   created_at: string
   synced_at: string | null
   snapshot_chars: number | null
@@ -36,7 +35,7 @@ interface AdminUserRow {
 /** GET /api/admin/users —— 全量用户列表（含快照概览） */
 router.get('/users', (_req, res) => {
   const rows = db.prepare(`
-    SELECT u.id, u.email, u.username, u.nickname, u.created_at,
+    SELECT u.id, u.email, u.username, u.created_at,
            s.updated_at AS synced_at,
            length(s.data) AS snapshot_chars
     FROM users u
@@ -51,7 +50,6 @@ router.get('/users', (_req, res) => {
         id: r.id,
         email: r.email,
         username: r.username,
-        nickname: r.nickname,
         createdAt: r.created_at,
         syncedAt: r.synced_at,
         snapshotKb: r.snapshot_chars ? Math.round(r.snapshot_chars / 1024) : 0
@@ -60,26 +58,15 @@ router.get('/users', (_req, res) => {
   })
 })
 
-/** PATCH /api/admin/users/:id {nickname?, email?} —— 改昵称 / 补绑改邮箱 */
+/** PATCH /api/admin/users/:id {email} —— 补绑/修正邮箱 */
 router.patch('/users/:id', (req, res) => {
-  const body = req.body || {}
-  const nickname = body.nickname !== undefined ? String(body.nickname).trim().slice(0, 30) : undefined
-  const email = body.email !== undefined ? String(body.email).trim().toLowerCase() : undefined
+  const email = String((req.body || {}).email || '').trim().toLowerCase()
 
-  if (nickname !== undefined && !nickname) {
-    return res.status(400).json({ ok: false, message: '昵称不能为空' })
-  }
-  if (email !== undefined) {
-    if (!EMAIL_RE.test(email)) return res.status(400).json({ ok: false, message: '邮箱格式不正确' })
-    const dup = db.prepare('SELECT 1 FROM users WHERE email = ? AND id != ?').get(email, req.params.id)
-    if (dup) return res.status(409).json({ ok: false, message: '该邮箱已被其他账号使用' })
-  }
+  if (!EMAIL_RE.test(email)) return res.status(400).json({ ok: false, message: '邮箱格式不正确' })
+  const dup = db.prepare('SELECT 1 FROM users WHERE email = ? AND id != ?').get(email, req.params.id)
+  if (dup) return res.status(409).json({ ok: false, message: '该邮箱已被其他账号使用' })
 
-  const sets: string[] = []
-  const vals: string[] = []
-  if (nickname !== undefined) { sets.push('nickname = ?'); vals.push(nickname) }
-  if (email !== undefined) { sets.push('email = ?'); vals.push(email) }
-  const r = db.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`).run(...vals, req.params.id)
+  const r = db.prepare('UPDATE users SET email = ? WHERE id = ?').run(email, req.params.id)
   if (r.changes === 0) return res.status(404).json({ ok: false, message: '用户不存在' })
   res.json({ ok: true, data: null })
 })

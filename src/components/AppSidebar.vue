@@ -33,7 +33,7 @@
       </button>
     </nav>
 
-    <!-- 账号区（沉底）：游客显示登录入口；登录后点击昵称行向上弹菜单（退出等） -->
+    <!-- 账号区（沉底）：游客显示登录入口；登录后点击账号行向上弹菜单（改密/退出） -->
     <div class="nav-footer">
       <button v-if="!authStore.isLoggedIn" class="nav-tab" title="登录开启多设备云同步" @click="openLogin">
         <el-icon class="tab-icon"><Lock /></el-icon>
@@ -46,9 +46,6 @@
         </div>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="rename">
-              <el-icon><Postcard /></el-icon>修改昵称
-            </el-dropdown-item>
             <el-dropdown-item command="password">
               <el-icon><Lock /></el-icon>修改密码
             </el-dropdown-item>
@@ -111,7 +108,7 @@
           <span>{{ item.label }}</span>
         </button>
 
-        <!-- 账号区（沉底，与桌面侧栏同语义：点昵称行向上弹菜单） -->
+        <!-- 账号区（沉底，与桌面侧栏同语义：点账号行向上弹菜单） -->
         <div class="nav-drawer__footer">
           <button v-if="!authStore.isLoggedIn" class="nav-drawer__item" @click="openLogin">
             <el-icon><Lock /></el-icon>
@@ -124,9 +121,6 @@
             </div>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="rename">
-                  <el-icon><Postcard /></el-icon>修改昵称
-                </el-dropdown-item>
                 <el-dropdown-item command="password">
                   <el-icon><Lock /></el-icon>修改密码
                 </el-dropdown-item>
@@ -175,9 +169,9 @@
 
 <script setup lang="ts">
 import { computed, ref, reactive } from 'vue'
-import { Calendar, List, Clock, ArrowLeft, Menu, Timer, Lock, SwitchButton, Monitor, ChatDotRound, FolderOpened, QuestionFilled, User, Postcard } from '@element-plus/icons-vue'
+import { Calendar, List, Clock, ArrowLeft, Menu, Timer, Lock, SwitchButton, Monitor, ChatDotRound, FolderOpened, QuestionFilled, User } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { useUIStore, type AppView, type SettingsSection } from '../stores'
 import { useAuthStore } from '../stores/auth'
 import { syncState } from '../services/syncManager'
@@ -189,7 +183,7 @@ const authStore = useAuthStore()
 const { currentView, isMobile, settingsSection, navDrawerOpen, navRailCollapsed } = storeToRefs(uiStore) // state → storeToRefs
 const { switchView, openSettingsSection, setNavDrawerOpen, setNavRailCollapsed } = uiStore // action 直接解构
 
-const displayName = computed(() => authStore.user?.nickname || authStore.user?.username || '')
+const displayName = computed(() => authStore.user?.username || authStore.user?.email || '')
 
 // 同步状态点文案（点击进数据管理页做手动操作）
 const SYNC_TEXT: Record<string, string> = {
@@ -213,35 +207,13 @@ const handleLogout = () => {
   ElMessage.success('已退出登录，数据保留本机')
 }
 
-// ===== 账号菜单：改昵称（prompt）/ 改密码（弹窗）/ 退出 =====
+// ===== 账号菜单：改密码（弹窗）/ 退出 =====
 
 const handleCommand = (cmd: string) => {
   setNavDrawerOpen(false)
   if (cmd === 'logout') return handleLogout()
-  if (cmd === 'rename') return changeNickname()
   if (cmd === 'password') {
     pwdDialogVisible.value = true
-  }
-}
-
-/** 修改昵称：prompt 取消静默返回，API 失败才报错 */
-const changeNickname = async () => {
-  let nickname: string
-  try {
-    ;({ value: nickname } = await ElMessageBox.prompt('修改显示昵称', '修改昵称', {
-      inputValue: authStore.user?.nickname || '',
-      inputPattern: /\S+/,
-      inputErrorMessage: '昵称不能为空'
-    }))
-  } catch {
-    return
-  }
-  try {
-    await api('/auth/profile', { method: 'PUT', body: { nickname } })
-    authStore.updateUser({ nickname })
-    ElMessage.success('昵称已更新')
-  } catch (e) {
-    ElMessage.error(e instanceof ApiError ? e.message : '操作失败，请稍后重试')
   }
 }
 
@@ -443,7 +415,7 @@ const navTitle = computed(() => {
   gap: var(--space-xs);
 }
 
-/* 下拉包裹层撑满：昵称行整行可点击弹出菜单 */
+/* 下拉包裹层撑满：账号行整行可点击弹出菜单 */
 .nav-footer :deep(.el-dropdown),
 .nav-drawer__footer :deep(.el-dropdown) {
   display: block;

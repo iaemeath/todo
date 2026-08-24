@@ -12,7 +12,6 @@ export interface AuthUser {
   id: string
   email: string | null
   username: string | null
-  nickname: string | null
 }
 
 interface AuthFeatures {
@@ -83,13 +82,12 @@ export const useAuthStore = defineStore('auth', () => {
   async function register(
     email: string,
     password: string,
-    nickname?: string,
     inviteCode?: string,
     code?: string
   ): Promise<void> {
     const r = await api<{ token: string; user: AuthUser }>('/auth/register', {
       method: 'POST',
-      body: { email, password, nickname, inviteCode, code }
+      body: { email, password, inviteCode, code }
     })
     token.value = r.token
     user.value = r.user
@@ -97,18 +95,10 @@ export const useAuthStore = defineStore('auth', () => {
     void bootstrap()
   }
 
-  /** 自助改昵称成功后同步本地登录态（服务端已是最新值） */
-  function updateUser(patch: Partial<Pick<AuthUser, 'nickname'>>) {
-    if (user.value) {
-      user.value = { ...user.value, ...patch }
-      persist()
-    }
-  }
-
   /** JWT 无状态，退出即清本地凭据 */
   function logout() {
     clear()
   }
 
-  return { token, user, ready, features, isLoggedIn, bootstrap, login, register, logout, updateUser }
+  return { token, user, ready, features, isLoggedIn, bootstrap, login, register, logout }
 })
