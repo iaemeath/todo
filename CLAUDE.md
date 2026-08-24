@@ -61,7 +61,40 @@
 | shiguang_last_synced_at / shiguang_sync_cursor | 同步产物（退出登录时清除） |
 | shiguang_server_url | Electron 壳 API 地址覆盖（空 = 默认域名） |
 
-## 7. 约定与提交习惯
+## 7. 前端编写规范
+
+### 令牌族（theme.css 单一定义点，样式必用 var() 引用）
+
+- 令牌只在 `src/styles/theme.css` 定义一次，组件一律 `var(--xxx)` 引用，**禁裸值**——stylelint 已强制：padding/gap 禁裸 px、border-radius 仅允许 9999px（胶囊特例）、transition 禁手写秒数与 cubic-bezier、font-weight 禁裸数字；确需特例时行内 `stylelint-disable-line` 并注明原因（参考既有写法）
+- 色彩：`--color-primary`（运行时可被用户主题色覆盖，派生 light/dark/alpha 用 color-mix 跟随）；语义色 `--color-success/warning/danger/info`（各带 `*-alpha` 弱底）；文本三档 `--text-primary/secondary/muted`；边框 `--border-glass(-subtle)`
+- 间距五档 `--space-xs/sm/md/lg/xl`（4/8/12/16/24px，语义=图标间距/组内/卡片内/区块内/区块间）
+- 其余族：圆角 `--radius-sm/md/lg`、阴影 `--shadow-sm/md/lg`、字号 `--font-xs/sm/base/md`、字重 `--weight-regular~bold`、动效 `--duration-fast/base/slow` + `--ease-spring`（招牌弹性）/`--ease-standard`、浮层 `--z-overlay`
+- Element Plus 主题已桥接：`--el-*` 映射到上述令牌——调整 EP 观感改 theme.css 映射，不在组件里覆盖 `--el-` 变量
+
+### 平台与主题双态
+
+- 断点 768px 单一定义（`ui.ts` 的 `MOBILE_BREAKPOINT`）：JS 判断用 `useUIStore().isMobile`；CSS 用 `html.platform-mobile` 作用域（与 isMobile 同源挂载，自动切换平台变体令牌：--space 收紧、--touch-target 44px）
+- 暗色主题在 theme.css 覆盖同名令牌——组件内不写颜色双分支，令牌自动切换
+
+### 组件约定
+
+- SFC 段落顺序：template → `<script setup lang="ts">` → `<style scoped>`；覆盖 EP 内部样式用 `:deep()`
+- 图标双库分工：按钮/工具栏用 `@element-plus/icons-vue`（配 `:icon` 属性）；自绘交互区（日历/待办栏/滑块/语音）用 `lucide-vue-next`
+- Pinia 解构纪律：state/getter 走 `storeToRefs()`，action 直接解构（防响应性丢失）
+- 触控热区纵向 ≥ `var(--touch-target)`；移动端弹窗宽度 92vw 惯例（见 style.css）
+- 模糊搜索用 Fuse.js（threshold 0.4 惯例）
+
+### 多端开发规则（移动优先）
+
+- **移动优先写法**：基础样式面向移动端，桌面增强一律 `@media (width >= 769px)`（既有实践 10:1）；反向 max-width 仅 style.css 全局弹窗一处特例，新代码不再增
+- **统一指针模型**：交互用 pointerdown/move/up + `setPointerCapture`，鼠标/触摸/手写笔一套逻辑（SliderCaptcha/TodoSidebar 模式）；不写 mouse+touch 双份监听
+- **滚动性能**：scroll/touch 类监听加 `{ passive: true }`（既有先例）；动效只动 transform/opacity（合成层不触 reflow），时长曲线走动效令牌
+- **视口高度**：用 `svh`/`dvh` 不用 `vh`（移动端地址栏收缩，#app 100svh 既有）
+- **触控反馈**：热区纵向 ≥ `var(--touch-target)`；关键信息不靠 hover 传达（触屏 sticky-hover），纯 hover 效果用 `@media (hover: hover)` 门控
+- **iOS 输入**：根字号 18px ≥ 16px 防 focus 自动放大（既有）；表单键盘语义用 `inputmode`，不改 type
+- **安全区**：底部固定元素必须 `env(safe-area-inset-bottom)` 兜底（当前无此类 UI，出现时必加）
+
+## 8. 约定与提交习惯
 
 - 前后端共享逻辑（弱口令校验、数据契约）以纯函数下沉 `src/types/`，双端 import——新共享逻辑沿用此模式
 - 提交按语义拆批，中文 conventional 风格（feat/fix/refactor/chore：一句话讲清动机与手段，参考 git log 既有风格）
