@@ -88,9 +88,18 @@
           <el-icon><Clock /></el-icon>
           <span>日程管理</span>
         </button>
-        <button class="nav-drawer__item" :class="{ active: currentView === 'settings' }" @click="go('settings')">
-          <el-icon><Setting /></el-icon>
-          <span>设置</span>
+
+        <!-- 设置组：与桌面侧栏同构（移动端同样直达子页，无列表二级） -->
+        <div class="nav-drawer__group-label">设置</div>
+        <button
+          v-for="item in settingItems"
+          :key="item.key"
+          class="nav-drawer__item"
+          :class="{ active: currentView === 'settings' && settingsSection === item.key }"
+          @click="goSettings(item.key)"
+        >
+          <el-icon><component :is="item.icon" /></el-icon>
+          <span>{{ item.label }}</span>
         </button>
 
         <!-- 账号区（沉底，与桌面侧栏同语义） -->
@@ -117,7 +126,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Calendar, List, Clock, Setting, ArrowLeft, Menu, Timer, Lock, SwitchButton, Monitor, ChatDotRound, FolderOpened, QuestionFilled } from '@element-plus/icons-vue'
+import { Calendar, List, Clock, ArrowLeft, Menu, Timer, Lock, SwitchButton, Monitor, ChatDotRound, FolderOpened, QuestionFilled } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
 import { ElMessage } from 'element-plus'
 import { useUIStore, type AppView, type SettingsSection } from '../stores'
@@ -127,7 +136,7 @@ import { syncState } from '../services/syncManager'
 const uiStore = useUIStore()
 const authStore = useAuthStore()
 const { currentView, isMobile, settingsSection, navDrawerOpen, navRailCollapsed } = storeToRefs(uiStore) // state → storeToRefs
-const { switchView, openSettingsSection, setSettingsSection, setNavDrawerOpen, setNavRailCollapsed } = uiStore // action 直接解构
+const { switchView, openSettingsSection, setNavDrawerOpen, setNavRailCollapsed } = uiStore // action 直接解构
 
 const displayName = computed(() => authStore.user?.nickname || authStore.user?.username || '')
 
@@ -158,12 +167,10 @@ const handleLogout = () => {
   ElMessage.success('已退出登录，数据保留本机')
 }
 
-// 移动端逐级返回：登录页 → 来源页；设置内页 → 设置列表 → 主页（任务/日程为单级，直接回主页）
+// 移动端逐级返回：登录页 → 来源页；其余（任务/日程/设置子页）单级，直接回主页
 const handleBack = () => {
   if (currentView.value === 'auth') {
     uiStore.closeAuth()
-  } else if (currentView.value === 'settings' && settingsSection.value !== 'list') {
-    setSettingsSection('list')
   } else {
     switchView('home')
   }
@@ -195,9 +202,15 @@ const go = (view: AppView) => {
   switchView(view)
 }
 
+// 抽屉设置子项：直达并关抽屉
+const goSettings = (section: SettingsSection) => {
+  setNavDrawerOpen(false)
+  openSettingsSection(section)
+}
+
 // 移动端非主页返回按钮标题
 const settingsTitle = computed(() => {
-  const map: Record<string, string> = { list: '设置', view: '视觉与外观', ai: 'AI 助理', data: '数据管理', guide: '使用指南' }
+  const map: Record<string, string> = { view: '视觉与外观', ai: 'AI 助理', data: '数据管理', guide: '使用指南' }
   return map[settingsSection.value] || '设置'
 })
 const navTitle = computed(() => {
@@ -472,6 +485,16 @@ const navTitle = computed(() => {
   gap: var(--space-xs);
   border-top: 1px solid var(--el-border-color-lighter);
   padding-top: var(--space-sm);
+}
+
+/* 抽屉设置分组标题（与桌面 nav-group-label 同语义，移动端作用域） */
+.nav-drawer__group-label {
+  margin-top: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-secondary);
+  letter-spacing: 0.05em;
 }
 
 .nav-drawer__user {

@@ -9,7 +9,7 @@ import { defineStore } from 'pinia'
  */
 
 export type AppView = 'home' | 'task' | 'schedule' | 'settings' | 'auth'
-export type SettingsSection = 'list' | 'view' | 'ai' | 'data' | 'guide'
+export type SettingsSection = 'view' | 'ai' | 'data' | 'guide'
 
 const MOBILE_BREAKPOINT = 768
 const LS_TODO_VISIBLE = 'todo_visible'
@@ -17,8 +17,8 @@ const LS_TODO_VISIBLE = 'todo_visible'
 export const useUIStore = defineStore('ui', () => {
   const currentView = ref<AppView>('home')
   const isMobile = ref(false)
-  // 移动端设置子页：'list'=选项列表；选中后为对应面板。AppSidebar 据此显示返回按钮标题。
-  const settingsSection = ref<SettingsSection>('list')
+  // 设置子页：两端均由导航直达（桌面侧栏/移动抽屉），AppSidebar 据此显示返回按钮标题
+  const settingsSection = ref<SettingsSection>('view')
 
   // 主页待办可见性（web 常驻侧栏 / 移动 60% 浮层，同一状态），持久化保留用户偏好。
   const readTodoVisible = (): boolean => {
@@ -101,8 +101,8 @@ export const useUIStore = defineStore('ui', () => {
 
   const switchView = (view: AppView) => {
     currentView.value = view
-    // 每次进入设置页，默认回到选项列表
-    if (view === 'settings') settingsSection.value = 'list'
+    // 直接进入设置页（无指定子页，如旧书签路径）：默认视觉与外观
+    if (view === 'settings') settingsSection.value = 'view'
   }
 
   // 桌面侧栏设置子项直达（绕过 switchView 的 list 重置；移动端列表页不使用）

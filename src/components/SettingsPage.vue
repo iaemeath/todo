@@ -1,33 +1,9 @@
 <template>
   <div class="settings-page" :class="{ 'is-mobile': isMobile }">
-    <!-- 桌面：子页导航已上移至应用侧栏（openSettingsSection 直达），此处仅内容区 -->
-
-    <!-- 移动端：列表入口（屏小保留二级列表模式） -->
-    <div v-if="isMobile && settingsSection === 'list'" class="mobile-list">
-      <div class="mobile-item" @click="enterMobile('view')">
-        <el-icon><Monitor /></el-icon>
-        <span>视觉与外观</span>
-        <el-icon class="arrow"><ArrowRight /></el-icon>
-      </div>
-      <div class="mobile-item" @click="enterMobile('ai')">
-        <el-icon><ChatDotRound /></el-icon>
-        <span>AI 助理</span>
-        <el-icon class="arrow"><ArrowRight /></el-icon>
-      </div>
-      <div class="mobile-item" @click="enterMobile('data')">
-        <el-icon><FolderOpened /></el-icon>
-        <span>数据管理</span>
-        <el-icon class="arrow"><ArrowRight /></el-icon>
-      </div>
-      <div class="mobile-item" @click="enterMobile('guide')">
-        <el-icon><QuestionFilled /></el-icon>
-        <span>使用指南</span>
-        <el-icon class="arrow"><ArrowRight /></el-icon>
-      </div>
-    </div>
+    <!-- 两端子页均由应用导航直达（桌面侧栏/移动抽屉），此处仅内容区 -->
 
     <!-- 内容区域（桌面 + 移动端共用） -->
-    <div class="settings-content" v-show="!isMobile || settingsSection !== 'list'">
+    <div class="settings-content">
       <ViewSettingsTab v-show="currentTab === 'view'" :form="form" />
       <!-- AI 助理页 = 配置 + API 消耗记录 两块纵向合并 -->
       <div v-show="currentTab === 'ai'" class="ai-combined">
@@ -42,7 +18,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Monitor, ChatDotRound, ArrowRight, FolderOpened, QuestionFilled } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
 import { useSettingsStore, useUIStore } from '../stores'
 import ViewSettingsTab from './ViewSettingsTab.vue'
@@ -53,15 +28,9 @@ import GuideTab from './GuideTab.vue'
 
 const uiStore = useUIStore()
 const { isMobile, settingsSection } = storeToRefs(uiStore) // state → storeToRefs
-const { setSettingsSection } = uiStore // action 直接解构
-// 子页统一由 settingsSection 驱动：桌面侧栏直达必带具体 section；
-// 若经 switchView('settings') 进入（section 复位为 list，仅移动端列表路径），
-// 桌面兜底显示视觉与外观。移动端 list 时内容区隐藏（模板 v-show）。
-const currentTab = computed(() => {
-  const s = settingsSection.value
-  return s === 'list' ? 'view' : s
-})
-const enterMobile = (tab: 'view' | 'ai' | 'data' | 'guide') => { setSettingsSection(tab) }
+// 子页统一由 settingsSection 驱动：两端导航直达必带具体 section，
+// switchView('settings') 兜底重置为视觉与外观
+const currentTab = computed(() => settingsSection.value)
 const settingsStore = useSettingsStore()
 // form 直接引用 store 的 settings（子 tab 通过 props 变异其字段，即时生效并持久化）。
 // 不再用挂载时快照：数据导入等外部更新必须实时反映，否则旧值会在下次调节时被回写覆盖。
@@ -98,33 +67,6 @@ html.platform-mobile .settings-page {
   padding: var(--space-lg); /* 桌面 16 / 移动 12（令牌双值） */
   overflow-y: auto;
   min-width: 0;
-}
-
-/* 移动端：列表入口 */
-.mobile-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.mobile-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-lg) var(--space-xl);
-  cursor: pointer;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-  font-size: var(--font-base);
-  color: var(--el-text-color-primary);
-  transition: background var(--duration-fast);
-}
-
-.mobile-item:hover {
-  background: var(--el-fill-color-light);
-}
-
-.mobile-item .arrow {
-  margin-left: auto;
-  color: var(--el-text-color-secondary);
 }
 
 /* 控件宽度约束：slider / select / input 不要全宽 */
