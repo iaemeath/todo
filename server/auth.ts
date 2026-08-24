@@ -29,10 +29,16 @@ export function getAuth(req: Request): JwtPayload | null {
   return token ? verifyJwt(token) : null
 }
 
-/** 登录守卫中间件：有效则把 payload 挂到 res.locals.user */
+/**
+ * 登录守卫中间件：验 JWT 签名/有效期 + 用户仍存在（删号即时失效，顺带兜住
+ * 快照 FK 违约 500），有效则把 payload 挂到 res.locals.user。
+ * 无状态 JWT 本身不可吊销——这道查询是「token 到期前的吊销位」，自用规模无性能压力。
+ */
 export function requireAuth(_req: Request, res: Response, next: NextFunction) {
   const payload = getAuth(_req)
   if (!payload) return res.status(401).json({ ok: false, message: '未登录或登录已过期' })
+  const exists = db.prepare('SELECT 1 FROM users WHERE id = ?').get(payload.uid)
+  if (!exists) return res.status(401).json({ ok: false, message: '账号不存在或已注销' })
   res.locals.user = payload
   next()
 }

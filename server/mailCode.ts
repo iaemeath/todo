@@ -21,6 +21,8 @@ interface CodeEntry {
   /** 当日已发送次数（跨 24h 窗口滚动简化：按自然累计 + 每次发送时惰性衰减） */
   sentCount: number
   sentWindowStart: number
+  /** 校验失败次数（暴力防护：满 5 次作废重取） */
+  fails: number
 }
 
 const store = new Map<string, CodeEntry>()
@@ -51,24 +53,32 @@ export async function issueMailCode(purpose: MailCodePurpose, email: string): Pr
   const code = String(randomInt(0, 1000000)).padStart(6, '0')
   await sendCodeMail(email, code, purpose)
 
-  const next: CodeEntry = entry || { code: '', expiresAt: 0, nextSendAt: 0, sentCount: 0, sentWindowStart: now }
+  const next: CodeEntry = entry || { code: '', expiresAt: 0, nextSendAt: 0, sentCount: 0, sentWindowStart: now, fails: 0 }
   next.code = code
   next.expiresAt = now + TTL_MS
   next.nextSendAt = now + RESEND_INTERVAL_MS
   next.sentCount += 1
+  next.fails = 0 // 新码重置失败计数
   store.set(k, next)
   return null
 }
 
+/** 验证码错误尝试上限：满 5 次作废（防在线穷举 6 位码） */
+const MAX_FAILS = 5
+
 /**
  * 校验验证码：匹配且未过期才通过，通过后即销毁（单次使用）。
- * 不匹配不销毁（允许重试输错的码），但过期/不存在返回 false。
+ * 不匹配累计失败，满 5 次销毁（对调用方与过期同义：重取新码）。
  */
 export function verifyMailCode(purpose: MailCodePurpose, email: string, input: string): boolean {
   const k = key(purpose, email)
   const entry = store.get(k)
   if (!entry || entry.expiresAt < Date.now()) return false
-  if (entry.code !== String(input).trim()) return false
+  if (entry.code !== String(input).trim()) {
+    entry.fails += 1
+    if (entry.fails >= MAX_FAILS) store.delete(k)
+    return false
+  }
   store.delete(k)
   return true
 }
