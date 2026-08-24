@@ -1,6 +1,7 @@
 /**
  * 登录态：token/user 持久化 localStorage，启动 bootstrap() 用 /auth/me 恢复会话。
- * 特性开关（voice/sync）由服务端下发——登录后语音助手与云同步解锁。
+ * 特性开关（features）由服务端下发，当前唯一生效的是 sync（云同步）；
+ * voice 字段为预留，暂无消费方。
  */
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'

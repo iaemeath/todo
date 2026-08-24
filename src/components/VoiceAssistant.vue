@@ -6,21 +6,20 @@
       </div>
     </Transition>
 
-    <!-- Main FAB：未登录锁定态（Lock 图标 + 半透明），点击弹登录引导 -->
+    <!-- Main FAB -->
     <button
       v-show="state === 'idle' && !toastMessage"
       class="fab-btn"
-      :class="[state, { 'is-pulsing': state === 'listening', 'is-dragging': isDraggingState, locked: !canUseVoice }]"
+      :class="[state, { 'is-pulsing': state === 'listening', 'is-dragging': isDraggingState }]"
       @mousedown="startDrag"
       @touchstart="startDrag"
       @click="handleFabClick"
       :disabled="state === 'processing'"
-      :title="canUseVoice ? tooltip : '登录后解锁语音助手'"
+      :title="tooltip"
     >
       <div v-if="state === 'listening'" class="pulse-ring"></div>
 
-      <Lock v-if="!canUseVoice" class="fab-icon" />
-      <Mic v-else-if="state === 'idle' || state === 'listening'" class="fab-icon" />
+      <Mic v-if="state === 'idle' || state === 'listening'" class="fab-icon" />
       <Loader2 v-else-if="state === 'processing'" class="fab-icon spin" />
       <Check v-else-if="state === 'success'" class="fab-icon" />
       <AlertCircle v-else-if="state === 'error'" class="fab-icon" />
@@ -30,13 +29,12 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Mic, Loader2, Check, AlertCircle, Lock } from 'lucide-vue-next'
+import { Mic, Loader2, Check, AlertCircle } from 'lucide-vue-next'
 import Fuse from 'fuse.js'
 import { ElMessageBox } from 'element-plus'
 import { parseVoiceCommand, type VoiceIntent } from '../services/llmService'
 import { storeToRefs } from 'pinia'
-import { useTaskStore, useSettingsStore, useUIStore } from '../stores'
-import { useAuthStore } from '../stores/auth'
+import { useTaskStore, useSettingsStore } from '../stores'
 import { todayLocal } from '../utils/dates'
 
 type VoiceState = 'idle' | 'listening' | 'processing' | 'success' | 'error'
@@ -55,21 +53,6 @@ const taskStore = useTaskStore()
 const { tasks, schedules } = storeToRefs(taskStore) // state → storeToRefs
 const { addTask, updateTask, deleteTask, addSchedule, updateSchedule, deleteSchedule } = taskStore // action
 const { settings } = storeToRefs(useSettingsStore())
-const authStore = useAuthStore()
-const uiStore = useUIStore()
-
-// 语音是账号功能（产品策略门控：Web Speech 本可离线运行，登录给账号体系一个价值锚点）
-const canUseVoice = computed(() => authStore.isLoggedIn)
-
-// 登出瞬间若在听音/处理，立即停止——门控不留破窗
-watch(() => authStore.isLoggedIn, (v) => {
-  if (!v && (state.value === 'listening' || state.value === 'processing')) {
-    try { recognition?.stop() } catch { /* 已停止 */ }
-    if (silenceTimer) clearTimeout(silenceTimer)
-    state.value = 'idle'
-    toastMessage.value = ''
-  }
-})
 
 // 语音删除属模糊匹配（谐音推断 + Fuse），且任务删除会级联子孙与关联日程，必须先确认
 const CANCELLED = '__CANCELLED__'
@@ -418,18 +401,6 @@ const initSpeechRecognition = () => {
 }
 
 const toggleVoice = () => {
-  // 登录门控：未登录点击 → 引导弹窗（同时是语音与云同步的统一解锁入口）
-  if (!authStore.isLoggedIn) {
-    ElMessageBox.confirm(
-      '语音助手是账号功能，登录后即可解锁（同时开启多设备云同步，未登录仍可正常使用其他全部功能）。',
-      '语音助手',
-      { type: 'info', confirmButtonText: '去登录', cancelButtonText: '暂不' }
-    )
-      .then(() => uiStore.openAuth())
-      .catch(() => { /* 暂不 */ })
-    return
-  }
-
   if (state.value === 'processing') return
 
   if (state.value === 'listening') {
@@ -461,11 +432,6 @@ const toggleVoice = () => {
 </script>
 
 <style scoped>
-/* 未登录锁定态：半透明但可交互（点击弹登录引导） */
-.fab-btn.locked {
-  opacity: 0.55;
-}
-
 .voice-assistant-fab {
   position: fixed;
   bottom: 40px;

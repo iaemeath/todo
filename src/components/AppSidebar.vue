@@ -35,7 +35,7 @@
 
     <!-- 账号区（沉底）：游客显示登录入口；登录后点击昵称行向上弹菜单（退出等） -->
     <div class="nav-footer">
-      <button v-if="!authStore.isLoggedIn" class="nav-tab" title="登录解锁语音助手与云同步" @click="openLogin">
+      <button v-if="!authStore.isLoggedIn" class="nav-tab" title="登录开启多设备云同步" @click="openLogin">
         <el-icon class="tab-icon"><Lock /></el-icon>
         <span class="tab-label">登录</span>
       </button>

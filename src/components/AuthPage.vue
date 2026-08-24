@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 登录/注册页（全屏，替代原弹窗）：游客随时可用基础功能，登录解锁语音与云同步。
+ * 登录/注册页（全屏，替代原弹窗）：游客随时可用全部功能，登录开启多设备云同步。
  * 登录成功回来源页（ui store openAuth 记录）；已登录误入时直接送回。
  */
 import { ref, reactive, watch } from 'vue'
@@ -76,7 +76,7 @@ watch(
       <div class="auth-brand">
         <span class="auth-logo"></span>
         <span class="auth-title">拾光</span>
-        <span class="auth-subtitle">登录后解锁 🎙️ 语音助手 与 ☁️ 多设备云同步</span>
+        <span class="auth-subtitle">登录后开启 ☁️ 多设备云同步</span>
       </div>
 
       <!-- 模式切换（贴合项目 segmented 风格） -->

@@ -155,7 +155,7 @@ const handleFileChange = async (e: Event) => {
         <div class="setting-row">
           <div class="setting-info">
             <span class="setting-name">登录开启多设备云同步</span>
-            <span class="setting-desc">登录后数据定期自动同步到云端账号，换设备不丢数据；同时解锁语音助手。</span>
+            <span class="setting-desc">登录后数据定期自动同步到云端账号，换设备不丢数据。</span>
           </div>
           <el-button type="primary" @click="uiStore.openAuth()">登录 / 注册</el-button>
         </div>
