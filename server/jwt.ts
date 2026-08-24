@@ -20,16 +20,18 @@ const SECRET = loadSecret()
 export interface JwtPayload {
   uid: string
   email: string
+  /** 会话代次（users.token_ver 签发时快照）：改密/重置 bump 后旧 token 全失效 */
+  ver: number
   iat: number
   exp: number // 秒级 unix
 }
 
 const b64url = (input: string) => Buffer.from(input, 'utf8').toString('base64url')
 
-export function signJwt(uid: string, email: string, ttlSec = 7 * 24 * 3600): string {
+export function signJwt(uid: string, email: string, ver: number, ttlSec = 7 * 24 * 3600): string {
   const now = Math.floor(Date.now() / 1000)
   const header = b64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
-  const payload = b64url(JSON.stringify({ uid, email, iat: now, exp: now + ttlSec }))
+  const payload = b64url(JSON.stringify({ uid, email, ver, iat: now, exp: now + ttlSec }))
   const sig = createHmac('sha256', SECRET).update(`${header}.${payload}`).digest('base64url')
   return `${header}.${payload}.${sig}`
 }

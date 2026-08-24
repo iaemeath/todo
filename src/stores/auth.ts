@@ -120,5 +120,11 @@ export const useAuthStore = defineStore('auth', () => {
     clear()
   }
 
-  return { token, user, ready, features, isLoggedIn, bootstrap, login, register, logout }
+  /** 改密成功后平滑换 token：服务端 bump token_ver 后本设备重签的新凭据 */
+  function updateToken(t: string) {
+    token.value = t
+    persist()
+  }
+
+  return { token, user, ready, features, isLoggedIn, bootstrap, login, register, logout, updateToken }
 })

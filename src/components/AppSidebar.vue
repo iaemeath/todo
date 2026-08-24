@@ -252,11 +252,13 @@ const submitPassword = async () => {
   }
   savingPwd.value = true
   try {
-    await api('/auth/password', {
+    const r = await api<{ token: string }>('/auth/password', {
       method: 'PUT',
       body: { oldPassword: pwdForm.oldPassword, newPassword: pwdForm.newPassword }
     })
-    ElMessage.success('密码已修改')
+    // 改密 bump token_ver（其他设备旧 token 即时失效）；本设备换新 token 无缝续期
+    authStore.updateToken(r.token)
+    ElMessage.success('密码已修改，其他设备已退出登录')
     pwdDialogVisible.value = false
     pwdForm.oldPassword = ''
     pwdForm.newPassword = ''

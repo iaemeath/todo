@@ -30,15 +30,21 @@ export function getAuth(req: Request): JwtPayload | null {
 }
 
 /**
- * 登录守卫中间件：验 JWT 签名/有效期 + 用户仍存在（删号即时失效，顺带兜住
- * 快照 FK 违约 500），有效则把 payload 挂到 res.locals.user。
- * 无状态 JWT 本身不可吊销——这道查询是「token 到期前的吊销位」，自用规模无性能压力。
+ * 登录守卫中间件：验 JWT 签名/有效期 + 用户仍存在 + 会话代次未过期（token_ver），
+ * 有效则把 payload 挂到 res.locals.user。
+ * 无状态 JWT 本身不可吊销——存在性查询与 ver 比对共同构成「token 到期前的吊销位」：
+ * 删号即时失效；改密/重置 bump ver → 全部旧 token 即时失效（被盗号改密即踢线）。
+ * 自用规模下每请求一次主键查询无性能压力。
  */
 export function requireAuth(_req: Request, res: Response, next: NextFunction) {
   const payload = getAuth(_req)
   if (!payload) return res.status(401).json({ ok: false, message: '未登录或登录已过期' })
-  const exists = db.prepare('SELECT 1 FROM users WHERE id = ?').get(payload.uid)
-  if (!exists) return res.status(401).json({ ok: false, message: '账号不存在或已注销' })
+  const row = db.prepare('SELECT token_ver FROM users WHERE id = ?').get(payload.uid) as { token_ver: number } | undefined
+  // 旧 token 无 ver 字段按 0 计（部署 token_ver 后存量会话平滑过渡，不强制全体重登）
+  if (!row) return res.status(401).json({ ok: false, message: '账号不存在或已注销' })
+  if (Number(payload.ver || 0) !== row.token_ver) {
+    return res.status(401).json({ ok: false, message: '登录态已失效（密码已变更），请重新登录' })
+  }
   res.locals.user = payload
   next()
 }
@@ -161,7 +167,7 @@ router.post('/register', (req, res) => {
     .run(id, email, username, hashPassword(password))
 
   const user = { id, email, username }
-  res.json({ ok: true, data: { token: signJwt(id, email), user } })
+  res.json({ ok: true, data: { token: signJwt(id, email, 0), user } })
 })
 
 /** POST /api/auth/login {email, password} */
@@ -175,8 +181,8 @@ router.post('/login', (req, res) => {
     return res.status(429).json({ ok: false, message: `失败次数过多，请 ${mins} 分钟后再试` })
   }
 
-  const row = db.prepare('SELECT id, email, username, password FROM users WHERE email = ?')
-    .get(email) as UserRow | undefined
+  const row = db.prepare('SELECT id, email, username, password, token_ver FROM users WHERE email = ?')
+    .get(email) as (UserRow & { token_ver: number }) | undefined
 
   // 统一错误文案，不区分「邮箱未注册/密码错误」，避免枚举用户
   if (!row || !verifyPassword(password, row.password)) {
@@ -186,7 +192,7 @@ router.post('/login', (req, res) => {
 
   loginFails.delete(email)
   const user = { id: row.id, email: row.email, username: row.username }
-  res.json({ ok: true, data: { token: signJwt(row.id, row.email || email), user } })
+  res.json({ ok: true, data: { token: signJwt(row.id, row.email || email, row.token_ver), user } })
 })
 
 /** POST /api/auth/forgot {email, sliderToken}
@@ -221,12 +227,15 @@ router.post('/reset', (req, res) => {
     return res.status(400).json({ ok: false, message: '验证码错误或已过期' })
   }
 
-  const r = db.prepare('UPDATE users SET password = ? WHERE email = ?').run(hashPassword(password), email)
+  // bump token_ver：重置后该账号全部旧 token 即时失效（被盗号场景的兜底踢线）
+  const r = db.prepare('UPDATE users SET password = ?, token_ver = token_ver + 1 WHERE email = ?')
+    .run(hashPassword(password), email)
   if (r.changes === 0) return res.status(400).json({ ok: false, message: '重置失败，请重新发起' })
   res.json({ ok: true, data: null })
 })
 
-/** PUT /api/auth/password {oldPassword, newPassword} —— 自助改密（需登录，先验原密码） */
+/** PUT /api/auth/password {oldPassword, newPassword} —— 自助改密（需登录，先验原密码）
+ *  bump token_ver：其他设备旧 token 即时失效；本设备重签新 token 无缝续期 */
 router.put('/password', requireAuth, (req, res) => {
   const payload = res.locals.user as JwtPayload
   const oldPassword = String((req.body || {}).oldPassword || '')
@@ -240,8 +249,11 @@ router.put('/password', requireAuth, (req, res) => {
   const pwdCheck = validatePassword(newPassword, payload.email || '')
   if (!pwdCheck.ok) return res.status(400).json({ ok: false, message: pwdCheck.reason })
 
-  db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashPassword(newPassword), payload.uid)
-  res.json({ ok: true, data: null })
+  db.prepare('UPDATE users SET password = ?, token_ver = token_ver + 1 WHERE id = ?')
+    .run(hashPassword(newPassword), payload.uid)
+  const { token_ver: ver } = db.prepare('SELECT token_ver FROM users WHERE id = ?')
+    .get(payload.uid) as { token_ver: number }
+  res.json({ ok: true, data: { token: signJwt(payload.uid, payload.email, ver) } })
 })
 
 /** GET /api/auth/me —— 刷新页面恢复会话 */

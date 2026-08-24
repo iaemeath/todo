@@ -7,6 +7,7 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { db } from './db'
 import { requireAuth, hashPassword } from './auth'
 import { isAdmin } from './roles'
+import { validatePassword } from '../src/types/password'
 import type { JwtPayload } from './jwt'
 
 export const router = Router()
@@ -63,14 +64,17 @@ router.get('/users', (_req, res) => {
   })
 })
 
-/** PUT /api/admin/users/:id/password {password} —— 重置密码（对方已发 token 到期前仍有效，无状态 JWT 的固有限制） */
+/** PUT /api/admin/users/:id/password {password} —— 重置密码
+ *  bump token_ver（对方全部会话即时失效）+ 共享弱口令策略（与注册同规，不再绕行） */
 router.put('/users/:id/password', (req, res) => {
   const pwd = String((req.body || {}).password || '')
-  if (pwd.length < 6 || pwd.length > 64) {
-    return res.status(400).json({ ok: false, message: '密码长度需 6~64 位' })
-  }
+  const payload = res.locals.user as JwtPayload
+  const target = db.prepare('SELECT email FROM users WHERE id = ?').get(req.params.id) as { email: string | null } | undefined
+  const pwdCheck = validatePassword(pwd, target?.email || '')
+  if (!pwdCheck.ok) return res.status(400).json({ ok: false, message: pwdCheck.reason })
 
-  const r = db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashPassword(pwd), req.params.id)
+  const r = db.prepare('UPDATE users SET password = ?, token_ver = token_ver + 1 WHERE id = ?')
+    .run(hashPassword(pwd), req.params.id)
   if (r.changes === 0) return res.status(404).json({ ok: false, message: '用户不存在' })
   res.json({ ok: true, data: null })
 })

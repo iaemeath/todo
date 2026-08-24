@@ -9,6 +9,7 @@ import { ref, computed, onMounted } from 'vue'
 import { Refresh, Key, Delete, Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api, ApiError } from '../services/apiClient'
+import { validatePassword } from '../types/password'
 import { useAuthStore } from '../stores/auth'
 
 interface AdminUser {
@@ -59,25 +60,24 @@ const fmtTime = (t: string | null) =>
 const apiErr = (e: unknown) =>
   ElMessage.error(e instanceof ApiError ? e.message : '操作失败，请稍后重试')
 
-/** 重置密码：明文输入由管理员线下转达对方（6~64 位，与注册同规） */
+/** 重置密码：明文输入由管理员线下转达对方（前后端共享弱口令策略，与注册同规） */
 const resetPassword = async (u: AdminUser) => {
   let password: string
   try {
     ;({ value: password } = await ElMessageBox.prompt(
-      `为用户「${u.email || u.username}」设置新密码（6~64 位），请线下转达对方`,
+      `为用户「${u.email || u.username}」设置新密码（8~64 位，含字母和数字），请线下转达对方`,
       '重置密码',
-      {
-        inputType: 'password',
-        inputPattern: /^.{6,64}$/,
-        inputErrorMessage: '密码长度需 6~64 位'
-      }
+      { inputType: 'password' }
     ))
   } catch {
     return
   }
+  // 完整弱口令策略在前端先把关（含黑名单），服务端同规兜底
+  const check = validatePassword(password, u.email || '')
+  if (!check.ok) { ElMessage.warning(check.reason); return }
   try {
     await api(`/admin/users/${u.id}/password`, { method: 'PUT', body: { password } })
-    ElMessage.success('密码已重置')
+    ElMessage.success('密码已重置，对方全部设备已退出登录')
   } catch (e) {
     apiErr(e)
   }

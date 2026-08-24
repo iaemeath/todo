@@ -23,6 +23,7 @@ db.exec(`
     email      TEXT,
     username   TEXT,
     password   TEXT NOT NULL,
+    token_ver  INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
   );
 
@@ -51,6 +52,10 @@ db.exec(`
 // 旧库迁移：v4.2 前的表无 email 列（ALTER 不能加 NOT NULL 无默认值，故列可空、应用层强制注册必填）
 const userCols = db.prepare('PRAGMA table_info(users)').all() as { name: string }[]
 if (!userCols.some(c => c.name === 'email')) db.exec('ALTER TABLE users ADD COLUMN email TEXT')
+// v4.7：token 版本号（改密/重置 bump → 无状态 JWT 的会话吊销位）
+if (!userCols.some(c => c.name === 'token_ver')) {
+  db.exec('ALTER TABLE users ADD COLUMN token_ver INTEGER NOT NULL DEFAULT 0')
+}
 // v4.4：昵称概念移除，DROP 旧列（SQLite ≥3.35 支持；Node 24 内置版本满足）
 if (userCols.some(c => c.name === 'nickname')) db.exec('ALTER TABLE users DROP COLUMN nickname')
 
