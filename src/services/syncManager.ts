@@ -258,11 +258,26 @@ function applyRecords(records: PullRecord[], force: boolean): void {
 }
 
 async function pull(force = false): Promise<void> {
-  const since = force ? 0 : Number(localStorage.getItem(LS_CURSOR) || 0)
+  const PAGE = 500
+  let since = force ? 0 : Number(localStorage.getItem(LS_CURSOR) || 0)
+  let sinceId = '' // 复合游标的组内偏移（recv_time 平局组内按 record_id 推进）
   try {
-    const r = await api<{ records: PullRecord[]; serverNow: number }>(`/sync/pull?since=${since}`)
-    applyRecords(r.records, force)
-    localStorage.setItem(LS_CURSOR, String(r.serverNow))
+    // 分页循环，整轮拉完才一次性应用：force 的整体替换必须看到全集；
+    // 中途失败（离线/限流 429）整轮作废，下轮从旧游标重拉（幂等无损耗）
+    let allRecords: PullRecord[] = []
+    for (;;) {
+      const r = await api<{ records: PullRecord[]; hasMore: boolean; nextSince: number; nextSinceId: string; serverNow: number }>(
+        `/sync/pull?since=${since}&sinceId=${encodeURIComponent(sinceId)}&limit=${PAGE}`
+      )
+      allRecords = allRecords.concat(r.records)
+      if (!r.hasMore) {
+        applyRecords(allRecords, force)
+        localStorage.setItem(LS_CURSOR, String(r.serverNow))
+        break
+      }
+      since = r.nextSince
+      sinceId = r.nextSinceId
+    }
     if (syncState.value !== 'error') syncState.value = 'synced'
   } catch {
     // 拉取失败（离线）不阻塞本地使用

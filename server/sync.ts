@@ -89,30 +89,51 @@ router.post('/push', (req, res) => {
   res.json({ ok: true, data: { rejected, serverNow: now } })
 })
 
-/** GET /api/sync/pull?since=<recv_time> —— 增量拉取（recv_time 服务端时钟游标，不漏数据） */
+/** 单次 pull 返回条数上限（分页：防大结果集一次性灌爆响应与客户端内存） */
+const PULL_PAGE = 500
+
+/** GET /api/sync/pull?since=<recv_time>&sinceId=<record_id>&limit=<n> —— 增量分页拉取
+ *  复合游标 (recv_time, record_id)：push 整批共用同一 recv_time（大平局组），
+ *  仅按 recv_time 翻页会在组内原地踏步死循环，必须以 record_id 在组内推进 */
 router.get('/pull', (req, res) => {
   const uid = me(res)
   if (!allow(uid, 'pull')) {
-    return res.status(429).json({ ok: false, message: '同步请求过于频繁，请稍后再试' })
+    return res.status(429).json({ ok: false, message: '同步请求过于频繁，请稍后重试' })
   }
   const since = Number(req.query.since || 0) || 0
+  const sinceId = String(req.query.sinceId || '')
+  // 客户端可请求更小页（弱网/测试），不可超过上限
+  const limit = Math.min(Math.max(Number(req.query.limit || 0) || PULL_PAGE, 1), PULL_PAGE)
   const now = Date.now()
 
-  // >= 而非 >：pull 返回 serverNow 与紧随的 push 写入可能落在同一毫秒，
-  // 用 > 会让该记录永远不满足条件被增量漏掉；>= 最多重拉一批边界记录（客户端按 rev 幂等合并）
+  // >= 语义（sinceId 为空时等价 recv_time >= since）：pull 返回 serverNow 与紧随的 push
+  // 写入可能落在同一毫秒，用 > 会让该记录被增量漏掉；>= 最多重拉边界记录（客户端按 rev 幂等合并）
+  // ORDER BY 稳定序 + LIMIT+1 探针：探针行存在即 hasMore，响应前裁掉
   const rows = db.prepare(
-    'SELECT collection, record_id, data, rev_time FROM records WHERE user_id = ? AND recv_time >= ?'
-  ).all(uid, since) as { collection: string; record_id: string; data: string; rev_time: number }[]
+    'SELECT collection, record_id, data, rev_time, recv_time FROM records'
+    + ' WHERE user_id = ? AND (recv_time > ? OR (recv_time = ? AND record_id > ?))'
+    + ' ORDER BY recv_time ASC, record_id ASC LIMIT ?'
+  ).all(uid, since, since, sinceId, limit + 1) as { collection: string; record_id: string; data: string; rev_time: number; recv_time: number }[]
+
+  const hasMore = rows.length > limit
+  const page = hasMore ? rows.slice(0, limit) : rows
+  // 续拉复合游标=本页末条 (recv_time, record_id)；客户端仅 hasMore=false 时才以 serverNow 落游标
+  const last = page[page.length - 1]
+  const nextSince = last ? last.recv_time : since
+  const nextSinceId = last ? last.record_id : sinceId
 
   res.json({
     ok: true,
     data: {
-      records: rows.map(r => ({
+      records: page.map(r => ({
         c: r.collection,
         id: r.record_id,
         data: JSON.parse(r.data),
         rev: r.rev_time
       })),
+      hasMore,
+      nextSince,
+      nextSinceId,
       serverNow: now
     }
   })
