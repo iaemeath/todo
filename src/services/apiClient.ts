@@ -10,12 +10,26 @@ import { getToken } from './tokenStore'
  * API 基址：
  * - Web（http/https 部署）：同源相对路径 /api（nginx 反代）
  * - Electron（file:// 协议）：相对路径不可用，指向远程服务器；
- *   默认公网域名，可用 localStorage['shiguang_server_url'] 覆盖（换自建服务器时改）
+ *   默认公网域名，可在数据管理页改（localStorage['shiguang_server_url']，支持 https）
  */
-const API_BASE = (() => {
-  if (typeof window === 'undefined' || window.location.protocol !== 'file:') return ''
-  return localStorage.getItem('shiguang_server_url') || 'http://shiguang.rl.ylh.pub'
-})()
+const DESKTOP_DEFAULT_URL = 'http://shiguang.rl.ylh.pub'
+export const isDesktopShell = typeof window !== 'undefined' && window.location.protocol === 'file:'
+
+/** Electron 壳当前指向的服务器地址（Web 同源部署用不到） */
+export function getServerUrl(): string {
+  const u = (localStorage.getItem('shiguang_server_url') || DESKTOP_DEFAULT_URL)
+    .trim().replace(/\/+$/, '')
+  return u || DESKTOP_DEFAULT_URL
+}
+
+/** 切换服务器地址：立即生效（每次请求现取）。空串=恢复默认。token 不跨服务器迁移，换服务器需重新登录 */
+export function setServerUrl(url: string): void {
+  const u = url.trim().replace(/\/+$/, '')
+  if (u) localStorage.setItem('shiguang_server_url', u)
+  else localStorage.removeItem('shiguang_server_url')
+}
+
+const apiBase = () => (isDesktopShell ? getServerUrl() : '')
 
 export class ApiError extends Error {
   status: number
@@ -53,7 +67,7 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
 
   let res: Response
   try {
-    res = await fetch(`${API_BASE}/api${path}`, {
+    res = await fetch(`${apiBase()}/api${path}`, {
       method: opts.method || 'GET',
       headers,
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
