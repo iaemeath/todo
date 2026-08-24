@@ -16,7 +16,6 @@
 import { ref, watch, type WatchStopHandle } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import {
-  exportAllData,
   useSettingsStore,
   useTaskStore,
   useThemeStore,
@@ -32,8 +31,6 @@ import { api, ApiError } from './apiClient'
 
 const LS_LAST_SYNC = 'shiguang_last_synced_at'
 const LS_CURSOR = 'shiguang_sync_cursor'
-const LS_BACKUPS = 'shiguang_local_backups'
-const BACKUP_KEEP = 3
 const PUSH_DEBOUNCE_MS = 30_000
 const PUSH_INTERVAL_MS = 5 * 60_000
 /** fetch keepalive 的 body 上限是 64KB，逼近即放弃（等定时兜底），避免请求被浏览器拒绝 */
@@ -62,7 +59,7 @@ const lastSyncedMap = new Map<string, { json: string; rev: number }>()
 const recKey = (c: string, id: string) => `${c}:${id}`
 const ser = (v: unknown) => JSON.stringify(v ?? null)
 
-/** 全量收集本机记录（含墓碑——删除需要跨端传播）。settings 排除 apiKey（永不出本机）。 */
+/** 全量收集本机记录（含墓碑——删除需要跨端传播）。settings 排除 apiKey（永不上云，仅存在于本机与导出文件）。 */
 function collectAll(): Map<string, { rec: SyncRecord; json: string }> {
   const taskStore = useTaskStore()
   const settingsStore = useSettingsStore()
@@ -107,29 +104,11 @@ function diffChanges(all: Map<string, { rec: SyncRecord; json: string }>): SyncR
   return changes
 }
 
-// ===== 本地备份（防覆盖手滑） =====
-
-function saveLocalBackup(): void {
-  try {
-    const list: ExportBundle[] = JSON.parse(localStorage.getItem(LS_BACKUPS) || '[]')
-    list.unshift(exportAllData())
-    localStorage.setItem(LS_BACKUPS, JSON.stringify(list.slice(0, BACKUP_KEEP)))
-  } catch {
-    // 备份失败不阻塞同步主流程
-  }
-}
-
-export function getLocalBackups(): ExportBundle[] {
-  try {
-    return JSON.parse(localStorage.getItem(LS_BACKUPS) || '[]')
-  } catch {
-    return []
-  }
-}
+// ===== 导入 =====
 
 /**
- * 导入式覆盖：整包写入并统一打 revTime=now（文件导入/本地备份回滚都是"本机所见即真相"语义）。
- * - 本机 apiKey 永不导入（导出文件已剔除）：保留本机现值，避免登录态丢密钥
+ * 导入式覆盖：整包写入并统一打 revTime=now（文件导入是"本机所见即真相"语义）。
+ * - apiKey 随备份导入（新导出的备份文件已含密钥）；旧备份无 key 时回退本机现值
  * - 差集墓碑：本地有（活跃）而导入包没有的 tasks/schedules 打墓碑（revTime=now）
  *   并保留在数组中——墓碑随全量推送覆盖云端同名记录，否则重新登录全量拉取时
  *   云端旧记录会"复活"混入，破坏覆盖语义
@@ -142,7 +121,6 @@ export function importBundle(bundle: ExportBundle): void {
   const themeStore = useThemeStore()
   const usageStore = useUsageStore()
   const uiStore = useUIStore()
-  const localApiKey = settingsStore.settings.apiKey
   const now = Date.now()
 
   const inBundleTasks = new Set<string>()
@@ -165,7 +143,7 @@ export function importBundle(bundle: ExportBundle): void {
   // 墓碑记录随活跃记录一起写入（同步层全集）
   taskStore.tasks = [...tasks, ...taskStore.tasks.filter(t => t.deletedAt)]
   taskStore.schedules = [...schedules, ...taskStore.schedules.filter(s => s.deletedAt)]
-  settingsStore.settings = { ...bundle.settings, apiKey: localApiKey }
+  settingsStore.settings = { ...bundle.settings, apiKey: bundle.settings.apiKey || settingsStore.settings.apiKey }
   themeStore.isDark = bundle.theme.isDark
   usageStore.usageHistory = bundle.usage
   uiStore.setTodoVisible(bundle.todoVisible)
@@ -283,7 +261,6 @@ async function pull(force = false): Promise<void> {
   const since = force ? 0 : Number(localStorage.getItem(LS_CURSOR) || 0)
   try {
     const r = await api<{ records: PullRecord[]; serverNow: number }>(`/sync/pull?since=${since}`)
-    if (r.records.length > 0 || force) saveLocalBackup()
     applyRecords(r.records, force)
     localStorage.setItem(LS_CURSOR, String(r.serverNow))
     if (syncState.value !== 'error') syncState.value = 'synced'
@@ -342,9 +319,7 @@ export function stopSync(): void {
   syncState.value = 'off'
   lastSyncedMap.clear()
   localStorage.removeItem(LS_CURSOR)
-  // 账号产物一并清除（含 401 被动登出路径）：本地备份/最近同步时间属于上一账号，
-  // 防止下一账号在数据管理页误恢复上一账号的备份
-  localStorage.removeItem(LS_BACKUPS)
+  // 账号产物一并清除（含 401 被动登出路径）：游标/最近同步时间属于上一账号
   localStorage.removeItem(LS_LAST_SYNC)
   lastSyncAt.value = null
 }
@@ -356,7 +331,7 @@ export function syncNow(): Promise<boolean> {
   return push().then(ok => { if (ok) void pull(); return ok })
 }
 
-/** 强制从云端恢复：拉全量整体覆盖本机（覆盖前仍存档） */
+/** 强制从云端恢复：拉全量整体覆盖本机（不可逆，本机未同步改动会丢失——动刀前应先导出备份） */
 export async function restoreFromCloud(): Promise<boolean> {
   if (!useAuthStore().isLoggedIn) return false
   await pull(true)

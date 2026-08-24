@@ -2,16 +2,10 @@
 import { ref, computed } from 'vue'
 import { Download, Upload, FolderOpened, Refresh } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { exportAllData, parseBundle, useUIStore, type ExportBundle } from '../stores'
+import { exportAllData, parseBundle, useUIStore } from '../stores'
 import { useAuthStore } from '../stores/auth'
-import {
-  syncState,
-  lastSyncAt,
-  syncNow,
-  restoreFromCloud,
-  getLocalBackups,
-  importBundle
-} from '../services/syncManager'
+import { syncState, lastSyncAt, syncNow, restoreFromCloud, importBundle } from '../services/syncManager'
+import { isDesktopShell, getServerUrl, setServerUrl } from '../services/apiClient'
 
 const uiStore = useUIStore()
 const authStore = useAuthStore()
@@ -46,7 +40,7 @@ const handleSyncNow = async () => {
 const handleRestoreCloud = async () => {
   try {
     await ElMessageBox.confirm(
-      '将用云端数据覆盖本机当前数据（覆盖前自动保留本机保护快照）。',
+      '将用云端数据整体覆盖本机当前数据，覆盖后不可恢复；如本机有未同步的改动，请先导出备份。',
       '从云端恢复',
       { type: 'warning', confirmButtonText: '覆盖恢复', cancelButtonText: '取消' }
     )
@@ -54,41 +48,28 @@ const handleRestoreCloud = async () => {
     return
   }
   const ok = await restoreFromCloud()
-  if (ok) {
-    ElMessage.success('已恢复云端数据')
-    refreshBackups()
-  } else {
-    ElMessage.error('恢复失败（云端无数据或网络不可达）')
-  }
+  if (ok) ElMessage.success('已恢复云端数据')
+  else ElMessage.error('恢复失败（云端无数据或网络不可达）')
 }
 
-// 本机保护快照（每次被云端覆盖前自动存档，最多 3 份）
-const backups = ref<ExportBundle[]>(getLocalBackups())
-const selectedBackup = ref('')
-const backupOptions = computed(() =>
-  backups.value.map((b, i) => ({
-    value: String(i),
-    label: `${new Date(b.exportedAt).toLocaleString('zh-CN')} · ${b.tasks.length} 任务`
-  }))
+// ---- Electron 壳：服务器地址配置（file:// 下 API 走绝对地址，此处可视化，替代 F12 改 localStorage）----
+const isDesktop = isDesktopShell
+const serverUrl = ref(isDesktop ? getServerUrl() : '')
+const serverWarn = computed(() =>
+  !isDesktop || serverUrl.value.startsWith('https://')
+    ? ''
+    : '当前为不加密连接（http）：登录令牌与数据明文传输，服务器部署 HTTPS 后请切换为 https:// 地址'
 )
-const refreshBackups = () => {
-  backups.value = getLocalBackups()
-  selectedBackup.value = ''
-}
-const handleRestoreBackup = async () => {
-  const b = backups.value[Number(selectedBackup.value)]
-  if (!b) return
-  try {
-    await ElMessageBox.confirm(
-      `回滚到 ${new Date(b.exportedAt).toLocaleString('zh-CN')} 的本机快照？当前数据将被覆盖。`,
-      '回滚本机快照',
-      { type: 'warning', confirmButtonText: '回滚', cancelButtonText: '取消' }
-    )
-  } catch {
+
+function applyServerUrl() {
+  const u = serverUrl.value.trim()
+  if (u && !/^https?:\/\//i.test(u)) {
+    ElMessage.warning('地址需以 http:// 或 https:// 开头')
     return
   }
-  importBundle(b)
-  ElMessage.success('已回滚，稍后自动同步到云端')
+  setServerUrl(u)
+  serverUrl.value = getServerUrl()
+  ElMessage.success(u ? '服务器地址已保存，立即生效' : '已恢复默认服务器地址')
 }
 
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -132,7 +113,8 @@ const handleFileChange = async (e: Event) => {
       return
     }
     await ElMessageBox.confirm(
-      '导入将用备份文件覆盖当前的全部数据（任务、日程、设置、主题、用量记录），此操作不可撤销。',
+      '导入将用备份文件覆盖当前的任务、日程、设置（含 API Key）与主题；备份中没有的任务/日程将被删除，用量记录仅合并不删除，此操作不可撤销。'
+      + (authStore.isLoggedIn ? '当前已登录：结果（含删除）会同步到该账号的其他设备。' : ''),
       '导入数据',
       { type: 'warning', confirmButtonText: '覆盖导入', cancelButtonText: '取消' }
     )
@@ -151,6 +133,20 @@ const handleFileChange = async (e: Event) => {
     <!-- 云同步（登录特权；游客显示引导） -->
     <el-card shadow="never" class="setting-card">
       <template #header><span class="card-title">云同步</span></template>
+      <!-- Electron 壳专用：API 服务器地址可视化配置（登录前后都可能需要改） -->
+      <template v-if="isDesktop">
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-name">服务器地址</span>
+            <span class="setting-desc">桌面版通过远程服务器登录与同步，支持 https 加密地址。</span>
+          </div>
+          <div class="cloud-actions">
+            <el-input v-model="serverUrl" placeholder="https://your-server.example" style="width: 250px" />
+            <el-button plain @click="applyServerUrl">保存</el-button>
+          </div>
+        </div>
+        <div v-if="serverWarn" class="form-hint hint-warn">{{ serverWarn }}</div>
+      </template>
       <template v-if="!authStore.isLoggedIn">
         <div class="setting-row">
           <div class="setting-info">
@@ -165,28 +161,11 @@ const handleFileChange = async (e: Event) => {
         <div class="setting-row">
           <div class="setting-info">
             <span class="setting-name">{{ syncText }}</span>
-            <span class="setting-desc">账号 {{ displayName }} · 上次同步 {{ lastSyncText }}（改动后约 30 秒自动同步）</span>
+            <span class="setting-desc">账号 {{ displayName }} · 上次同步 {{ lastSyncText }}（改动后约 30 秒自动同步，每 5 分钟自动对齐一次）</span>
           </div>
           <div class="cloud-actions">
             <el-button type="primary" plain :icon="Refresh" :loading="syncing" @click="handleSyncNow">立即同步</el-button>
             <el-button type="warning" plain @click="handleRestoreCloud">从云端恢复</el-button>
-          </div>
-        </div>
-        <div v-if="backupOptions.length" class="setting-row">
-          <div class="setting-info">
-            <span class="setting-name">本机保护快照</span>
-            <span class="setting-desc">每次被云端覆盖前自动存档，最多保留 3 份，可随时回滚。</span>
-          </div>
-          <div class="cloud-actions">
-            <el-select v-model="selectedBackup" placeholder="选择快照" style="width: 210px">
-              <el-option
-                v-for="opt in backupOptions"
-                :key="opt.value"
-                :label="opt.label"
-                :value="opt.value"
-              />
-            </el-select>
-            <el-button :disabled="selectedBackup === ''" @click="handleRestoreBackup">回滚</el-button>
           </div>
         </div>
       </template>
@@ -197,11 +176,10 @@ const handleFileChange = async (e: Event) => {
       <div class="setting-row">
         <div class="setting-info">
           <span class="setting-name">导出全部数据</span>
-          <span class="setting-desc">任务、日程、设置、主题与用量记录打包为 JSON 备份文件。</span>
+          <span class="setting-desc">任务、日程、设置（含 API Key）、主题与用量记录打包为 JSON 备份文件。</span>
         </div>
         <el-button type="primary" plain :icon="Download" @click="handleExport">导出备份</el-button>
       </div>
-      <div class="form-hint">安全说明：导出文件已自动剔除 API Key，可安全分享或留存；导入后如需云端 AI 请重新填写密钥。</div>
     </el-card>
 
     <el-card shadow="never" class="setting-card">
@@ -213,7 +191,7 @@ const handleFileChange = async (e: Event) => {
         </div>
         <el-button type="warning" plain :icon="Upload" @click="triggerImport">选择备份文件</el-button>
       </div>
-      <div class="form-hint">⚠️ 导入为全量覆盖：当前全部数据将被备份文件内容整体替换，操作前建议先导出当前数据。</div>
+      <div class="form-hint">⚠️ 导入以备份文件为准：备份中没有的任务/日程将被删除，设置（含 API Key）随之覆盖；用量记录为追加流水，仅合并不删除。已登录时结果会同步到该账号的其他设备。操作前建议先导出当前数据。</div>
       <input
         ref="fileInput"
         type="file"
@@ -252,5 +230,11 @@ const handleFileChange = async (e: Event) => {
   gap: var(--space-xs);
   font-size: 0.78rem;
   color: var(--el-text-color-secondary);
+}
+
+/* http 明文连接警示（form-hint 的警告色变体） */
+.hint-warn {
+  color: var(--el-color-warning);
+  margin-top: calc(var(--space-sm) * -1);
 }
 </style>
