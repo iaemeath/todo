@@ -13,12 +13,12 @@ import { router } from '../router'
 export type AppView = 'home' | 'task' | 'schedule' | 'settings' | 'auth'
 export type SettingsSection = 'view' | 'ai' | 'data' | 'guide' | 'users'
 
-/** AppView → 路由路径（settings 恒带 section，URL 完整表达视图状态） */
+/** AppView → 路由路径（设置域为一级直达路由，v4.6 扁平化） */
 const viewPath = (v: AppView, section?: SettingsSection): string => {
   switch (v) {
     case 'task': return '/task'
     case 'schedule': return '/schedule'
-    case 'settings': return `/settings/${section || 'view'}`
+    case 'settings': return `/${section || 'view'}`
     case 'auth': return '/auth'
     default: return '/'
   }
@@ -35,14 +35,14 @@ export const useUIStore = defineStore('ui', () => {
     const path = router.currentRoute.value.path
     if (path === '/task') return 'task'
     if (path === '/schedule') return 'schedule'
-    if (path.startsWith('/settings')) return 'settings'
+    if (VALID_SECTIONS.includes(path.slice(1) as SettingsSection)) return 'settings'
     if (path === '/auth') return 'auth'
     return 'home'
   })
 
   const settingsSection = computed<SettingsSection>(() => {
-    const s = router.currentRoute.value.params.section as string | undefined
-    return VALID_SECTIONS.includes(s as SettingsSection) ? (s as SettingsSection) : 'view'
+    const s = router.currentRoute.value.path.slice(1) as SettingsSection
+    return VALID_SECTIONS.includes(s) ? s : 'view'
   })
 
   const isMobile = ref(false)
@@ -123,7 +123,7 @@ export const useUIStore = defineStore('ui', () => {
 
   // 设置子页直达（桌面侧栏/移动抽屉共用）
   const openSettingsSection = (s: SettingsSection) => {
-    void router.push(`/settings/${s}`)
+    void router.push(viewPath('settings', s))
   }
 
   // 登录/注册页：openAuth 记录来源视图，登录成功/返回时回到来源

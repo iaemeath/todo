@@ -2,7 +2,7 @@
 /**
  * 用户管理（仅管理员）：侧栏入口由 features.admin 控显隐，
  * 本页数据一律走 /api/admin/*（服务端 requireAdmin 是真正的权限边界，
- * 直接敲 URL #/settings/users 进入的非管理员只会收到 403 提示）。
+ * 直接敲 URL #/users 进入的非管理员只会收到 403 提示）。
  * 布局对齐任务/日程管理页：上方筛选栏（搜索+刷新）+ 下方全宽列表。
  */
 import { ref, computed, onMounted } from 'vue'
