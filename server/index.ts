@@ -4,7 +4,7 @@
  */
 import express from 'express'
 import { router as authRouter } from './auth'
-import { router as snapshotRouter } from './snapshot'
+import { router as syncRouter } from './sync'
 import { router as adminRouter } from './admin'
 
 const app = express()
@@ -21,7 +21,7 @@ app.use((req, res, next) => {
 })
 
 app.use('/api/auth', authRouter)
-app.use('/api/snapshot', snapshotRouter)
+app.use('/api/sync', syncRouter)
 app.use('/api/admin', adminRouter)
 
 // API 404 统一 JSON

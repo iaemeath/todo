@@ -25,8 +25,9 @@ import {
 
 /**
  * 聚合全部持久化数据为备份快照。
- * settings 剔除 apiKey（置空），备份文件可安全分享；
- * 云同步（SyncManager）同样复用本函数，apiKey 天然不出本机。
+ * settings 剔除 apiKey（置空），备份文件可安全分享。
+ * 导出只含活跃数据（墓碑是同步层的删除传播标记，不属于人读的备份内容）；
+ * 云同步由 SyncManager 直接收集 store 全集（含墓碑），不复用本函数。
  */
 export function exportAllData(): ExportBundle {
   const taskStore = useTaskStore()
@@ -38,8 +39,8 @@ export function exportAllData(): ExportBundle {
   return {
     version: BUNDLE_VERSION,
     exportedAt: new Date().toISOString(),
-    tasks: deepClone(taskStore.tasks),
-    schedules: deepClone(taskStore.schedules),
+    tasks: deepClone(taskStore.tasks).filter((t) => !t.deletedAt),
+    schedules: deepClone(taskStore.schedules).filter((s) => !s.deletedAt),
     settings: { ...deepClone(settingsStore.settings), apiKey: '' },
     theme: { isDark: themeStore.isDark },
     usage: deepClone(usageStore.usageHistory),
@@ -52,6 +53,8 @@ export function exportAllData(): ExportBundle {
  * 各 store 已有的持久化 watcher 自动落盘，UI 响应式更新，无需刷新页面。
  * 注意：bundle.settings.apiKey 通常为空（导出时剔除）——云同步拉取场景
  * 由 SyncManager 在调用前回填本机 apiKey，避免登录后丢密钥。
+ * 导入数据统一打 revTime=now：导入是显式覆盖动作，"本机所见即真相"，
+ * 让后续同步把导入内容作为最新修订推给对端。
  */
 export function importAllData(bundle: ExportBundle): void {
   const taskStore = useTaskStore()
@@ -60,8 +63,11 @@ export function importAllData(bundle: ExportBundle): void {
   const usageStore = useUsageStore()
   const uiStore = useUIStore()
 
-  taskStore.tasks = sanitizeTasks(bundle.tasks)
-  taskStore.schedules = sanitizeSchedules(bundle.schedules)
+  const now = Date.now()
+  const tasks = sanitizeTasks(bundle.tasks).map((t) => ({ ...t, revTime: now, deletedAt: undefined }))
+  const schedules = sanitizeSchedules(bundle.schedules).map((s) => ({ ...s, revTime: now, deletedAt: undefined }))
+  taskStore.tasks = tasks
+  taskStore.schedules = schedules
   settingsStore.settings = bundle.settings
   themeStore.isDark = bundle.theme.isDark
   usageStore.usageHistory = bundle.usage

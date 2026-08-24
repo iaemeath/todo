@@ -19,6 +19,10 @@ export interface Task {
   priority: string // high, medium, low
   completed: boolean
   order: number // 同级排序
+  /** 记录级同步：修订时间（毫秒）——LWW 裁决依据，本地增改时自动打 */
+  revTime?: number
+  /** 记录级同步：墓碑（软删除时间）。UI 层过滤，同步层保留用于跨端传播删除 */
+  deletedAt?: number
 }
 
 /**
@@ -32,6 +36,9 @@ export interface Schedule {
   startTime: string // HH:MM
   endTime: string // HH:MM
   color: string // violet, blue, emerald, amber, rose, cyan
+  /** 记录级同步字段（语义同 Task） */
+  revTime?: number
+  deletedAt?: number
 }
 
 // ===== Settings =====

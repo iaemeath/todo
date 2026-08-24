@@ -151,7 +151,7 @@ import { useTaskStore, useUIStore, type Task } from '../stores'
 const { isMobile } = storeToRefs(useUIStore())
 
 const taskStore = useTaskStore()
-const { tasks } = storeToRefs(taskStore) // state → storeToRefs
+const { activeTasks } = storeToRefs(taskStore) // 活跃视图（墓碑已滤）
 const {
   addTask,
   addChildTask,
@@ -214,11 +214,11 @@ const filterCategory = ref('')
 
 const hasFilter = computed(() => !!searchQuery.value.trim() || !!filterCategory.value)
 
-const fuse = computed(() => new Fuse(tasks.value, { keys: ['title', 'description'], threshold: 0.4 }))
+const fuse = computed(() => new Fuse(activeTasks.value, { keys: ['title', 'description'], threshold: 0.4 }))
 
 // 当前视图的顶级任务（L1）
 const viewRoots = computed(() =>
-  tasks.value.filter(t => t.parentId === null && t.completed === (viewMode.value === 'done'))
+  activeTasks.value.filter(t => t.parentId === null && t.completed === (viewMode.value === 'done'))
 )
 
 // 当前视图可见的全部任务 = 这些 L1 + 其全部子孙
@@ -228,7 +228,7 @@ const visibleTasks = computed(() => {
     ids.add(r.id)
     getDescendants(r.id).forEach(d => ids.add(d.id))
   }
-  return tasks.value.filter(t => ids.has(t.id))
+  return activeTasks.value.filter(t => ids.has(t.id))
 })
 
 // 扁平过滤结果（搜索/筛选时，在当前可见任务范围内）
@@ -247,7 +247,7 @@ type TaskNode = Task & { children: TaskNode[] }
 const taskTree = computed<TaskNode[]>(() => {
   const visIds = new Set(visibleTasks.value.map(t => t.id))
   const build = (parentId: string | null): TaskNode[] =>
-    tasks.value
+    activeTasks.value
       .filter(t => t.parentId === parentId && visIds.has(t.id))
       .sort((a, b) => a.order - b.order)
       .map(t => ({ ...t, children: build(t.id) }))

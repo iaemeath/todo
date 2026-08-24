@@ -150,7 +150,7 @@ import { ElMessage } from 'element-plus'
 import { colorOptions, colorScheme } from '../constants/colors'
 
 const taskStore = useTaskStore()
-const { schedules } = storeToRefs(taskStore) // state → storeToRefs
+const { activeSchedules } = storeToRefs(taskStore) // 活跃视图（墓碑已滤）
 const { updateSchedule, addScheduleFromTask, addSchedule, deleteSchedule } = taskStore // action
 const { settings } = storeToRefs(useSettingsStore())
 const { isDark } = storeToRefs(useThemeStore())
@@ -216,7 +216,7 @@ onBeforeUnmount(() => {
 
 // Convert our schedules to FullCalendar event format
 const calendarEvents = computed(() => {
-  return schedules.value.map(task => {
+  return activeSchedules.value.map(task => {
     const scheme = colorScheme(task.color)
     const textColor = isDark.value ? scheme.text : scheme.textLight
 
@@ -292,7 +292,7 @@ const openNewScheduleDialog = (dateStr: string, startTimeStr: string, endTimeStr
 
 // 打开编辑弹窗（预填现有值）
 const openEditDialog = (eventId: string) => {
-  const s = schedules.value.find(x => x.id === eventId)
+  const s = activeSchedules.value.find(x => x.id === eventId)
   if (!s) return
   editingScheduleId.value = s.id
   newScheduleForm.value = { title: s.title, date: s.date, startTime: s.startTime, endTime: s.endTime, color: s.color }

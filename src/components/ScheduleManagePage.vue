@@ -145,7 +145,7 @@ import { useTaskStore, useUIStore, type Schedule } from '../stores'
 const { isMobile } = storeToRefs(useUIStore())
 // tasks + schedules 合并于同一 useTaskStore
 const taskStore = useTaskStore()
-const { schedules, tasks, leafTasks } = storeToRefs(taskStore) // state/getter → storeToRefs
+const { activeSchedules, activeTasks, leafTasks } = storeToRefs(taskStore) // 活跃视图（墓碑已滤）/getter → storeToRefs
 const { addSchedule, updateSchedule, deleteSchedule, addScheduleFromTask } = taskStore // action 直接解构
 
 // ---- Options ----
@@ -154,17 +154,17 @@ const formatDate = (dateStr: string) => {
   return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
-// 来源任务标题：在全量 tasks 中查（任务即使后续变为父级，仍能正确显示来源）
-const taskTitle = (taskId: string) => tasks.value.find(t => t.id === taskId)?.title
+// 来源任务标题：在活跃 tasks 中查（任务即使后续变为父级，仍能正确显示来源）
+const taskTitle = (taskId: string) => activeTasks.value.find(t => t.id === taskId)?.title
 
 // ---- Search & filter ----
 const searchQuery = ref('')
 const filterColor = ref('')
 
-const fuse = computed(() => new Fuse(schedules.value, { keys: ['title'], threshold: 0.4 }))
+const fuse = computed(() => new Fuse(activeSchedules.value, { keys: ['title'], threshold: 0.4 }))
 
 const filteredSchedules = computed(() => {
-  let list = schedules.value
+  let list = activeSchedules.value
   if (filterColor.value) list = list.filter(t => t.color === filterColor.value)
   if (searchQuery.value.trim()) {
     list = fuse.value.search(searchQuery.value.trim()).map(r => r.item)

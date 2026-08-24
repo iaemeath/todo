@@ -98,16 +98,54 @@ export const useTaskStore = defineStore('task', () => {
   watch(tasks, (v) => localStorage.setItem(LS_TASKS, JSON.stringify(v)), { deep: true })
   watch(schedules, (v) => localStorage.setItem(LS_SCHEDULES, JSON.stringify(v)), { deep: true })
 
-  // ===== Tree helpers =====
-  const getChildren = (parentId: string | null): Task[] =>
-    tasks.value.filter((t) => t.parentId === parentId).sort((a, b) => a.order - b.order)
+  // ===== 记录级同步基础设施 =====
+  // 墓碑记录保留在数组中（同步层需要传播删除语义），UI 只看活跃视图。
 
-  /** 所有祖先（从近到远） */
+  /** 本地修改打点：刷新修订时间并复活（清除墓碑） */
+  const touch = (r: { revTime?: number; deletedAt?: number }) => {
+    r.revTime = Date.now()
+    delete r.deletedAt
+  }
+
+  /** 活跃任务 = 未墓碑 且 父链完整（父被删的孤儿随父隐藏，等同步对端记录到达自愈） */
+  const activeTasks = computed(() => {
+    const alive = new Set(tasks.value.filter((t) => !t.deletedAt).map((t) => t.id))
+    return tasks.value.filter((t) => !t.deletedAt && (!t.parentId || alive.has(t.parentId)))
+  })
+
+  /** 活跃日程 = 未墓碑 且 关联任务（若有）仍活跃 */
+  const activeSchedules = computed(() => {
+    const alive = new Set(tasks.value.filter((t) => !t.deletedAt).map((t) => t.id))
+    return schedules.value.filter((s) => !s.deletedAt && (!s.taskId || alive.has(s.taskId)))
+  })
+
+  /**
+   * 同步层写入通道：按 revTime 裁决后覆盖（不走 action——action 会重打本地时间）。
+   * 覆盖数组元素保持响应式引用（index 替换）。
+   */
+  const upsertSyncedTask = (t: Task) => {
+    const idx = tasks.value.findIndex((x) => x.id === t.id)
+    if (idx === -1) tasks.value.push(deepCloneTask(t))
+    else if ((t.revTime || 0) >= (tasks.value[idx].revTime || 0)) tasks.value[idx] = deepCloneTask(t)
+  }
+  const upsertSyncedSchedule = (s: Schedule) => {
+    const idx = schedules.value.findIndex((x) => x.id === s.id)
+    if (idx === -1) schedules.value.push(deepCloneSchedule(s))
+    else if ((s.revTime || 0) >= (schedules.value[idx].revTime || 0)) schedules.value[idx] = deepCloneSchedule(s)
+  }
+  const deepCloneTask = (t: Task): Task => JSON.parse(JSON.stringify(t))
+  const deepCloneSchedule = (s: Schedule): Schedule => JSON.parse(JSON.stringify(s))
+
+  // ===== Tree helpers（展示类基于活跃集；遍历类基于全集） =====
+  const getChildren = (parentId: string | null): Task[] =>
+    activeTasks.value.filter((t) => t.parentId === parentId).sort((a, b) => a.order - b.order)
+
+  /** 所有祖先（从近到远）——活跃集：墓碑祖先不再参与完成态联动 */
   const getAncestors = (id: string): Task[] => {
     const result: Task[] = []
-    let cur = tasks.value.find((t) => t.id === id)
+    let cur = activeTasks.value.find((t) => t.id === id)
     while (cur?.parentId) {
-      const parent = tasks.value.find((t) => t.id === cur!.parentId)
+      const parent = activeTasks.value.find((t) => t.id === cur!.parentId)
       if (!parent) break
       result.push(parent)
       cur = parent
@@ -115,7 +153,7 @@ export const useTaskStore = defineStore('task', () => {
     return result
   }
 
-  /** 所有后代 */
+  /** 所有后代——全集：级联删除需要覆盖含墓碑的子树（重复标墓碑幂等无害） */
   const getDescendants = (id: string): Task[] => {
     const result: Task[] = []
     const stack = [id]
@@ -135,14 +173,14 @@ export const useTaskStore = defineStore('task', () => {
 
   const canAddChild = (id: string): boolean => getTaskLevel(id) < MAX_LEVEL
 
-  /** 是否为叶子任务（无子节点）——出现在右侧「待办」中 */
-  const isLeaf = (id: string): boolean => !tasks.value.some((t) => t.parentId === id)
+  /** 是否为叶子任务（无子节点）——出现在右侧「待办」中（活跃集） */
+  const isLeaf = (id: string): boolean => !activeTasks.value.some((t) => t.parentId === id)
 
-  // ===== Getter: 待办 = 所有叶子任务 =====
+  // ===== Getter: 待办 = 所有叶子任务（活跃集） =====
   const leafTasks = computed(() => {
     const parentIds = new Set<string>()
-    for (const t of tasks.value) if (t.parentId) parentIds.add(t.parentId)
-    return tasks.value
+    for (const t of activeTasks.value) if (t.parentId) parentIds.add(t.parentId)
+    return activeTasks.value
       .filter((t) => !parentIds.has(t.id))
       .sort((a, b) => a.order - b.order)
   })
@@ -161,6 +199,7 @@ export const useTaskStore = defineStore('task', () => {
       completed: false,
       order: siblings.length
     }
+    touch(newTask)
     tasks.value.push(newTask)
     return newTask
   }
@@ -175,6 +214,7 @@ export const useTaskStore = defineStore('task', () => {
     const idx = tasks.value.findIndex((t) => t.id === id)
     if (idx !== -1) {
       tasks.value[idx] = { ...tasks.value[idx], ...updates }
+      touch(tasks.value[idx])
     }
   }
 
@@ -189,15 +229,22 @@ export const useTaskStore = defineStore('task', () => {
     const task = tasks.value.find((t) => t.id === id)
     if (!task) return
     task.completed = value
+    touch(task)
 
     if (value) {
-      for (const d of getDescendants(id)) d.completed = true
+      for (const d of getDescendants(id)) {
+        d.completed = true
+        touch(d)
+      }
     } else {
-      for (const a of getAncestors(id)) a.completed = false
+      for (const a of getAncestors(id)) {
+        a.completed = false
+        touch(a)
+      }
     }
   }
 
-  // 删除任务：级联删除子孙 + 关联日程
+  // 删除任务：级联标墓碑（子孙 + 关联日程）——记录级同步下删除即墓碑，跨端按 revTime 传播
   const deleteTask = (id: string) => {
     const toDelete = new Set<string>([id])
     const stack = [id]
@@ -210,13 +257,25 @@ export const useTaskStore = defineStore('task', () => {
         }
       }
     }
-    tasks.value = tasks.value.filter((t) => !toDelete.has(t.id))
-    schedules.value = schedules.value.filter((s) => !s.taskId || !toDelete.has(s.taskId))
+    const now = Date.now()
+    for (const t of tasks.value) {
+      if (toDelete.has(t.id)) {
+        t.deletedAt = t.deletedAt || now
+        t.revTime = now
+      }
+    }
+    for (const s of schedules.value) {
+      if (s.taskId && toDelete.has(s.taskId) && !s.deletedAt) {
+        s.deletedAt = now
+        s.revTime = now
+      }
+    }
   }
 
   // ===== Schedule actions =====
   const addSchedule = (data: Omit<Schedule, 'id'>) => {
     const newSchedule: Schedule = { ...data, id: generateId() }
+    touch(newSchedule)
     schedules.value.push(newSchedule)
     return newSchedule
   }
@@ -225,24 +284,32 @@ export const useTaskStore = defineStore('task', () => {
     const idx = schedules.value.findIndex((s) => s.id === id)
     if (idx !== -1) {
       schedules.value[idx] = { ...schedules.value[idx], ...updates }
+      touch(schedules.value[idx])
     }
   }
 
   const deleteSchedule = (id: string) => {
-    schedules.value = schedules.value.filter((s) => s.id !== id)
+    const s = schedules.value.find((x) => x.id === id)
+    if (s) {
+      s.deletedAt = Date.now()
+      s.revTime = s.deletedAt
+    }
   }
 
-  // 从叶子任务创建日程（排期）
+  // 从叶子任务创建日程（排期）——活跃集：墓碑任务不可再排期
   const addScheduleFromTask = (taskId: string, date: string, startTime: string, endTime: string, color = 'blue') => {
-    const task = tasks.value.find((t) => t.id === taskId)
+    const task = activeTasks.value.find((t) => t.id === taskId)
     if (!task) return null
     return addSchedule({ taskId, title: task.title, date, startTime, endTime, color })
   }
 
   return {
-    // state
+    // state（全集：含墓碑，同步层/导入导出用）
     tasks,
     schedules,
+    // 活跃视图（UI 消费：过滤墓碑与孤儿）
+    activeTasks,
+    activeSchedules,
     // getter
     leafTasks,
     // task actions
@@ -251,6 +318,9 @@ export const useTaskStore = defineStore('task', () => {
     updateTask,
     setTaskCompleted,
     deleteTask,
+    // 同步层写入通道（revTime 裁决，不重打本地时间）
+    upsertSyncedTask,
+    upsertSyncedSchedule,
     // tree helpers
     getDescendants,
     getTaskLevel,
