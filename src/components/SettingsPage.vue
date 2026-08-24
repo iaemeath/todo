@@ -12,6 +12,8 @@
       </div>
       <DataManageTab v-show="currentTab === 'data'" />
       <GuideTab v-show="currentTab === 'guide'" />
+      <!-- 用户管理 v-if（非 v-show）：非管理员直达 URL 也不渲染不发请求，进入时按需加载 -->
+      <UserManageTab v-if="currentTab === 'users'" />
     </div>
   </div>
 </template>
@@ -25,6 +27,7 @@ import AiSettingsTab from './AiSettingsTab.vue'
 import UsageTab from './UsageTab.vue'
 import DataManageTab from './DataManageTab.vue'
 import GuideTab from './GuideTab.vue'
+import UserManageTab from './UserManageTab.vue'
 
 const uiStore = useUIStore()
 const { isMobile, settingsSection } = storeToRefs(uiStore) // state → storeToRefs

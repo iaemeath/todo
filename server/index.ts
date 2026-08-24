@@ -5,6 +5,7 @@
 import express from 'express'
 import { router as authRouter } from './auth'
 import { router as snapshotRouter } from './snapshot'
+import { router as adminRouter } from './admin'
 
 const app = express()
 app.use(express.json({ limit: '2mb' }))
@@ -14,13 +15,14 @@ app.use(express.json({ limit: '2mb' }))
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
   if (req.method === 'OPTIONS') return res.sendStatus(204)
   next()
 })
 
 app.use('/api/auth', authRouter)
 app.use('/api/snapshot', snapshotRouter)
+app.use('/api/admin', adminRouter)
 
 // API 404 统一 JSON
 app.use((_req, res) => res.status(404).json({ ok: false, message: 'Not Found' }))

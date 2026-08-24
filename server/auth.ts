@@ -6,6 +6,7 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { db } from './db'
 import { signJwt, verifyJwt, type JwtPayload } from './jwt'
+import { isAdmin } from './roles'
 
 export const router = Router()
 
@@ -30,6 +31,7 @@ function hashPassword(password: string): string {
   const salt = randomBytes(16).toString('hex')
   return salt + ':' + scryptSync(password, salt, 64).toString('hex')
 }
+export { hashPassword }
 
 function verifyPassword(password: string, stored: string): boolean {
   const [salt, hash] = stored.split(':')
@@ -131,8 +133,9 @@ router.get('/me', requireAuth, (req, res) => {
     ok: true,
     data: {
       user: { id: row.id, username: row.username, nickname: row.nickname },
-      // 服务端可控特性开关（当前恒开；将来语音走后端代理时可远程关）
-      features: { voice: true, sync: true }
+      // 服务端可控特性开关（当前恒开；将来语音走后端代理时可远程关）。
+      // admin 仅控前端管理入口显隐，真正的权限边界在 /api/admin 的 requireAdmin
+      features: { voice: true, sync: true, admin: isAdmin(row.username) }
     }
   })
 })

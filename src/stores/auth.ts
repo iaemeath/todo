@@ -17,6 +17,8 @@ export interface AuthUser {
 interface AuthFeatures {
   voice: boolean
   sync: boolean
+  /** 管理员白名单（服务端 ADMIN_USERS）：仅控侧栏"用户管理"入口显隐，权限边界在 /api/admin */
+  admin: boolean
 }
 
 const USER_KEY = 'shiguang_user'
@@ -27,7 +29,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(JSON.parse(localStorage.getItem(USER_KEY) || 'null'))
   /** 启动会话恢复完成标记：App 据此决定何时启动云同步 */
   const ready = ref(false)
-  const features = ref<AuthFeatures>({ voice: false, sync: false })
+  const features = ref<AuthFeatures>({ voice: false, sync: false, admin: false })
 
   // ===== Getter =====
   const isLoggedIn = computed(() => !!token.value && !!user.value)
@@ -42,7 +44,7 @@ export const useAuthStore = defineStore('auth', () => {
   const clear = () => {
     token.value = null
     user.value = null
-    features.value = { voice: false, sync: false }
+    features.value = { voice: false, sync: false, admin: false }
     persist()
   }
 

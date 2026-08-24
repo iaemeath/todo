@@ -1,0 +1,188 @@
+<script setup lang="ts">
+/**
+ * 用户管理（仅管理员）：侧栏入口由 features.admin 控显隐，
+ * 本页数据一律走 /api/admin/*（服务端 requireAdmin 是真正的权限边界，
+ * 直接敲 URL #/settings/users 进入的非管理员只会收到 403 提示）。
+ */
+import { ref, onMounted } from 'vue'
+import { Refresh, Edit, Key, Delete } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { api, ApiError } from '../services/apiClient'
+import { useAuthStore } from '../stores/auth'
+
+interface AdminUser {
+  id: string
+  username: string
+  nickname: string | null
+  createdAt: string
+  syncedAt: string | null
+  snapshotKb: number
+}
+
+const authStore = useAuthStore()
+const users = ref<AdminUser[]>([])
+const loading = ref(false)
+const errMsg = ref('')
+
+const isMe = (u: AdminUser) => u.id === authStore.user?.id
+
+const load = async () => {
+  loading.value = true
+  errMsg.value = ''
+  try {
+    const r = await api<{ users: AdminUser[] }>('/admin/users')
+    users.value = r.users
+  } catch (e) {
+    errMsg.value = e instanceof ApiError ? e.message : '加载失败，请稍后重试'
+  } finally {
+    loading.value = false
+  }
+}
+onMounted(load)
+
+/** SQLite localtime 文本 "2026-08-24 12:00:00" → 本地格式（补 T 保跨浏览器解析） */
+const fmtTime = (t: string | null) =>
+  t ? new Date(t.replace(' ', 'T')).toLocaleString('zh-CN') : '从未'
+
+const apiErr = (e: unknown) =>
+  ElMessage.error(e instanceof ApiError ? e.message : '操作失败，请稍后重试')
+
+/** 改昵称：prompt 取消静默返回，API 失败才报错 */
+const renameUser = async (u: AdminUser) => {
+  let nickname: string
+  try {
+    ;({ value: nickname } = await ElMessageBox.prompt(
+      `修改用户「${u.username}」的昵称`,
+      '改昵称',
+      { inputValue: u.nickname || '', inputPattern: /\S+/, inputErrorMessage: '昵称不能为空' }
+    ))
+  } catch {
+    return
+  }
+  try {
+    await api(`/admin/users/${u.id}`, { method: 'PATCH', body: { nickname } })
+    ElMessage.success('昵称已更新')
+    void load()
+  } catch (e) {
+    apiErr(e)
+  }
+}
+
+/** 重置密码：明文输入由管理员线下转达对方（6~64 位，与注册同规） */
+const resetPassword = async (u: AdminUser) => {
+  let password: string
+  try {
+    ;({ value: password } = await ElMessageBox.prompt(
+      `为用户「${u.username}」设置新密码（6~64 位），请线下转达对方`,
+      '重置密码',
+      {
+        inputType: 'password',
+        inputPattern: /^.{6,64}$/,
+        inputErrorMessage: '密码长度需 6~64 位'
+      }
+    ))
+  } catch {
+    return
+  }
+  try {
+    await api(`/admin/users/${u.id}/password`, { method: 'PUT', body: { password } })
+    ElMessage.success('密码已重置')
+  } catch (e) {
+    apiErr(e)
+  }
+}
+
+/** 删除用户：级联删云端快照；本地优先架构下不影响对方浏览器中的数据 */
+const removeUser = async (u: AdminUser) => {
+  try {
+    await ElMessageBox.confirm(
+      `将删除用户「${u.username}」及其云端快照，不可恢复。对方浏览器中的本地数据不受影响，但将失去云同步。`,
+      '删除用户',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+  try {
+    await api(`/admin/users/${u.id}`, { method: 'DELETE' })
+    ElMessage.success('用户已删除')
+    void load()
+  } catch (e) {
+    apiErr(e)
+  }
+}
+</script>
+
+<template>
+  <div class="user-manage">
+    <el-card shadow="never" class="setting-card">
+      <template #header>
+        <div class="card-header-row">
+          <span class="card-title">用户管理</span>
+          <el-button :icon="Refresh" size="small" :loading="loading" @click="load">刷新</el-button>
+        </div>
+      </template>
+
+      <el-alert
+        v-if="errMsg"
+        :title="errMsg"
+        type="error"
+        show-icon
+        :closable="false"
+        class="err-alert"
+      />
+      <el-table v-else v-loading="loading" :data="users">
+        <el-table-column prop="username" label="用户名" min-width="110" />
+        <el-table-column label="昵称" min-width="110">
+          <template #default="{ row }">{{ row.nickname || '—' }}</template>
+        </el-table-column>
+        <el-table-column label="注册时间" min-width="150">
+          <template #default="{ row }">{{ fmtTime(row.createdAt) }}</template>
+        </el-table-column>
+        <el-table-column label="最后同步" min-width="150">
+          <template #default="{ row }">{{ fmtTime(row.syncedAt) }}</template>
+        </el-table-column>
+        <el-table-column label="快照" width="80" align="right">
+          <template #default="{ row }">{{ row.snapshotKb ? row.snapshotKb + ' KB' : '—' }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="170" fixed="right">
+          <template #default="{ row }">
+            <el-button :icon="Edit" link type="primary" @click="renameUser(row as AdminUser)">昵称</el-button>
+            <el-button :icon="Key" link type="primary" @click="resetPassword(row as AdminUser)">密码</el-button>
+            <el-tooltip
+              v-if="isMe(row as AdminUser)"
+              content="不能删除自己的账号"
+              placement="top"
+            >
+              <el-button :icon="Delete" link type="danger" disabled>删除</el-button>
+            </el-tooltip>
+            <el-button v-else :icon="Delete" link type="danger" @click="removeUser(row as AdminUser)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
+    <p class="admin-hint">
+      管理员页面：删除账号会级联删除其云端快照，但不影响该用户浏览器中的本地数据（本地优先架构）。
+    </p>
+  </div>
+</template>
+
+<style scoped>
+.card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.err-alert {
+  margin-bottom: var(--space-md);
+}
+
+.admin-hint {
+  margin-top: var(--space-md);
+  font-size: var(--font-xs);
+  color: var(--el-text-color-secondary);
+  line-height: 1.6;
+}
+</style>
