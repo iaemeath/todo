@@ -255,7 +255,7 @@ const navTitle = computed(() => {
   border: none;
   color: var(--el-text-color-primary);
   font-size: var(--font-base);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-medium);
   cursor: pointer;
   padding: var(--space-sm) 0;
   min-height: var(--touch-target);
@@ -357,7 +357,7 @@ const navTitle = computed(() => {
     gap: var(--space-sm);
     flex-shrink: 0;
     cursor: pointer;
-    font-weight: var(--weight-semibold); /* 品牌位保留层次但降一档（bold→semibold） */
+    font-weight: var(--weight-medium); /* 品牌位保留层次但降一档（bold 经两轮降至 medium） */
     color: var(--el-text-color-primary);
     padding: var(--space-xs) var(--space-sm);
     transition: color var(--duration-fast) ease;
@@ -389,6 +389,7 @@ const navTitle = computed(() => {
     background: transparent;
     color: var(--el-text-color-regular);
     font-size: var(--font-sm);
+    font-weight: var(--weight-medium); /* 覆盖全局 button 规则的 semibold，整体降一档 */
     cursor: pointer;
     transition: all var(--duration-fast) ease;
   }
@@ -401,7 +402,7 @@ const navTitle = computed(() => {
   .nav-tab.active {
     background: var(--el-color-primary-light-9);
     color: var(--el-color-primary);
-    font-weight: var(--weight-medium); /* EP menu 风格：主色标识即可，不加粗 */
+    font-weight: var(--weight-regular); /* EP menu 风格：主色标识即可，不加粗 */
   }
 
   /* 设置分组标题（EP el-menu-group 式小灰字） */
@@ -409,7 +410,7 @@ const navTitle = computed(() => {
     margin-top: var(--space-md);
     padding: 0 var(--space-md);
     font-size: var(--font-xs);
-    font-weight: var(--weight-medium);
+    font-weight: var(--weight-regular);
     color: var(--el-text-color-secondary);
     letter-spacing: 0.05em;
   }
@@ -450,7 +451,7 @@ const navTitle = computed(() => {
   margin-bottom: var(--space-sm);
   border-bottom: 1px solid var(--el-border-color-lighter);
   font-size: var(--font-md);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-semibold);
   color: var(--el-text-color-primary);
   cursor: pointer;
 }
@@ -470,6 +471,7 @@ const navTitle = computed(() => {
   background: transparent;
   color: var(--el-text-color-regular);
   font-size: var(--font-base);
+  font-weight: var(--weight-medium); /* 覆盖全局 button 规则的 semibold，与桌面侧栏同步降档 */
   cursor: pointer;
   transition: all var(--duration-fast) ease;
 }
@@ -482,7 +484,7 @@ const navTitle = computed(() => {
 .nav-drawer__item.active {
   background: var(--el-color-primary-light-9);
   color: var(--el-color-primary);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-medium);
 }
 
 /* 抽屉账号区（沉底，与桌面侧栏同语义） */
@@ -500,7 +502,7 @@ const navTitle = computed(() => {
   margin-top: var(--space-xs);
   padding: var(--space-xs) var(--space-sm);
   font-size: var(--font-xs);
-  font-weight: var(--weight-medium);
+  font-weight: var(--weight-regular);
   color: var(--el-text-color-secondary);
   letter-spacing: 0.05em;
 }

@@ -726,7 +726,7 @@ html.platform-mobile .calendar-title-picker.el-range-editor {
 .calendar-title-picker .el-range-input {
   background: transparent;
   font-size: 1.08rem;
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-semibold);
   color: var(--el-text-color-primary);
   cursor: pointer;
   text-align: center;
@@ -753,7 +753,7 @@ html.platform-mobile .calendar-title-picker .el-range-input {
 /* 分隔符：主题色点缀 */
 .calendar-title-picker .el-range-separator {
   color: var(--el-color-primary);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-semibold);
 }
 
 /* 分隔符 "–"：en-dash 字面自带留白，移动端紧凑档去掉 EP 默认 padding 0 5px */
@@ -779,7 +779,7 @@ html.platform-mobile .calendar-title-picker .el-range-separator {
 
 .calendar-month-picker .el-input__inner {
   font-size: var(--font-base);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-semibold);
   color: var(--el-text-color-primary);
   text-align: center;
   cursor: pointer;
@@ -867,7 +867,7 @@ html.platform-mobile .calendar-wrapper:not(.show-col-header) .fc .fc-col-header 
   color: var(--text-primary) !important;
   font-weight: 800 !important; /* stylelint-disable-line declaration-property-value-disallowed-list -- FC 列头超粗为设计特例（超出字重刻度） */
   padding: 3px var(--space-xs) !important; /* 表头行紧凑：8px→3px 上下 */
-  font-size: 0.85rem !important;
+  font-size: var(--font-xs) !important;
   white-space: nowrap !important;
 }
 
