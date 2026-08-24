@@ -1,7 +1,6 @@
 /**
  * 登录态：token/user 持久化 localStorage，启动 bootstrap() 用 /auth/me 恢复会话。
- * 特性开关（features）由服务端下发，当前唯一生效的是 sync（云同步）；
- * voice 字段为预留，暂无消费方。
+ * 特性开关（features）由服务端下发，当前生效的是 sync 与 admin。
  */
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
@@ -15,7 +14,6 @@ export interface AuthUser {
 }
 
 interface AuthFeatures {
-  voice: boolean
   sync: boolean
   /** 管理员白名单（服务端 ADMIN_USERS）：仅控侧栏"用户管理"入口显隐，权限边界在 /api/admin */
   admin: boolean
@@ -29,7 +27,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(JSON.parse(localStorage.getItem(USER_KEY) || 'null'))
   /** 启动会话恢复完成标记：App 据此决定何时启动云同步 */
   const ready = ref(false)
-  const features = ref<AuthFeatures>({ voice: false, sync: false, admin: false })
+  const features = ref<AuthFeatures>({ sync: false, admin: false })
 
   // ===== Getter =====
   const isLoggedIn = computed(() => !!token.value && !!user.value)
@@ -44,7 +42,7 @@ export const useAuthStore = defineStore('auth', () => {
   const clear = () => {
     token.value = null
     user.value = null
-    features.value = { voice: false, sync: false, admin: false }
+    features.value = { sync: false, admin: false }
     persist()
   }
 

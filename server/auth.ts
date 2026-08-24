@@ -242,9 +242,8 @@ router.get('/me', requireAuth, (req, res) => {
     ok: true,
     data: {
       user: { id: row.id, email: row.email, username: row.username },
-      // 服务端可控特性开关（当前恒开；将来语音走后端代理时可远程关）。
-      // admin 仅控前端管理入口显隐，真正的权限边界在 /api/admin 的 requireAdmin
-      features: { voice: true, sync: true, admin: isAdmin(row.email || '') }
+      // 服务端可控特性开关。admin 仅控前端管理入口显隐，真正的权限边界在 /api/admin 的 requireAdmin
+      features: { sync: true, admin: isAdmin(row.email || '') }
     }
   })
 })

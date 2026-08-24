@@ -10,8 +10,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
  * ui store 从路由派生 currentView/settingsSection，组件层零改动。
  *
  * 设置域页面为一级直达路由（/view /ai /data /guide /users，v4.6 扁平化——
- * 侧栏一级导航与 URL 对齐，SettingsPage 仍是统一渲染容器）；
- * 旧 /settings/:section 重定向兜底，收藏夹不失效。
+ * 侧栏一级导航与 URL 对齐，SettingsPage 仍是统一渲染容器）。
  */
 // 视图渲染由 App.vue 的 v-if 分支承担，路由记录仅承载 URL 状态（空渲染占位满足类型）
 const EmptyView = { render: () => null }
@@ -25,10 +24,7 @@ export const router = createRouter({
     { path: '/task', name: 'task', component: EmptyView },
     { path: '/schedule', name: 'schedule', component: EmptyView },
     ...SETTINGS_PATHS.map(s => ({ path: `/${s}`, name: `settings-${s}`, component: EmptyView })),
-    { path: '/auth', name: 'auth', component: EmptyView },
-    // v4.6 前的二级路径 → 一级（收藏夹兜底）
-    { path: '/settings/:section?', redirect: to => `/${to.params.section || 'view'}` },
-    // 未匹配路径兜底回主页
-    { path: '/:pathMatch(.*)*', redirect: '/' }
+    { path: '/auth', name: 'auth', component: EmptyView }
   ]
 })
+
