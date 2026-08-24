@@ -105,6 +105,12 @@ export const useUIStore = defineStore('ui', () => {
     if (view === 'settings') settingsSection.value = 'list'
   }
 
+  // 桌面侧栏设置子项直达（绕过 switchView 的 list 重置；移动端列表页不使用）
+  const openSettingsSection = (s: SettingsSection) => {
+    currentView.value = 'settings'
+    settingsSection.value = s
+  }
+
   const setSettingsSection = (s: SettingsSection) => {
     settingsSection.value = s
   }
@@ -112,6 +118,7 @@ export const useUIStore = defineStore('ui', () => {
   return {
     currentView,
     switchView,
+    openSettingsSection,
     isMobile,
     settingsSection,
     setSettingsSection,

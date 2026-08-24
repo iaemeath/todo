@@ -9,11 +9,24 @@
     </div>
     <nav class="nav-tabs">
       <button
-        v-for="item in navItems"
+        v-for="item in mainItems"
         :key="item.key"
         class="nav-tab"
         :class="{ active: currentView === item.key }"
         @click="toggleView(item.key)"
+      >
+        <el-icon class="tab-icon"><component :is="item.icon" /></el-icon>
+        <span class="tab-label">{{ item.label }}</span>
+      </button>
+
+      <!-- 设置组：原设置页二级菜单提升为一级（EP 文档站式分组扁平导航） -->
+      <div class="nav-group-label">设置</div>
+      <button
+        v-for="item in settingItems"
+        :key="item.key"
+        class="nav-tab"
+        :class="{ active: currentView === 'settings' && settingsSection === item.key }"
+        @click="openSettingsSection(item.key)"
       >
         <el-icon class="tab-icon"><component :is="item.icon" /></el-icon>
         <span class="tab-label">{{ item.label }}</span>
@@ -104,17 +117,17 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Calendar, List, Clock, Setting, ArrowLeft, Menu, Timer, Lock, SwitchButton } from '@element-plus/icons-vue'
+import { Calendar, List, Clock, Setting, ArrowLeft, Menu, Timer, Lock, SwitchButton, Monitor, ChatDotRound, FolderOpened, QuestionFilled } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
 import { ElMessage } from 'element-plus'
-import { useUIStore, type AppView } from '../stores'
+import { useUIStore, type AppView, type SettingsSection } from '../stores'
 import { useAuthStore } from '../stores/auth'
 import { syncState } from '../services/syncManager'
 
 const uiStore = useUIStore()
 const authStore = useAuthStore()
 const { currentView, isMobile, settingsSection, navDrawerOpen, navRailCollapsed } = storeToRefs(uiStore) // state → storeToRefs
-const { switchView, setSettingsSection, setNavDrawerOpen, setNavRailCollapsed } = uiStore // action 直接解构
+const { switchView, openSettingsSection, setSettingsSection, setNavDrawerOpen, setNavRailCollapsed } = uiStore // action 直接解构
 
 const displayName = computed(() => authStore.user?.nickname || authStore.user?.username || '')
 
@@ -136,8 +149,7 @@ const openLogin = () => {
 
 const goDataManage = () => {
   setNavDrawerOpen(false)
-  switchView('settings')
-  setSettingsSection('data')
+  openSettingsSection('data')
 }
 
 const handleLogout = () => {
@@ -157,13 +169,19 @@ const handleBack = () => {
   }
 }
 
-// 导航项（「时间管理」= 主页，默认入口放首位；logo 只负责隐藏导航不再返回主页；
-// 菜单入口两端常驻——导航抽屉/侧栏空间充足，不再由设置控制显隐）
-const navItems: { key: AppView; label: string; icon: any }[] = [
+// 导航分组（「时间管理」= 主页，默认入口放首位；logo 只负责隐藏导航不再返回主页）
+const mainItems: { key: AppView; label: string; icon: any }[] = [
   { key: 'home', label: '时间管理', icon: Timer },
   { key: 'task', label: '任务管理', icon: List },
-  { key: 'schedule', label: '日程管理', icon: Clock },
-  { key: 'settings', label: '设置', icon: Setting }
+  { key: 'schedule', label: '日程管理', icon: Clock }
+]
+
+// 设置子项直达（桌面一级导航；移动端仍走抽屉「设置」→ 列表二级）
+const settingItems: { key: SettingsSection; label: string; icon: any }[] = [
+  { key: 'view', label: '视觉与外观', icon: Monitor },
+  { key: 'ai', label: 'AI 助理', icon: ChatDotRound },
+  { key: 'data', label: '数据管理', icon: FolderOpened },
+  { key: 'guide', label: '使用指南', icon: QuestionFilled }
 ]
 
 // toggle 导航：再点一次当前页 → 回主页（点「时间管理」在主页时停留，无副作用）
@@ -318,7 +336,7 @@ const navTitle = computed(() => {
     gap: var(--space-sm);
     flex-shrink: 0;
     cursor: pointer;
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-semibold); /* 品牌位保留层次但降一档（bold→semibold） */
     color: var(--el-text-color-primary);
     padding: var(--space-xs) var(--space-sm);
     transition: color var(--duration-fast) ease;
@@ -362,11 +380,21 @@ const navTitle = computed(() => {
   .nav-tab.active {
     background: var(--el-color-primary-light-9);
     color: var(--el-color-primary);
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-medium); /* EP menu 风格：主色标识即可，不加粗 */
+  }
+
+  /* 设置分组标题（EP el-menu-group 式小灰字） */
+  .nav-group-label {
+    margin-top: var(--space-md);
+    padding: 0 var(--space-md);
+    font-size: var(--font-xs);
+    font-weight: var(--weight-medium);
+    color: var(--el-text-color-secondary);
+    letter-spacing: 0.05em;
   }
 
   .tab-icon {
-    font-size: 1.05rem;
+    font-size: 1rem;
   }
 }
 

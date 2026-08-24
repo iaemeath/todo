@@ -137,6 +137,7 @@ watch(
 
 <style scoped>
 .auth-page {
+  position: relative;
   height: 100%;
   display: flex;
   align-items: center;
@@ -145,16 +146,36 @@ watch(
   box-sizing: border-box;
   /* 移动端 content-area 零内边距，页面自补 */
   overflow-y: auto;
+  background: url('../assets/auth-bg.jpg') center / cover no-repeat;
+}
+
+/* 暗化遮罩：保证深浅两种模式与亮色壁纸下的表单可读性（卡片玻璃透出背景） */
+.auth-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 18, 34, 0.45);
 }
 
 .auth-card {
+  position: relative; /* 浮于遮罩之上 */
+  z-index: 1;
   width: 100%;
   max-width: 380px;
-  background: var(--el-bg-color);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
   padding: var(--space-xl);
   box-sizing: border-box;
+  /* 玻璃拟态：与项目 glass-panel 语言一致，暗化底保证文字对比度 */
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(18px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+/* scoped 下 html.dark 不带本组件属性，须 :global 提升才能命中暗色根类 */
+:global(html.dark) .auth-card {
+  background: rgba(30, 33, 48, 0.72);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 /* 品牌头：logo 圆点用主题色呼应 */

@@ -1,26 +1,8 @@
 <template>
   <div class="settings-page" :class="{ 'is-mobile': isMobile }">
-    <!-- 桌面：左侧菜单栏 -->
-    <el-menu v-if="!isMobile" :default-active="activeTab" class="settings-menu" @select="(i) => activeTab = i as typeof activeTab">
-      <el-menu-item index="view">
-        <el-icon><Monitor /></el-icon>
-        <span>视觉与外观</span>
-      </el-menu-item>
-      <el-menu-item index="ai">
-        <el-icon><ChatDotRound /></el-icon>
-        <span>AI 助理</span>
-      </el-menu-item>
-      <el-menu-item index="data">
-        <el-icon><FolderOpened /></el-icon>
-        <span>数据管理</span>
-      </el-menu-item>
-      <el-menu-item index="guide">
-        <el-icon><QuestionFilled /></el-icon>
-        <span>使用指南</span>
-      </el-menu-item>
-    </el-menu>
+    <!-- 桌面：子页导航已上移至应用侧栏（openSettingsSection 直达），此处仅内容区 -->
 
-    <!-- 移动端：列表入口 -->
+    <!-- 移动端：列表入口（屏小保留二级列表模式） -->
     <div v-if="isMobile && settingsSection === 'list'" class="mobile-list">
       <div class="mobile-item" @click="enterMobile('view')">
         <el-icon><Monitor /></el-icon>
@@ -59,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { Monitor, ChatDotRound, ArrowRight, FolderOpened, QuestionFilled } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
 import { useSettingsStore, useUIStore } from '../stores'
@@ -69,14 +51,16 @@ import UsageTab from './UsageTab.vue'
 import DataManageTab from './DataManageTab.vue'
 import GuideTab from './GuideTab.vue'
 
-const activeTab = ref<'view' | 'ai' | 'data' | 'guide'>('view')
 const uiStore = useUIStore()
 const { isMobile, settingsSection } = storeToRefs(uiStore) // state → storeToRefs
 const { setSettingsSection } = uiStore // action 直接解构
-// 桌面用 activeTab，移动端用 settingsSection（'list'=选项列表），content 统一读 currentTab
-const currentTab = computed(() => isMobile.value
-  ? (settingsSection.value === 'list' ? 'view' : settingsSection.value as 'view' | 'ai' | 'data' | 'guide')
-  : activeTab.value)
+// 子页统一由 settingsSection 驱动：桌面侧栏直达必带具体 section；
+// 若经 switchView('settings') 进入（section 复位为 list，仅移动端列表路径），
+// 桌面兜底显示视觉与外观。移动端 list 时内容区隐藏（模板 v-show）。
+const currentTab = computed(() => {
+  const s = settingsSection.value
+  return s === 'list' ? 'view' : s
+})
 const enterMobile = (tab: 'view' | 'ai' | 'data' | 'guide') => { setSettingsSection(tab) }
 const settingsStore = useSettingsStore()
 // form 直接引用 store 的 settings（子 tab 通过 props 变异其字段，即时生效并持久化）。
@@ -97,7 +81,7 @@ html.platform-mobile .settings-page {
   padding: var(--space-md) var(--space-lg);
 }
 
-/* 桌面：左右布局（菜单 + 内容） */
+/* 桌面：单列内容区（子页导航在应用侧栏） */
 .settings-page:not(.is-mobile) {
   display: flex;
 }
@@ -106,18 +90,6 @@ html.platform-mobile .settings-page {
 .settings-page.is-mobile {
   display: flex;
   flex-direction: column;
-}
-
-/* 左侧菜单栏（桌面） */
-.settings-menu {
-  flex-shrink: 0;
-  width: 200px;
-  border-right: 1px solid var(--el-border-color-light);
-  background: var(--el-bg-color);
-}
-
-.settings-menu:not(.el-menu--collapse) {
-  width: 200px;
 }
 
 /* 内容区域（桌面 + 移动端共用） */
