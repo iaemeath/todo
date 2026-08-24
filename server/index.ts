@@ -8,6 +8,9 @@ import { router as syncRouter } from './sync'
 import { router as adminRouter } from './admin'
 
 const app = express()
+// nginx 同机反代：只信 loopback 代理，req.ip 从 X-Forwarded-For 还原真实客户端地址。
+// 不设则反代后所有请求 req.ip 均为 127.0.0.1——登录 per-IP 限流、滑块 IP 频控会挤在同一个桶里。
+app.set('trust proxy', 'loopback')
 app.use(express.json({ limit: '2mb' }))
 
 // CORS：Electron 壳以 file:// 加载（Origin 为 null）跨域访问 API 需要；

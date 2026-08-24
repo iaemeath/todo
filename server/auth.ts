@@ -1,6 +1,6 @@
 /**
  * 认证路由：邮箱注册（验证码验真）/ 登录 / 忘记密码 / 改密 / 会话恢复。
- * 密码 scrypt（salt:hash hex）；登录限流内存 Map（自用规模足够，重启清零可接受）。
+ * 密码 scrypt（salt:hash hex）；登录限流内存 Map（邮箱+IP 双维度，自用规模足够，重启清零可接受）。
  * 人机验证=滑块拼图（获取邮箱验证码前必过，一次性 sliderToken）；邮箱验证码 6 位、单次、10 分钟。
  * 弱口令策略前后端共享（src/types/password.ts，类型下沉模式同 bundle.ts）。
  */
@@ -65,26 +65,35 @@ function verifyPassword(password: string, stored: string): boolean {
   return calc.length === orig.length && timingSafeEqual(calc, orig)
 }
 
-// ===== 登录限流：同邮箱 5 次失败锁 10 分钟 =====
+// ===== 登录限流：双维度防爆破（内存 Map，自用规模足够，重启清零可接受）=====
+// - 同邮箱 5 次失败锁 10 分钟：防定点爆破单个账号
+// - 同 IP 20 次失败锁 10 分钟：防换邮箱撞库喷洒（password spraying），
+//   阈值放宽以兼容家庭/办公室共享出口 IP 的正常多用户
 
 const MAX_FAILS = 5
+const IP_MAX_FAILS = 20
 const LOCK_MS = 10 * 60 * 1000
-const loginFails = new Map<string, { count: number; lockedUntil: number }>()
+const loginFails = new Map<string, { count: number; max: number; lockedUntil: number }>()
 
-function checkLock(email: string): number | null {
-  const rec = loginFails.get(email)
+function checkLock(key: string): number | null {
+  const rec = loginFails.get(key)
   if (rec && rec.lockedUntil > Date.now()) return rec.lockedUntil
   return null
 }
 
-function recordFail(email: string) {
-  const rec = loginFails.get(email) || { count: 0, lockedUntil: 0 }
+function recordFail(key: string, max: number) {
+  const rec = loginFails.get(key) || { count: 0, max, lockedUntil: 0 }
   rec.count += 1
-  if (rec.count >= MAX_FAILS) {
+  if (rec.count >= max) {
     rec.lockedUntil = Date.now() + LOCK_MS
     rec.count = 0
   }
-  loginFails.set(email, rec)
+  loginFails.set(key, rec)
+  // 过期锁顺手清扫，防长跑膨胀（只清锁已过期的条目，保留累计中的失败计数）
+  if (loginFails.size > 1000) {
+    const now = Date.now()
+    for (const [k, r] of loginFails) if (r.lockedUntil && r.lockedUntil < now) loginFails.delete(k)
+  }
 }
 
 // ===== 注册邀请码：环境变量 INVITE_CODE 设置后注册必须携带（公网防扫描）；未设置则开放 =====
@@ -174,8 +183,10 @@ router.post('/register', (req, res) => {
 router.post('/login', (req, res) => {
   const email = normEmail(req.body?.email)
   const password = String(req.body?.password || '')
+  const ipKey = 'ip:' + (req.ip || 'unknown')
 
-  const lockedUntil = checkLock(email)
+  // 双维度任一命中锁定即拒（req.ip 依赖 index.ts 的 trust proxy 还原真实地址）
+  const lockedUntil = checkLock(email) || checkLock(ipKey)
   if (lockedUntil) {
     const mins = Math.ceil((lockedUntil - Date.now()) / 60000)
     return res.status(429).json({ ok: false, message: `失败次数过多，请 ${mins} 分钟后再试` })
@@ -186,11 +197,13 @@ router.post('/login', (req, res) => {
 
   // 统一错误文案，不区分「邮箱未注册/密码错误」，避免枚举用户
   if (!row || !verifyPassword(password, row.password)) {
-    recordFail(email)
+    recordFail(email, MAX_FAILS)
+    recordFail(ipKey, IP_MAX_FAILS)
     return res.status(401).json({ ok: false, message: '邮箱或密码错误' })
   }
 
   loginFails.delete(email)
+  loginFails.delete(ipKey)
   const user = { id: row.id, email: row.email, username: row.username }
   res.json({ ok: true, data: { token: signJwt(row.id, row.email || email, row.token_ver), user } })
 })
