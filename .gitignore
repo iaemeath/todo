@@ -42,3 +42,6 @@ components.d.ts
 
 # 后端运行时数据（SQLite 库文件 / JWT 密钥）
 server/data/
+
+# electron-builder 打包产物
+release/
