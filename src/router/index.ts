@@ -23,6 +23,7 @@ export const router = createRouter({
     { path: '/', name: 'home', component: EmptyView },
     { path: '/task', name: 'task', component: EmptyView },
     { path: '/schedule', name: 'schedule', component: EmptyView },
+    { path: '/screensaver', name: 'screensaver', component: EmptyView },
     ...SETTINGS_PATHS.map(s => ({ path: `/${s}`, name: `settings-${s}`, component: EmptyView })),
     { path: '/auth', name: 'auth', component: EmptyView }
   ]

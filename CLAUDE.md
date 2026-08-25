@@ -57,6 +57,7 @@
 |---|---|
 | canvas_tasks / canvas_schedules / canvas_settings / canvas_theme / canvas_api_usage | 各 store 持久化 |
 | todo_visible / nav_rail_visible | UI 偏好（'0'/'1'） |
+| screensaver_hour12 | 屏保 12/24 小时制偏好（'0'=24/'1'=12，默认 24） |
 | shiguang_token / shiguang_user / shiguang_last_user | 登录态与账号切换检测 |
 | shiguang_last_synced_at / shiguang_sync_cursor | 同步产物（退出登录时清除） |
 | shiguang_server_url | Electron 壳 API 地址覆盖（空 = 默认域名） |

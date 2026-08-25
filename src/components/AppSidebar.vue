@@ -94,6 +94,10 @@
           <el-icon><Clock /></el-icon>
           <span>日程管理</span>
         </button>
+        <button class="nav-drawer__item" :class="{ active: currentView === 'screensaver' }" @click="go('screensaver')">
+          <el-icon><AlarmClock /></el-icon>
+          <span>屏保</span>
+        </button>
 
         <!-- 设置组：与桌面侧栏同构（移动端同样直达子页，无列表二级） -->
         <div class="nav-drawer__group-label">设置</div>
@@ -169,7 +173,7 @@
 
 <script setup lang="ts">
 import { computed, ref, reactive } from 'vue'
-import { Calendar, List, Clock, ArrowLeft, Menu, Timer, Lock, SwitchButton, Monitor, ChatDotRound, FolderOpened, QuestionFilled, User } from '@element-plus/icons-vue'
+import { Calendar, List, Clock, ArrowLeft, Menu, Timer, Lock, SwitchButton, Monitor, ChatDotRound, FolderOpened, QuestionFilled, User, AlarmClock } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUIStore, type AppView, type SettingsSection } from '../stores'
@@ -284,7 +288,8 @@ const handleBack = () => {
 const mainItems: { key: AppView; label: string; icon: any }[] = [
   { key: 'home', label: '时间管理', icon: Timer },
   { key: 'task', label: '任务管理', icon: List },
-  { key: 'schedule', label: '日程管理', icon: Clock }
+  { key: 'schedule', label: '日程管理', icon: Clock },
+  { key: 'screensaver', label: '屏保', icon: AlarmClock }
 ]
 
 // 设置子项直达（桌面一级导航；移动端仍走抽屉「设置」→ 列表二级）；
@@ -327,6 +332,7 @@ const navTitle = computed(() => {
   if (currentView.value === 'settings') return settingsTitle.value
   if (currentView.value === 'task') return '任务管理'
   if (currentView.value === 'schedule') return '日程管理'
+  if (currentView.value === 'screensaver') return '屏保'
   return ''
 })
 </script>

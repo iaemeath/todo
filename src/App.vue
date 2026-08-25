@@ -15,6 +15,7 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn'
 const VoiceAssistant = defineAsyncComponent(() => import('./components/VoiceAssistant.vue'))
 const TaskManagePage = defineAsyncComponent(() => import('./components/TaskManagePage.vue'))
 const ScheduleManagePage = defineAsyncComponent(() => import('./components/ScheduleManagePage.vue'))
+const ScreensaverPage = defineAsyncComponent(() => import('./components/ScreensaverPage.vue'))
 const SettingsPage = defineAsyncComponent(() => import('./components/SettingsPage.vue'))
 const AuthPage = defineAsyncComponent(() => import('./components/AuthPage.vue'))
 
@@ -79,6 +80,9 @@ watch(
 
         <!-- 日程管理 -->
         <ScheduleManagePage v-else-if="currentView === 'schedule'" />
+
+        <!-- 屏保（Fliqlo 风翻页时钟） -->
+        <ScreensaverPage v-else-if="currentView === 'screensaver'" />
 
         <!-- 设置 -->
         <SettingsPage v-else-if="currentView === 'settings'" />
