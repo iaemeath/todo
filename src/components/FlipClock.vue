@@ -76,15 +76,27 @@ const dateText = computed(() =>
 
 <style scoped>
 .flip-clock {
-  /* 卡宽一次定义（FlipCard 消费）：竖屏 15vw、横屏被 26vh 封顶（极矮屏不溢出），
-     min() 一个表达式管两种形态；下限 60px 令窄屏也尽量撑满（屏保语义） */
-  --flip-w: clamp(60px, min(15vw, 26vh), 220px);
+  /* 卡宽一次定义（FlipCard 消费）。
+     移动端：15vw 驱动、26vh 封顶（横屏防溢出）、下限 60px 尽量撑满；
+     桌面增强：再叠加内容区约束（视口 - 侧栏 240 - 内容区左右 padding 24）——
+     264 与 AppSidebar 的 .app-navbar--side width、App.vue 的 .content-area padding 联动，
+     4.9 = 行内宽度系数（4 卡 + 冒号 0.3 + 间距 0.6），保证 Pad 竖屏窄内容区不裁切。
+     大屏无固定上限，26vh 令 1K/2K/4K 占比恒定 ~72%，不再逐级缩水 */
+  --flip-w: max(60px, min(15vw, 26vh));
   --clock-ink: #f5f5f0; /* 屏保固定白字，同 FlipCard 色板语义 */
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-lg);
   color: var(--clock-ink);
+}
+
+@media (width >= 769px) {
+  .flip-clock {
+    /* vw 17：Pad 档（vw 主导）占比 88%→~94%；1K/2K 仍由 26vh 主导不变。
+       5.1 = 行内系数 4.78（4 卡+冒号 0.3+间距 4×0.12）+ ~6% 呼吸余量 */
+    --flip-w: min(17vw, 26vh, calc((100vw - 264px) / 5.1));
+  }
 }
 
 .flip-clock__row {
@@ -131,9 +143,10 @@ const dateText = computed(() =>
 }
 
 .flip-clock__date {
-  font-size: clamp(1.05rem, 2.4vw, 1.6rem);
+  /* 字号挂卡宽比例：大屏随时钟同步跟涨；下限 0.875rem 保移动端可读 */
+  font-size: max(0.875rem, calc(var(--flip-w) * 0.1));
   font-weight: var(--weight-medium);
   letter-spacing: 0.12em;
-  opacity: 0.72;
+  opacity: 0.65;
 }
 </style>
