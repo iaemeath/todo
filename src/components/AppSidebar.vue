@@ -86,6 +86,10 @@
           <el-icon><Timer /></el-icon>
           <span>时间管理</span>
         </button>
+        <button class="nav-drawer__item" :class="{ active: currentView === 'screensaver' }" @click="go('screensaver')">
+          <el-icon><AlarmClock /></el-icon>
+          <span>屏保</span>
+        </button>
         <button class="nav-drawer__item" :class="{ active: currentView === 'task' }" @click="go('task')">
           <el-icon><List /></el-icon>
           <span>任务管理</span>
@@ -93,10 +97,6 @@
         <button class="nav-drawer__item" :class="{ active: currentView === 'schedule' }" @click="go('schedule')">
           <el-icon><Clock /></el-icon>
           <span>日程管理</span>
-        </button>
-        <button class="nav-drawer__item" :class="{ active: currentView === 'screensaver' }" @click="go('screensaver')">
-          <el-icon><AlarmClock /></el-icon>
-          <span>屏保</span>
         </button>
 
         <!-- 设置组：与桌面侧栏同构（移动端同样直达子页，无列表二级） -->
@@ -284,12 +284,13 @@ const handleBack = () => {
   }
 }
 
-// 导航分组（「时间管理」= 主页，默认入口放首位；logo 只负责隐藏导航不再返回主页）
+// 导航分组（「时间管理」= 主页，默认入口放首位；「屏保」是时钟的闲置展示形态，紧随其后；
+// logo 只负责隐藏导航不再返回主页）
 const mainItems: { key: AppView; label: string; icon: any }[] = [
   { key: 'home', label: '时间管理', icon: Timer },
+  { key: 'screensaver', label: '屏保', icon: AlarmClock },
   { key: 'task', label: '任务管理', icon: List },
-  { key: 'schedule', label: '日程管理', icon: Clock },
-  { key: 'screensaver', label: '屏保', icon: AlarmClock }
+  { key: 'schedule', label: '日程管理', icon: Clock }
 ]
 
 // 设置子项直达（桌面一级导航；移动端仍走抽屉「设置」→ 列表二级）；
