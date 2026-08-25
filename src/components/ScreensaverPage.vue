@@ -67,7 +67,37 @@ const toggleFullscreen = async () => {
 const onFsChange = () => {
   isFullscreen.value = !!document.fullscreenElement
   // 手势/系统键退出全屏时补解锁，防系统仍停留横屏锁定
-  if (!isFullscreen.value) unlockOrientation()
+  if (!isFullscreen.value) {
+    unlockOrientation()
+    void releaseWakeLock()
+  } else {
+    void requestWakeLock()
+  }
+}
+
+// ===== 屏幕唤醒锁定（Wake Lock）：仅全屏时持有——全屏=明确的展示意图（床头钟/挂钟） =====
+// 平台约束：Firefox 与非安全上下文（局域网 http 部署）无此 API → 探测后静默降级；
+// 页面隐藏时 sentinel 被系统自动释放且不自动恢复，回前台若仍全屏须重新请求。
+// 注意全屏本身不阻止系统休眠（无媒体播放时 Chromium 无隐式豁免），此锁是唯一手段
+let wakeLock: WakeLockSentinel | null = null
+
+const requestWakeLock = async () => {
+  // 双前置：当前在全屏 + 平台支持（narrow 探测兼顾旧类型定义）
+  if (!document.fullscreenElement || !('wakeLock' in navigator)) return
+  try {
+    wakeLock = await navigator.wakeLock.request('screen')
+  } catch {
+    /* 系统拒绝（低电量省电模式等）——静默降级，时钟照常 */
+  }
+}
+
+const releaseWakeLock = async () => {
+  try {
+    await wakeLock?.release()
+  } catch {
+    /* 已被系统释放——no-op */
+  }
+  wakeLock = null
 }
 
 // ===== 工具条闲置隐藏：无操作 3s 淡出，任意指针活动唤出并重新计时 =====
@@ -95,8 +125,13 @@ const onPointerActivity = () => {
 }
 
 const onVisForToolbar = () => {
-  if (document.hidden) window.clearTimeout(idleTimer)
-  else scheduleIdleHide()
+  if (document.hidden) {
+    window.clearTimeout(idleTimer)
+  } else {
+    scheduleIdleHide()
+    // hidden 期间 wake lock 已被系统回收，回前台若仍全屏则重新持有
+    void requestWakeLock()
+  }
 }
 
 onMounted(() => {
@@ -113,6 +148,7 @@ onUnmounted(() => {
   window.removeEventListener('pointerdown', onPointerActivity)
   document.removeEventListener('visibilitychange', onVisForToolbar)
   document.removeEventListener('fullscreenchange', onFsChange)
+  void releaseWakeLock()
 })
 
 const toggleHour12 = () => {
