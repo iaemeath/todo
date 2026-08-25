@@ -18,7 +18,14 @@
 | `cd server && npm run dev` | 后端 `tsx watch`（注意 `npm run start` 是无 watch 版，改码不热载） |
 | `npm run electron:dev` | 构建 + Electron 壳 |
 
-无自动化测试框架——验证方式：curl 边界用例 + 浏览器 GUI（playwright）走完整链路。
+测试已补：`cd server && npm test`（node:test 内置框架 + tsx，纯函数单测零新依赖）；其余验证 = curl 边界用例 + 浏览器 GUI（playwright）走完整链路。
+
+### 版本纪律与产品更新
+
+- **发版必须 bump `package.json` version**（0.1.0 起步）——桌面自动更新与 Web 刷新提示都靠它比对
+- 三形态更新通道：**Web**=运行时拉 `dist/version.json` 与 `__APP_VERSION__`（vite define 注入）比对，不一致 toast 提示刷新；**桌面**=electron-updater（generic feed `https://域名/updates/`，启动+每 6h 检查、后台静默下载、就绪弹窗重启安装）
+- 桌面主进程必须 `npm run bundle-main` 打成单文件 CJS（`electron/main.bundle.cjs`）：package.json "type":"module" 下 .js 会按 ESM 解析直接崩；且 electron-builder 的 `!node_modules/**/*` 排除要求把 updater 依赖树打进 bundle（.cjs 扩展名强制 CJS 语义）
+- **NSIS 打包（electron:build）只能在联网机器执行**——electron-builder 需下载自带 Electron/NSIS 工具链，内网机不可达（release/ 产物经 Syncthing 同步分发）。发版流程：bump version → electron:build → 上传 `release/拾光-Setup-*.exe` + `latest.yml` 到服务器 `/updates/`（nginx 静态服务）
 
 环境变量（server/）：`PORT`、`INVITE_CODE`（设置后注册必带）、`ADMIN_USERS`（管理员邮箱）、`SMTP_HOST/PORT/USER/PASS/FROM`（验证码邮件）。JWT 密钥自动生成于 `server/data/secret.key`（gitignored）。
 
