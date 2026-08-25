@@ -44,7 +44,7 @@
     "publish": [
       {
         "provider": "generic",
-        "url": "https://shiguang.rl.ylh.pub/updates/"
+        "url": "http://shiguang.rl.ylh.pub/updates/"
       }
     ]
   },
