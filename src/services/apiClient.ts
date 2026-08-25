@@ -12,7 +12,7 @@ import { getToken } from './tokenStore'
  * - Electron（file:// 协议）与 Capacitor 原生壳（https://localhost）：相对路径不可用，
  *   指向远程服务器；默认公网域名，可在数据管理页改（localStorage['shiguang_server_url']，支持 https）
  */
-const SHELL_DEFAULT_URL = 'http://shiguang.rl.ylh.pub'
+const SHELL_DEFAULT_URL = 'http://weekly.rl.ylh.pub'
 export const isDesktopShell = typeof window !== 'undefined' && window.location.protocol === 'file:'
 export const isNativeShell = typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.()
 /** 任意原生壳（Electron / Capacitor）：API 必须指向远程服务器而非同源相对路径 */

@@ -46,7 +46,7 @@
     "publish": [
       {
         "provider": "generic",
-        "url": "http://shiguang.rl.ylh.pub/updates/"
+        "url": "http://weekly.rl.ylh.pub/updates/"
       }
     ]
   },
