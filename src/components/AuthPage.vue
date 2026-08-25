@@ -5,6 +5,7 @@
  * 弱口令策略与 server 共享（src/types/password.ts 类型下沉），失焦即时提示 + 提交时把关。
  */
 import { ref, reactive, computed, watch, onBeforeUnmount } from 'vue'
+import { storeToRefs } from 'pinia'
 import { ElMessage } from 'element-plus'
 import { Lock, Key, Message, CircleCheck } from '@element-plus/icons-vue'
 import { useUIStore } from '../stores'
@@ -15,6 +16,7 @@ import SliderCaptcha from './SliderCaptcha.vue'
 
 const uiStore = useUIStore()
 const authStore = useAuthStore()
+const { isMobile } = storeToRefs(uiStore) // 弹窗宽度随平台（92vw 惯例）
 
 type Mode = 'login' | 'register' | 'forgot'
 const mode = ref<Mode>('login')
@@ -28,9 +30,36 @@ const form = reactive({
   mailCode: ''      // 邮箱验证码
 })
 
-// ===== 滑块人机验证（v-model 拿一次性 token；注册取码/忘记密码取码共用） =====
+// ===== 滑块人机验证（弹层内嵌：点「获取验证码」才弹出，通过即自动发码——主流交互） =====
 const sliderToken = ref<string | null>(null)
 const sliderRef = ref<InstanceType<typeof SliderCaptcha> | null>(null)
+const captchaVisible = ref(false)
+
+/**
+ * 取码入口：邮箱格式 + 注册形态的弱口令先本地把关（省得拖完滑块才被服务端预检打回），
+ * 通过后弹人机验证；滑块过关 → watch(token) 自动发码。
+ */
+const openCaptcha = () => {
+  if (!EMAIL_RE.test(form.email.trim().toLowerCase())) {
+    ElMessage.warning('请先输入正确的邮箱')
+    return
+  }
+  if (mode.value === 'register') {
+    const pwdCheck = validatePassword(form.password, form.email.trim().toLowerCase())
+    if (!pwdCheck.ok) { ElMessage.warning(pwdCheck.reason); return }
+  }
+  captchaVisible.value = true
+}
+
+// 滑块通过（token null → 有值）即自动发码；弹窗开着才触发（防 reset 时误发）
+watch(sliderToken, async (t) => {
+  if (t && captchaVisible.value) await sendMailCode()
+})
+
+// 弹窗关闭即换图清 token：无论发码成败（token 一次性已被消费），下次打开都是新挑战
+const onCaptchaClosed = () => {
+  void sliderRef.value?.reset()
+}
 
 /** 密码失焦弱口令即时提示（不阻断输入，提交时再把关） */
 const pwdHint = ref('')
@@ -88,10 +117,10 @@ const sendMailCode = async () => {
     startCountdown()
     // 防枚举统一文案（与服务端一致；无论邮箱是否注册都这么提示）
     ElMessage.success(mode.value === 'register' ? '验证码已发送，请查收邮箱' : '若该邮箱已注册，验证码已发送，请查收')
-    void sliderRef.value?.reset() // token 已被服务端消费，换新图备下次
+    captchaVisible.value = false // 关弹窗；滑块换图由 onCaptchaClosed 统一处理
   } catch (e) {
     ElMessage.error(e instanceof ApiError ? e.message : '发送失败，请稍后重试')
-    void sliderRef.value?.reset() // token 可能已被消费（预检在后），统一换新图
+    captchaVisible.value = false // 失败也关（弱口令/占用等需回表单修正，重点取码重来）
   } finally {
     sending.value = false
   }
@@ -252,10 +281,7 @@ const submitLabel = computed(() =>
             @keyup.enter="submit"
           />
 
-          <!-- 滑块人机验证（通过后自动持有一次性 token） -->
-          <SliderCaptcha ref="sliderRef" v-model="sliderToken" />
-
-          <!-- 邮箱验证码 -->
+          <!-- 邮箱验证码（点「获取验证码」弹人机验证，通过自动发码） -->
           <div class="mail-code-row">
             <el-input
               v-model="form.mailCode"
@@ -268,7 +294,7 @@ const submitLabel = computed(() =>
             <el-button
               :disabled="countdown > 0 || sending || loading"
               :loading="sending"
-              @click="sendMailCode"
+              @click="openCaptcha"
             >
               {{ countdown > 0 ? `${countdown}s 后重发` : '获取验证码' }}
             </el-button>
@@ -297,6 +323,20 @@ const submitLabel = computed(() =>
         未登录可继续作为游客在本机使用全部基础功能（数据仅存于本浏览器）。
       </div>
     </div>
+
+    <!-- 人机验证弹层（取码入口弹出；通过自动发码后自关） -->
+    <el-dialog
+      v-model="captchaVisible"
+      title="安全验证"
+      :width="isMobile ? '92vw' : '352px'"
+      append-to-body
+      @closed="onCaptchaClosed"
+    >
+      <div class="captcha-dialog">
+        <p class="captcha-tip">拖动滑块完成拼图验证，通过后将自动发送邮箱验证码</p>
+        <SliderCaptcha ref="sliderRef" v-model="sliderToken" />
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -436,6 +476,21 @@ const submitLabel = computed(() =>
 
 .mail-code-row .el-button {
   flex-shrink: 0;
+}
+
+/* 人机验证弹层：滑块固定 280px 居中，说明文案置顶弱化 */
+.captcha-dialog {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.captcha-tip {
+  margin: 0;
+  font-size: var(--font-xs);
+  color: var(--el-text-color-secondary);
+  text-align: center;
 }
 
 /* 文字链接（忘记密码 / 返回登录） */
