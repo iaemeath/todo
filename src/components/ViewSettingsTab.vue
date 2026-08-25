@@ -2,6 +2,7 @@
 import { Moon, Sunny } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
 import { useThemeStore, type Settings } from '../stores'
+import { hasDesktopBridge } from '../services/apiClient'
 
 const props = defineProps<{ form: Settings }>()
 
@@ -139,6 +140,25 @@ const onEndHourChange = (v: number | undefined) => {
           <span class="setting-desc">手机端日历工具条右侧的月视图切换按钮（默认隐藏）</span>
         </div>
         <el-switch v-model="form.showMonthButton" />
+      </div>
+    </el-card>
+
+    <!-- 提醒与桌面 -->
+    <el-card shadow="never" class="setting-card">
+      <template #header><span class="card-title">提醒与桌面</span></template>
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-name">日程开始时提醒</span>
+          <span class="setting-desc">日程开始的瞬间弹系统通知并闪烁任务栏，点击通知定位到该日程；仅桌面客户端生效（网页端不提醒）</span>
+        </div>
+        <el-switch v-model="form.remindEnabled" />
+      </div>
+      <div v-if="hasDesktopBridge" class="setting-row">
+        <div class="setting-info">
+          <span class="setting-name">关闭按钮驻留托盘</span>
+          <span class="setting-desc">点窗口 ✕ 收进托盘继续提醒，从托盘菜单退出才真正关闭；关闭本项则点 ✕ 直接退出</span>
+        </div>
+        <el-switch v-model="form.closeToTray" />
       </div>
     </el-card>
   </el-form>

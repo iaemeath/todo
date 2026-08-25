@@ -9,17 +9,23 @@ import { getToken } from './tokenStore'
 /**
  * API 基址：
  * - Web（http/https 部署）：同源相对路径 /api（nginx 反代）
- * - Electron（file:// 协议）：相对路径不可用，指向远程服务器；
- *   默认公网域名，可在数据管理页改（localStorage['shiguang_server_url']，支持 https）
+ * - Electron（file:// 协议）与 Capacitor 原生壳（https://localhost）：相对路径不可用，
+ *   指向远程服务器；默认公网域名，可在数据管理页改（localStorage['shiguang_server_url']，支持 https）
  */
-const DESKTOP_DEFAULT_URL = 'http://shiguang.rl.ylh.pub'
+const SHELL_DEFAULT_URL = 'http://shiguang.rl.ylh.pub'
 export const isDesktopShell = typeof window !== 'undefined' && window.location.protocol === 'file:'
+export const isNativeShell = typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.()
+/** 任意原生壳（Electron / Capacitor）：API 必须指向远程服务器而非同源相对路径 */
+export const isShellApp = isDesktopShell || isNativeShell
+/** Electron 桥在否（preload 注入即真）——桌面能力判断用这个而非 isDesktopShell：
+ *  dev 联调（ELECTRON_START_URL=http://localhost）下 protocol 是 http，但桥照样注入 */
+export const hasDesktopBridge = typeof window !== 'undefined' && !!window.shiguang
 
-/** Electron 壳当前指向的服务器地址（Web 同源部署用不到） */
+/** 原生壳（Electron / Capacitor）当前指向的服务器地址（Web 同源部署用不到） */
 export function getServerUrl(): string {
-  const u = (localStorage.getItem('shiguang_server_url') || DESKTOP_DEFAULT_URL)
+  const u = (localStorage.getItem('shiguang_server_url') || SHELL_DEFAULT_URL)
     .trim().replace(/\/+$/, '')
-  return u || DESKTOP_DEFAULT_URL
+  return u || SHELL_DEFAULT_URL
 }
 
 /** 切换服务器地址：立即生效（每次请求现取）。空串=恢复默认。token 不跨服务器迁移，换服务器需重新登录 */
@@ -29,7 +35,7 @@ export function setServerUrl(url: string): void {
   else localStorage.removeItem('shiguang_server_url')
 }
 
-const apiBase = () => (isDesktopShell ? getServerUrl() : '')
+const apiBase = () => (isShellApp ? getServerUrl() : '')
 
 export class ApiError extends Error {
   status: number

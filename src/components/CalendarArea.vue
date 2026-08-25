@@ -157,10 +157,18 @@ const { updateSchedule, addScheduleFromTask, addSchedule, deleteSchedule } = tas
 const { settings } = storeToRefs(useSettingsStore())
 const { isDark } = storeToRefs(useThemeStore())
 const uiStore = useUIStore()
-const { isMobile, todoVisible, navRailCollapsed } = storeToRefs(uiStore) // state
+const { isMobile, todoVisible, navRailCollapsed, gotoDateRequest } = storeToRefs(uiStore) // state
 const { setTodoVisible, setNavDrawerOpen, setNavRailCollapsed } = uiStore // action
 
 const fullCalendar = ref<InstanceType<typeof FullCalendar> | null>(null)
+
+// 提醒通知点击定位：消费 ui store 的跳转请求（gotoDate 保持当前视图类型平移），
+// 消费即清空；连续两次同日期请求由 ts 保证触发
+watch(gotoDateRequest, (req) => {
+  if (!req) return
+  fullCalendar.value?.getApi().gotoDate(req.date)
+  gotoDateRequest.value = null
+})
 let resizeObserver: ResizeObserver | null = null
 let wrapperEl: HTMLElement | null = null
 

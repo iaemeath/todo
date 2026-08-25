@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, watch, defineAsyncComponent } from 'vue'
+import { onMounted, onBeforeUnmount, watch, defineAsyncComponent } from 'vue'
 import AppSidebar from './components/AppSidebar.vue'
 import CalendarArea from './components/CalendarArea.vue'
 import TodoSidebar from './components/TodoSidebar.vue'
@@ -8,6 +8,7 @@ import { ElConfigProvider } from 'element-plus'
 import { useThemeStore, useUIStore } from './stores'
 import { useAuthStore } from './stores/auth'
 import { startSync, stopSync } from './services/syncManager'
+import { startReminders, stopReminders } from './services/reminderService'
 import { startVersionCheck } from './services/versionCheck'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 
@@ -32,6 +33,12 @@ onMounted(() => {
   void authStore.bootstrap()
   // Web 端新版本检测（桌面壳内部走 electron-updater，此调用自动跳过）
   startVersionCheck()
+  // 日程到点提醒（桌面壳内部启动调度器，网页端此调用无操作）
+  startReminders()
+})
+
+onBeforeUnmount(() => {
+  stopReminders()
 })
 
 // 登录态即同步开关：登录/启动 → startSync；登出/token 失效 → stopSync。

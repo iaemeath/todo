@@ -128,6 +128,14 @@ export const useUIStore = defineStore('ui', () => {
     void router.push(viewPath('settings', s))
   }
 
+  // 日历跳转请求（提醒通知点击定位用）：gotoDate 自带日历跳转 API，
+  // 但 CalendarArea 的 FC 实例与区间状态均为组件私有——以"请求-消费"模式桥接：
+  // 这里置请求，CalendarArea watch 到后跳转并清空，跨组件不持有 FC 引用
+  const gotoDateRequest = ref<{ date: string; ts: number } | null>(null)
+  const requestGotoDate = (date: string) => {
+    gotoDateRequest.value = { date, ts: Date.now() }
+  }
+
   // 登录/注册页：openAuth 记录来源视图，登录成功/返回时回到来源
   const authReturnView = ref<AppView>('home')
   const openAuth = () => {
@@ -152,6 +160,8 @@ export const useUIStore = defineStore('ui', () => {
     setNavDrawerOpen,
     navRailCollapsed,
     setNavRailCollapsed,
+    gotoDateRequest,
+    requestGotoDate,
     authReturnView,
     openAuth,
     closeAuth
