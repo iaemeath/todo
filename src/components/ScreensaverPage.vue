@@ -1,7 +1,7 @@
 <template>
   <div ref="pageEl" class="screensaver-page">
-    <!-- 工具条：hover 显现（hover 门控），触屏常显低透明度；全屏沉浸不打扰 -->
-    <div class="screensaver-toolbar">
+    <!-- 工具条：闲置 3s 淡出、任意指针活动唤出（屏保沉浸 + 全端可达，替代触屏常显/hover 门控双分支） -->
+    <div class="screensaver-toolbar" :class="{ 'is-idle': !toolbarVisible }">
       <button class="scv-btn" :title="isFullscreen ? '退出全屏' : '全屏'" @click="toggleFullscreen">
         <el-icon :size="18"><FullScreen /></el-icon>
       </button>
@@ -70,13 +70,55 @@ const onFsChange = () => {
   if (!isFullscreen.value) unlockOrientation()
 }
 
+// ===== 工具条闲置隐藏：无操作 3s 淡出，任意指针活动唤出并重新计时 =====
+// 触屏无 hover（常显会破坏沉浸）、鼠标 hover 门控可发现性为零——统一交互动线两端通吃。
+// 隐藏后 pointer-events: none：首次点击唤出、第二次才触发按钮（视频播放器同款惯例）
+const IDLE_HIDE_MS = 3000
+const toolbarVisible = ref(true)
+let idleTimer = 0
+let lastActivity = 0
+
+const scheduleIdleHide = () => {
+  toolbarVisible.value = true
+  window.clearTimeout(idleTimer)
+  idleTimer = window.setTimeout(() => {
+    toolbarVisible.value = false
+  }, IDLE_HIDE_MS)
+}
+
+// pointermove 高频（高刷鼠标可达 1000Hz）：100ms 节流，timer 重排开销归零
+const onPointerActivity = () => {
+  const now = performance.now()
+  if (now - lastActivity < 100) return
+  lastActivity = now
+  scheduleIdleHide()
+}
+
+const onVisForToolbar = () => {
+  if (document.hidden) window.clearTimeout(idleTimer)
+  else scheduleIdleHide()
+}
+
+onMounted(() => {
+  scheduleIdleHide()
+  window.addEventListener('pointermove', onPointerActivity, { passive: true })
+  window.addEventListener('pointerdown', onPointerActivity, { passive: true })
+  document.addEventListener('visibilitychange', onVisForToolbar)
+  document.addEventListener('fullscreenchange', onFsChange)
+})
+
+onUnmounted(() => {
+  window.clearTimeout(idleTimer)
+  window.removeEventListener('pointermove', onPointerActivity)
+  window.removeEventListener('pointerdown', onPointerActivity)
+  document.removeEventListener('visibilitychange', onVisForToolbar)
+  document.removeEventListener('fullscreenchange', onFsChange)
+})
+
 const toggleHour12 = () => {
   hour12.value = !hour12.value
   localStorage.setItem(LS_HOUR12, hour12.value ? '1' : '0')
 }
-
-onMounted(() => document.addEventListener('fullscreenchange', onFsChange))
-onUnmounted(() => document.removeEventListener('fullscreenchange', onFsChange))
 </script>
 
 <style scoped>
@@ -108,19 +150,13 @@ onUnmounted(() => document.removeEventListener('fullscreenchange', onFsChange))
   z-index: 1;
   display: flex;
   gap: var(--space-xs);
-  opacity: 0.45; /* 触屏无 hover，常显低透明度兜底 */
   transition: opacity var(--duration-base) ease;
 }
 
-/* 纯 hover 显现效果用 hover 门控，规避触屏 sticky-hover */
-@media (hover: hover) {
-  .screensaver-toolbar {
-    opacity: 0;
-  }
-
-  .screensaver-toolbar:hover {
-    opacity: 1;
-  }
+/* 闲置淡出：pointer-events 归零防误占位（首次点击唤出、第二次才触发按钮） */
+.screensaver-toolbar.is-idle {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .scv-btn {
