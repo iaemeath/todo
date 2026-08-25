@@ -161,7 +161,7 @@ export const sanitizeTasks = (list: Task[]): Task[] => {
   const valid = (list as unknown[]).filter((t): t is Task =>
     !!t && typeof t === 'object' &&
     typeof (t as Task).id === 'string' && (t as Task).id !== '' &&
-    typeof (t as Task).title === 'string'
+    typeof (t as Task).title === 'string' && (t as Task).title !== ''
   )
   const ids = new Set(valid.map((t) => t.id))
   // 孤儿任务（parentId 悬空）提升为顶级，否则会从任务管理树中消失却混进待办栏
@@ -181,10 +181,14 @@ export const sanitizeSchedules = (list: Schedule[]): Schedule[] => {
     TIME_RE.test(String((s as Schedule).startTime)) &&
     TIME_RE.test(String((s as Schedule).endTime))
   )
-  // 时间归一为 HH:mm（语音解析可能产出 "9:00" 这类未补零值）
+  // 时间归一为 HH:mm（语音解析可能产出 "9:00"/"9:7" 这类未补零值，分段补齐）
+  const normTime = (s: string) => {
+    const [h, m] = String(s).split(':')
+    return `${String(h).padStart(2, '0')}:${String(m ?? '0').padStart(2, '0')}`
+  }
   return valid.map((s) => ({
     ...s,
-    startTime: String(s.startTime).padStart(5, '0'),
-    endTime: String(s.endTime).padStart(5, '0')
+    startTime: normTime(s.startTime),
+    endTime: normTime(s.endTime)
   }))
 }

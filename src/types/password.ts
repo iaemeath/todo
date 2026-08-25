@@ -57,8 +57,7 @@ export function validatePassword(pwd: string, account = ''): PasswordCheck {
   if (WEAK_PASSWORDS.has(pwd.toLowerCase())) {
     return { ok: false, reason: '密码属于常见弱密码，请更换' }
   }
-  // 纯数字黑名单变体：任意 6+ 位纯数字一律拒（qwerty 类已由黑名单覆盖）
-  if (/^\d{6,}$/.test(pwd)) return { ok: false, reason: '纯数字密码容易被暴力破解，请加入字母' }
+  // 注：纯数字密码（≥8 位）已被上方"字母+数字"规则全量拦截，无需单列纯数字规则
 
   const prefix = account.split('@')[0]?.toLowerCase() || account.toLowerCase()
   if (prefix.length >= 3 && pwd.toLowerCase().includes(prefix)) {
