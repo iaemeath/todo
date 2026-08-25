@@ -1,12 +1,9 @@
 import { defineConfig } from 'vite'
-import { readFileSync } from 'node:fs'
 import vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
-
-// 构建时版本号注入（Web 端版本检查比对用，见 services/versionCheck.ts）
-const pkg = JSON.parse(readFileSync('package.json', 'utf8'))
+import { full } from './scripts/version.mjs'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -14,7 +11,9 @@ export default defineConfig({
   // web 部署在 nginx 站点根下相对引用同样成立，两种场景一份产物。
   base: './',
   define: {
-    __APP_VERSION__: JSON.stringify(pkg.version)
+    // 构建时版本号注入（Web 端版本检查比对用，见 services/versionCheck.ts）：
+    // 四位完整版本，与 write-version.mjs 落盘的 version.json.version 同源同值
+    __APP_VERSION__: JSON.stringify(full)
   },
   plugins: [
     vue(),

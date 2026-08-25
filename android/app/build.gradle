@@ -7,8 +7,10 @@ android {
         applicationId "pub.ylh.shiguang"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "0.1.0"
+        // 版本纪律见 scripts/version.mjs：versionName 对齐 package.json 三段语义版本；
+        // versionCode = 发版时 git rev-list --count HEAD（构建号第四位，只增不减）
+        versionCode 146
+        versionName "0.2.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
