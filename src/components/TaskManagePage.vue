@@ -142,7 +142,8 @@
 import { ref, computed } from 'vue'
 import Fuse from 'fuse.js'
 import { Plus, Search, Delete, Edit, Calendar } from '@element-plus/icons-vue'
-import { ElMessageBox, ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus'
+import { confirmAction } from '../utils/confirm'
 import { colorOptions, type EventColor } from '../constants/colors'
 import { todayLocal } from '../utils/dates'
 import { storeToRefs } from 'pinia'
@@ -307,17 +308,13 @@ const toggleComplete = (row: Task, value: any) => {
 
 // ---- Delete (cascade: children + schedules) ----
 const handleDelete = async (row: Task) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定删除「${row.title}」吗？其子任务和关联日程也会一并删除。`,
-      '删除任务',
-      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
-    )
-    deleteTask(row.id)
-    ElMessage.success('已删除')
-  } catch {
-    // cancelled
-  }
+  await confirmAction({
+    message: `确定删除「${row.title}」吗？其子任务和关联日程也会一并删除。`,
+    title: '删除任务',
+    confirmText: '删除',
+    action: () => deleteTask(row.id),
+    success: '已删除'
+  })
 }
 
 // ---- Schedule (排期，仅叶子任务) ----

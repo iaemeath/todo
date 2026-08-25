@@ -31,7 +31,7 @@
 import { ref, computed, watch } from 'vue'
 import { Mic, Loader2, Check, AlertCircle } from 'lucide-vue-next'
 import Fuse from 'fuse.js'
-import { ElMessageBox } from 'element-plus'
+import { confirmDialog } from '../utils/confirm'
 import { parseVoiceCommand, type VoiceIntent } from '../services/llmService'
 import { storeToRefs } from 'pinia'
 import { useTaskStore, useSettingsStore } from '../stores'
@@ -109,11 +109,11 @@ const executeIntent = async (intent: VoiceIntent): Promise<string> => {
   if (intent.action === 'delete') {
     const label = intent.target === 'todo' ? '待办' : '日程'
     const extra = intent.target === 'todo' ? '，其子任务和关联日程也会一并删除' : ''
-    const ok = await ElMessageBox.confirm(
+    const ok = await confirmDialog(
       `语音指令将删除${label}「${bestMatch.title}」${extra}，确定执行吗？`,
       '删除确认',
-      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
-    ).then(() => true).catch(() => false)
+      { confirmText: '删除' }
+    )
     if (!ok) throw new Error(CANCELLED)
     if (intent.target === 'todo') {
       deleteTask(bestMatch.id)
@@ -300,11 +300,11 @@ const initSpeechRecognition = () => {
       }
       if (settings.value.aiMode === 'local') {
         // 选本地模式可能就是不想联网，改用云端前先征求同意
-        const useCloud = await ElMessageBox.confirm(
+        const useCloud = await confirmDialog(
           '本地模型解析失败，是否改用云端 API 解析本次指令？',
           '切换云端解析',
-          { type: 'info', confirmButtonText: '用云端解析', cancelButtonText: '取消' }
-        ).then(() => true).catch(() => false)
+          { type: 'info', confirmText: '用云端解析' }
+        )
         if (!useCloud) {
           state.value = 'idle'
           toastMessage.value = ''

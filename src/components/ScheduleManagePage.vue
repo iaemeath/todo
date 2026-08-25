@@ -148,7 +148,8 @@
 import { ref, computed, onUnmounted } from 'vue'
 import Fuse from 'fuse.js'
 import { Plus, Search, Delete, Edit, Link } from '@element-plus/icons-vue'
-import { ElMessageBox, ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus'
+import { confirmAction } from '../utils/confirm'
 import { colorOptions, colorHex, colorLabel, type EventColor } from '../constants/colors'
 import { todayLocal } from '../utils/dates'
 import { storeToRefs } from 'pinia'
@@ -252,15 +253,13 @@ const saveForm = () => {
 
 // ---- Delete ----
 const handleDelete = async (row: Schedule) => {
-  try {
-    await ElMessageBox.confirm(`确定删除日程「${row.title}」吗？`, '删除日程', {
-      type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消'
-    })
-    deleteSchedule(row.id)
-    ElMessage.success('已删除')
-  } catch {
-    // cancelled
-  }
+  await confirmAction({
+    message: `确定删除日程「${row.title}」吗？`,
+    title: '删除日程',
+    confirmText: '删除',
+    action: () => deleteSchedule(row.id),
+    success: '已删除'
+  })
 }
 
 // ---- From-task create (从待办/叶子任务新增日程) ----

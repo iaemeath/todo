@@ -73,7 +73,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Plus, GripVertical, Trash2, X } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
-import { ElMessageBox } from 'element-plus'
+import { confirmAction } from '../utils/confirm'
 import { useTaskStore, useUIStore, type Task } from '../stores'
 import { Draggable } from '@fullcalendar/interaction'
 import draggable from 'vuedraggable'
@@ -107,16 +107,12 @@ const activeTodos = computed({
 
 // 删除待办：与管理页一致，先确认（避免移动端误触，级联删关联日程）
 const handleDelete = async (todo: Task) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定删除待办「${todo.title}」吗？其子任务和关联日程也会一并删除。`,
-      '删除待办',
-      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
-    )
-    deleteTask(todo.id)
-  } catch {
-    // cancelled
-  }
+  await confirmAction({
+    message: `确定删除待办「${todo.title}」吗？其子任务和关联日程也会一并删除。`,
+    title: '删除待办',
+    confirmText: '删除',
+    action: () => deleteTask(todo.id)
+  })
 }
 
 const handleCreateTodo = () => {

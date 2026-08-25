@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { Search, Delete, Download, CircleCheckFilled } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
+import { confirmAction } from '../utils/confirm'
 import { getAllModels, hasModelInCache, deleteModelCache as purgeModelCache, downloadModel } from '../services/webLlmManager'
 import { useSettingsStore, type Settings } from '../stores'
 
@@ -51,19 +52,20 @@ onMounted(() => { if (props.active) checkCaches() })
 
 const deleteModelCache = async (modelId: string) => {
   try {
-    await ElMessageBox.confirm(
-      `确定要从浏览器存储中彻底删除模型 [${modelId}] 的文件缓存吗？这可以释放大量磁盘空间。`,
-      '删除模型缓存',
-      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
-    )
-    await purgeModelCache(modelId)
-    downloadedModels.value[modelId] = false
-    ElMessage.success('模型缓存已删除')
-  } catch (action) {
-    if (action !== 'cancel' && action !== 'close') {
-      console.error(action)
-      ElMessage.error('删除失败，可能没有权限或被占用')
-    }
+    await confirmAction({
+      message: `确定要从浏览器存储中彻底删除模型 [${modelId}] 的文件缓存吗？这可以释放大量磁盘空间。`,
+      title: '删除模型缓存',
+      confirmText: '删除',
+      action: async () => {
+        await purgeModelCache(modelId)
+        downloadedModels.value[modelId] = false
+      },
+      success: '模型缓存已删除'
+    })
+  } catch (e) {
+    // 取消已被 confirmAction 消化，到这里必为真实执行错误
+    console.error(e)
+    ElMessage.error('删除失败，可能没有权限或被占用')
   }
 }
 

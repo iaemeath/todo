@@ -175,7 +175,8 @@
 import { computed, ref, reactive } from 'vue'
 import { Calendar, List, Clock, ArrowLeft, Menu, Timer, Lock, SwitchButton, Monitor, ChatDotRound, FolderOpened, QuestionFilled, User, AlarmClock } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
+import { confirmAction } from '../utils/confirm'
 import { useUIStore, type AppView, type SettingsSection } from '../stores'
 import { useAuthStore } from '../stores/auth'
 import { syncState } from '../services/syncManager'
@@ -207,18 +208,16 @@ const openLogin = () => {
 
 // 登出即清本机数据（账号隔离）：确认弹窗给出导出提示，防误退出丢本机未同步数据
 const handleLogout = async () => {
-  try {
-    await ElMessageBox.confirm(
-      '退出将清除本机的任务、日程与用量数据（云端数据不受影响，重新登录后会从云端恢复）。如需保留本机未同步的数据，请先到「设置 · 数据管理」导出备份。',
-      '退出登录',
-      { type: 'warning', confirmButtonText: '退出并清除', cancelButtonText: '取消' }
-    )
-  } catch {
-    return // 取消退出
-  }
-  authStore.logout()
-  setNavDrawerOpen(false)
-  ElMessage.success('已退出登录，本机数据已清除')
+  await confirmAction({
+    message: '退出将清除本机的任务、日程与用量数据（云端数据不受影响，重新登录后会从云端恢复）。如需保留本机未同步的数据，请先到「设置 · 数据管理」导出备份。',
+    title: '退出登录',
+    confirmText: '退出并清除',
+    action: () => {
+      authStore.logout()
+      setNavDrawerOpen(false)
+    },
+    success: '已退出登录，本机数据已清除'
+  })
 }
 
 // ===== 账号菜单：改密码（弹窗）/ 退出 =====

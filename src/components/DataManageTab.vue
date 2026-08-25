@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Download, Upload, FolderOpened, Refresh } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
+import { confirmAction } from '../utils/confirm'
 import { exportAllData, parseBundle, useUIStore } from '../stores'
 import { useAuthStore } from '../stores/auth'
 import { syncState, lastSyncAt, syncNow, restoreFromCloud, importBundle } from '../services/syncManager'
@@ -38,18 +39,16 @@ const handleSyncNow = async () => {
 }
 
 const handleRestoreCloud = async () => {
-  try {
-    await ElMessageBox.confirm(
-      '将用云端数据整体覆盖本机当前数据，覆盖后不可恢复；如本机有未同步的改动，请先导出备份。',
-      '从云端恢复',
-      { type: 'warning', confirmButtonText: '覆盖恢复', cancelButtonText: '取消' }
-    )
-  } catch {
-    return
-  }
-  const ok = await restoreFromCloud()
-  if (ok) ElMessage.success('已恢复云端数据')
-  else ElMessage.error('恢复失败（云端无数据或网络不可达）')
+  await confirmAction({
+    message: '将用云端数据整体覆盖本机当前数据，覆盖后不可恢复；如本机有未同步的改动，请先导出备份。',
+    title: '从云端恢复',
+    confirmText: '覆盖恢复',
+    action: async () => {
+      const ok = await restoreFromCloud()
+      if (ok) ElMessage.success('已恢复云端数据')
+      else ElMessage.error('恢复失败（云端无数据或网络不可达）')
+    }
+  })
 }
 
 // ---- Electron 壳：服务器地址配置（file:// 下 API 走绝对地址，此处可视化，替代 F12 改 localStorage）----
@@ -112,16 +111,16 @@ const handleFileChange = async (e: Event) => {
       ElMessage.error('备份文件格式不正确（缺少任务/日程数据）')
       return
     }
-    await ElMessageBox.confirm(
-      '导入将用备份文件覆盖当前的任务、日程、设置（含 API Key）与主题；备份中没有的任务/日程将被删除，用量记录仅合并不删除，此操作不可撤销。'
-      + (authStore.isLoggedIn ? '当前已登录：结果（含删除）会同步到该账号的其他设备。' : ''),
-      '导入数据',
-      { type: 'warning', confirmButtonText: '覆盖导入', cancelButtonText: '取消' }
-    )
-    importBundle(bundle)
-    ElMessage.success('数据已恢复')
+    await confirmAction({
+      message: '导入将用备份文件覆盖当前的任务、日程、设置（含 API Key）与主题；备份中没有的任务/日程将被删除，用量记录仅合并不删除，此操作不可撤销。'
+        + (authStore.isLoggedIn ? '当前已登录：结果（含删除）会同步到该账号的其他设备。' : ''),
+      title: '导入数据',
+      confirmText: '覆盖导入',
+      action: () => importBundle(bundle),
+      success: '数据已恢复'
+    })
   } catch {
-    // 用户取消确认弹窗
+    // 确认取消已被 confirmAction 消化；此处兜 importBundle 的意外异常
   } finally {
     input.value = '' // 复位以支持连续导入同一文件
   }

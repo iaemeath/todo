@@ -8,6 +8,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Refresh, Key, Delete, Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { confirmAction } from '../utils/confirm'
 import { api, ApiError } from '../services/apiClient'
 import { validatePassword } from '../types/password'
 import { useAuthStore } from '../stores/auth'
@@ -85,22 +86,20 @@ const resetPassword = async (u: AdminUser) => {
 
 /** 删除用户：级联删云端快照；本地优先架构下不影响对方浏览器中的数据 */
 const removeUser = async (u: AdminUser) => {
-  try {
-    await ElMessageBox.confirm(
-      `将删除用户「${u.email || u.username}」及其云端快照，不可恢复。对方浏览器中的本地数据不受影响，但将失去云同步。`,
-      '删除用户',
-      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
-    )
-  } catch {
-    return
-  }
-  try {
-    await api(`/admin/users/${u.id}`, { method: 'DELETE' })
-    ElMessage.success('用户已删除')
-    void load()
-  } catch (e) {
-    apiErr(e)
-  }
+  await confirmAction({
+    message: `将删除用户「${u.email || u.username}」及其云端快照，不可恢复。对方浏览器中的本地数据不受影响，但将失去云同步。`,
+    title: '删除用户',
+    confirmText: '删除',
+    action: async () => {
+      try {
+        await api(`/admin/users/${u.id}`, { method: 'DELETE' })
+        ElMessage.success('用户已删除')
+        void load()
+      } catch (e) {
+        apiErr(e)
+      }
+    }
+  })
 }
 </script>
 

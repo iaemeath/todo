@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Delete } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { confirmAction } from '../utils/confirm'
 import { storeToRefs } from 'pinia'
 import { useUsageStore } from '../stores'
 
@@ -18,15 +18,13 @@ const formatDate = (dateStr: string) => {
 }
 
 const handleClearHistory = async () => {
-  try {
-    await ElMessageBox.confirm('确定要清空所有 API 消耗记录吗？此操作不可撤销。', '清空记录', {
-      type: 'warning', confirmButtonText: '清空', cancelButtonText: '取消'
-    })
-    clearHistory()
-    ElMessage.success('消耗记录已清空')
-  } catch {
-    // cancelled
-  }
+  await confirmAction({
+    message: '确定要清空所有 API 消耗记录吗？此操作不可撤销。',
+    title: '清空记录',
+    confirmText: '清空',
+    action: () => clearHistory(),
+    success: '消耗记录已清空'
+  })
 }
 </script>
 
