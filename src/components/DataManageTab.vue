@@ -6,7 +6,7 @@ import { confirmAction } from '../utils/confirm'
 import { exportAllData, parseBundle, useUIStore } from '../stores'
 import { useAuthStore } from '../stores/auth'
 import { syncState, lastSyncAt, syncNow, restoreFromCloud, importBundle } from '../services/syncManager'
-import { isDesktopShell, getServerUrl, setServerUrl } from '../services/apiClient'
+import { isShellApp, getServerUrl, setServerUrl } from '../services/apiClient'
 
 const uiStore = useUIStore()
 const authStore = useAuthStore()
@@ -51,8 +51,8 @@ const handleRestoreCloud = async () => {
   })
 }
 
-// ---- Electron 壳：服务器地址配置（file:// 下 API 走绝对地址，此处可视化，替代 F12 改 localStorage）----
-const isDesktop = isDesktopShell
+// ---- 原生壳（Electron/Capacitor）：服务器地址配置（非同源加载，API 走绝对地址，此处可视化，替代 F12 改 localStorage）----
+const isDesktop = isShellApp
 const serverUrl = ref(isDesktop ? getServerUrl() : '')
 const serverWarn = computed(() =>
   !isDesktop || serverUrl.value.startsWith('https://')
