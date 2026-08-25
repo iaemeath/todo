@@ -1,5 +1,7 @@
 {
-  "name": "fullcalendar-todo",
+  "name": "shiguang",
+  "description": "拾光 — AI 驱动的日历待办应用，捡拾时光",
+  "author": "iaemeath <iaemeath@163.com>",
   "private": true,
   "version": "0.2.0",
   "type": "module",
