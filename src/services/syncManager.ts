@@ -212,6 +212,60 @@ interface PullRecord {
  * - usage：按 id upsert / {deleted:true} 移除
  * force=true（云端恢复）：整体替换，无视裁决。
  */
+// ===== 拉取合并：按集合拆分的应用器（applyRecords 只做编排与基线回写）=====
+// 应用器统一返回"是否对齐基线"：
+// - settings 本机脏：跳过赋值但仍对齐——下轮 diff 会发现本机值≠基线而推上去
+// - meta 本机脏：整条跳过（含基线）——等本机上行后自然对齐
+// 两种脏处理策略与拆分前行为逐一等价，勿"顺手统一"
+
+type TaskStore = ReturnType<typeof useTaskStore>
+type SettingsStore = ReturnType<typeof useSettingsStore>
+type ThemeStore = ReturnType<typeof useThemeStore>
+type UsageStore = ReturnType<typeof useUsageStore>
+type UIStore = ReturnType<typeof useUIStore>
+
+/** tasks：force 时攒入落地区（整轮后整体替换），否则走增量合并通道 */
+function applyTaskRecord(r: PullRecord, taskStore: TaskStore, forceSink: Task[] | null): boolean {
+  const t = r.data as Task
+  if (forceSink) forceSink.push(t)
+  else taskStore.upsertSyncedTask(t)
+  return true
+}
+
+function applyScheduleRecord(r: PullRecord, taskStore: TaskStore, forceSink: Schedule[] | null): boolean {
+  const s = r.data as Schedule
+  if (forceSink) forceSink.push(s)
+  else taskStore.upsertSyncedSchedule(s)
+  return true
+}
+
+function applySettingsRecord(
+  r: PullRecord, settingsStore: SettingsStore, dirty: Set<string>, key: string, force: boolean
+): boolean {
+  if (!dirty.has(key) || force) (settingsStore.settings as Record<string, unknown>)[r.id] = r.data
+  return true
+}
+
+function applyMetaRecord(
+  r: PullRecord, themeStore: ThemeStore, uiStore: UIStore, dirty: Set<string>, key: string, force: boolean
+): boolean {
+  if (dirty.has(key) && !force) return false
+  if (r.id === 'theme') themeStore.isDark = r.data === true
+  else if (r.id === 'todoVisible') uiStore.setTodoVisible(r.data === true)
+  return true
+}
+
+/** usage 追加型流水：墓碑按 id 移除，普通记录 upsert（已存在则忽略——对端旧版不回退本地） */
+function applyUsageRecord(r: PullRecord, usageStore: UsageStore): boolean {
+  const d = r.data as { deleted?: boolean }
+  if (d?.deleted) usageStore.usageHistory = usageStore.usageHistory.filter(u => u.id !== r.id)
+  else {
+    const u = r.data as UsageRecord
+    if (!usageStore.usageHistory.some(x => x.id === r.id)) usageStore.usageHistory = [u, ...usageStore.usageHistory]
+  }
+  return true
+}
+
 function applyRecords(records: PullRecord[], force: boolean): void {
   const taskStore = useTaskStore()
   const settingsStore = useSettingsStore()
@@ -225,30 +279,14 @@ function applyRecords(records: PullRecord[], force: boolean): void {
 
   for (const r of records) {
     const key = recKey(r.c, r.id)
-    if (r.c === 'tasks') {
-      const t = r.data as Task
-      if (force) forceTasks.push(t)
-      else taskStore.upsertSyncedTask(t)
-    } else if (r.c === 'schedules') {
-      const s = r.data as Schedule
-      if (force) forceSchedules.push(s)
-      else taskStore.upsertSyncedSchedule(s)
-    } else if (r.c === 'settings') {
-      if (!dirty.has(key) || force) (settingsStore.settings as Record<string, unknown>)[r.id] = r.data
-    } else if (r.c === 'meta') {
-      if (dirty.has(key) && !force) continue
-      if (r.id === 'theme') themeStore.isDark = r.data === true
-      else if (r.id === 'todoVisible') uiStore.setTodoVisible(r.data === true)
-    } else if (r.c === 'usage') {
-      const d = r.data as { deleted?: boolean }
-      if (d?.deleted) usageStore.usageHistory = usageStore.usageHistory.filter(u => u.id !== r.id)
-      else {
-        const u = r.data as UsageRecord
-        if (!usageStore.usageHistory.some(x => x.id === r.id)) usageStore.usageHistory = [u, ...usageStore.usageHistory]
-      }
-    }
-    // 基线对齐：已应用的记录进入基线（避免下轮 diff 误判为本机变更）
-    lastSyncedMap.set(key, { json: ser(r.data), rev: r.rev })
+    let align = true
+    if (r.c === 'tasks') align = applyTaskRecord(r, taskStore, force ? forceTasks : null)
+    else if (r.c === 'schedules') align = applyScheduleRecord(r, taskStore, force ? forceSchedules : null)
+    else if (r.c === 'settings') align = applySettingsRecord(r, settingsStore, dirty, key, force)
+    else if (r.c === 'meta') align = applyMetaRecord(r, themeStore, uiStore, dirty, key, force)
+    else if (r.c === 'usage') align = applyUsageRecord(r, usageStore)
+    // 基线对齐：已应用的记录进入基线（避免下轮 diff 误判为本机变更；meta 脏跳过除外）
+    if (align) lastSyncedMap.set(key, { json: ser(r.data), rev: r.rev })
   }
 
   if (force) {
