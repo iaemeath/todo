@@ -104,11 +104,24 @@ html.platform-mobile .settings-page {
   font-size: var(--font-base);
 }
 
+/* 移动端：纵向排——说明文字全宽、控件/按钮组独占下一行。
+   横排时长文案会被 flex-shrink:0 的按钮组挤成窄条断成近十行（数据管理云同步实测） */
 .setting-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
   padding: var(--space-xs) 0;
+}
+
+/* 桌面增强：说明左、控件右的横排（原始形态） */
+@media (width >= 769px) {
+  .setting-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0;
+  }
 }
 
 .setting-info {
