@@ -68,6 +68,10 @@ export interface Settings {
   mobileMaxRangeDays: number
   /** 手机端是否显示「月」视图按钮（网页端常驻） */
   showMonthButton: boolean
+  /** 日程开始时提醒（全局开关，桌面客户端到点弹系统通知；仅 Electron 生效） */
+  remindEnabled: boolean
+  /** 桌面客户端关闭按钮驻留托盘（默认收进托盘，托盘菜单才真退出；仅 Electron 生效） */
+  closeToTray: boolean
 }
 
 export const defaultSettings: Settings = {
@@ -91,7 +95,9 @@ export const defaultSettings: Settings = {
   nowIndicatorHeight: 2,
   webMaxRangeDays: 14,
   mobileMaxRangeDays: 7,
-  showMonthButton: true
+  showMonthButton: true,
+  remindEnabled: true,
+  closeToTray: true
 }
 
 // ===== Usage =====
