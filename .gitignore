@@ -45,6 +45,7 @@ server/data/
 
 # electron-builder 打包产物
 release/
+release2/
 
 # mem 记忆插件本地状态（高频变动，不入库）
 .claude/.plugin_claude_mem_lite_state.json
