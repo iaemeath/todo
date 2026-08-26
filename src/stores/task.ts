@@ -40,13 +40,13 @@ export const useTaskStore = defineStore('task', () => {
 
   const seedInitialData = () => {
     const seedTasks: Task[] = [
-      { id: 'todo-1', parentId: null, title: '探索玻璃拟态设计规范', description: '研究高颜值暗黑太空玻璃拟物化设计准则', category: 'work', priority: 'high', completed: false, order: 0 },
-      { id: 'todo-2', parentId: null, title: '日程系统测试', description: '验证基于 Canvas 的拖动与拉伸调度交互', category: 'ideas', priority: 'medium', completed: false, order: 1 },
-      { id: 'todo-3', parentId: null, title: '傍晚去健身房锻炼', description: '做有氧和力量训练，保持健康状态', category: 'fitness', priority: 'low', completed: false, order: 2 },
-      { id: 'todo-4', parentId: null, title: '超市采购食材', description: '买一些鸡蛋、牛奶、蔬菜和鸡胸肉', category: 'shopping', priority: 'low', completed: false, order: 3 },
-      { id: 'todo-5', parentId: null, title: '重构数据模型', description: '任务树 + 独立日程', category: 'work', priority: 'high', completed: false, order: 4 },
-      { id: 'todo-6', parentId: 'todo-5', title: '设计任务树结构', description: '', category: 'work', priority: 'high', completed: false, order: 0 },
-      { id: 'todo-7', parentId: 'todo-5', title: '编写单元测试', description: '', category: 'work', priority: 'medium', completed: false, order: 1 }
+      { id: 'todo-1', parentId: null, title: '探索玻璃拟态设计规范', description: '研究高颜值暗黑太空玻璃拟物化设计准则', category: 'work', important: false, urgent: false, completed: false, order: 0 },
+      { id: 'todo-2', parentId: null, title: '日程系统测试', description: '验证基于 Canvas 的拖动与拉伸调度交互', category: 'ideas', important: true, urgent: true, completed: false, order: 1 },
+      { id: 'todo-3', parentId: null, title: '傍晚去健身房锻炼', description: '做有氧和力量训练，保持健康状态', category: 'fitness', important: true, urgent: false, completed: false, order: 2 },
+      { id: 'todo-4', parentId: null, title: '超市采购食材', description: '买一些鸡蛋、牛奶、蔬菜和鸡胸肉', category: 'shopping', important: false, urgent: true, completed: false, order: 3 },
+      { id: 'todo-5', parentId: null, title: '重构数据模型', description: '任务树 + 独立日程', category: 'work', important: true, urgent: false, completed: false, order: 4 },
+      { id: 'todo-6', parentId: 'todo-5', title: '设计任务树结构', description: '', category: 'work', important: true, urgent: false, completed: false, order: 0 },
+      { id: 'todo-7', parentId: 'todo-5', title: '编写单元测试', description: '', category: 'work', important: false, urgent: false, completed: false, order: 1 }
     ]
 
     const todayStr = getTodayDateStr(0)
@@ -195,7 +195,8 @@ export const useTaskStore = defineStore('task', () => {
       title: data.title,
       description: data.description,
       category: data.category,
-      priority: data.priority,
+      important: data.important,
+      urgent: data.urgent,
       completed: false,
       order: siblings.length
     }

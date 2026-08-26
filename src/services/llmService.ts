@@ -12,6 +12,8 @@ export interface VoicePayload {
   endTime?: string      // HH:MM
   color?: string        // EventColor key（violet/blue/...）
   todoText?: string
+  important?: boolean   // 仅 add todo：四象限「重要」轴
+  urgent?: boolean      // 仅 add todo：四象限「紧急」轴
 }
 
 export interface VoiceIntent {
@@ -67,7 +69,9 @@ export async function parseVoiceCommand(text: string, forceCloud: boolean = fals
     "startTime": "HH:MM (24小时制, 仅 add 或 edit event 时需要)",
     "endTime": "HH:MM (24小时制，如果没有指明结束时间，默认时长1小时, 仅 add 或 edit event 时需要)",
     "color": "从 ${EVENT_COLOR_KEYS} 中选择一个符合氛围的颜色 (仅 add 或 edit event 时需要)",
-    "todoText": "待办事项的具体内容 (仅 add 或 edit todo 时需要)"
+    "todoText": "待办事项的具体内容 (仅 add 或 edit todo 时需要)",
+    "important": "true/false (仅 add todo 时需要: 用户语义表达这件事重要，如'这很重要'、'关键的'，则为 true，否则 false)",
+    "urgent": "true/false (仅 add todo 时需要: 用户语义表达紧急，如'赶紧'、'马上'、'今天必须'，则为 true，否则 false)"
   }
 }
 

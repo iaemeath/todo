@@ -18,11 +18,25 @@
           <span class="view-tab-label">{{ opt.label }}</span>
         </button>
       </div>
+      <!-- 布局切换：树（层级表格）/ 矩阵（四象限看板），与 未完成/已完成 正交 -->
+      <div class="view-tabs">
+        <span class="view-tab-indicator" :class="{ right: layoutMode === 'matrix' }"></span>
+        <button
+          v-for="opt in layoutOptions"
+          :key="opt.value"
+          class="view-tab"
+          :class="{ active: layoutMode === opt.value }"
+          @click="layoutMode = opt.value"
+        >
+          <span class="view-tab-label">{{ opt.label }}</span>
+        </button>
+      </div>
       <el-button type="primary" :icon="Plus" @click="openCreateDialog()"><span v-if="!isMobile">新增任务</span></el-button>
     </div>
 
     <!-- Table (tree) -->
     <el-table
+      v-if="layoutMode === 'tree'"
       :data="displayData"
       row-key="id"
       :tree-props="{ children: 'children' }"
@@ -53,9 +67,9 @@
           <el-tag size="small" :type="categoryTagType(row.category)">{{ categoryLabel(row.category) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="优先级" width="90">
+      <el-table-column label="象限" width="110">
         <template #default="{ row }">
-          <el-tag size="small" :type="priorityTagType(row.priority)" effect="plain">{{ priorityLabel(row.priority) }}</el-tag>
+          <el-tag size="small" :type="quadrantMeta(quadrantOf(row)).tagType" effect="plain">{{ quadrantMeta(quadrantOf(row)).label }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="操作" :width="isMobile ? 124 : 240" fixed="right">
@@ -70,6 +84,43 @@
       </el-table-column>
     </el-table>
 
+    <!-- Matrix view（四象限看板）：跨面板拖拽 = 改重要/紧急两轴，点击卡片 = 编辑 -->
+    <div v-if="layoutMode === 'matrix'" class="matrix-view">
+      <div v-for="q in QUADRANTS" :key="q.key" class="quadrant-panel">
+        <div class="quadrant-panel-header">
+          <span class="color-dot" :style="{ background: q.color }"></span>
+          <span class="quadrant-panel-title">{{ q.label }}</span>
+          <span class="quadrant-count">{{ quadrantLists[q.key].length }}</span>
+        </div>
+        <draggable
+          :list="quadrantLists[q.key]"
+          item-key="id"
+          group="quadrants"
+          class="quadrant-list"
+          ghost-class="matrix-ghost"
+          :animation="200"
+          :delay="200"
+          delay-on-touch-only
+          @end="reconcileMatrixDrop"
+        >
+          <template #item="{ element }">
+            <div class="matrix-card" :class="{ 'is-done': element.completed }" @click="openEditDialog(element as Task)">
+              <el-checkbox
+                :model-value="element.completed"
+                @change="toggleComplete(element as Task, $event)"
+                @click.stop
+              />
+              <span class="matrix-card-title">{{ element.title }}</span>
+              <el-tag size="small" :type="categoryTagType(element.category)" effect="plain">{{ categoryLabel(element.category) }}</el-tag>
+            </div>
+          </template>
+          <template #header v-if="quadrantLists[q.key].length === 0">
+            <p class="matrix-empty">暂无任务</p>
+          </template>
+        </draggable>
+      </div>
+    </div>
+
     <!-- Create / Edit dialog -->
     <el-dialog v-model="formDialogVisible" :title="dialogTitle" :width="isMobile ? '92vw' : '480px'" destroy-on-close>
       <el-form label-position="top">
@@ -79,22 +130,27 @@
         <el-form-item label="描述">
           <el-input v-model="form.description" type="textarea" :rows="3" placeholder="可选描述" />
         </el-form-item>
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="分类">
-              <el-select v-model="form.category" style="width: 100%;">
-                <el-option v-for="c in categoryOptions" :key="c.value" :label="c.label" :value="c.value" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="优先级">
-              <el-select v-model="form.priority" style="width: 100%;">
-                <el-option v-for="p in priorityOptions" :key="p.value" :label="p.label" :value="p.value" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <el-form-item label="分类">
+          <el-select v-model="form.category" style="width: 100%;">
+            <el-option v-for="c in categoryOptions" :key="c.value" :label="c.label" :value="c.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="象限（重要 × 紧急）">
+          <div class="quadrant-picker">
+            <button
+              v-for="q in QUADRANTS"
+              :key="q.key"
+              type="button"
+              class="quadrant-option"
+              :class="{ active: form.quadrant === q.key }"
+              :style="form.quadrant === q.key ? { borderColor: q.color } : undefined"
+              @click="form.quadrant = q.key"
+            >
+              <span class="color-dot" :style="{ background: q.color }"></span>
+              <span>{{ q.label }}</span>
+            </button>
+          </div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="formDialogVisible = false">取消</el-button>
@@ -139,12 +195,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import Fuse from 'fuse.js'
 import { Plus, Search, Delete, Edit, Calendar } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import draggable from 'vuedraggable'
 import { confirmAction } from '../utils/confirm'
 import { colorOptions, type EventColor } from '../constants/colors'
+import { QUADRANTS, quadrantOf, quadrantAxes, quadrantMeta, type QuadrantKey } from '../constants/quadrant'
 import { todayLocal } from '../utils/dates'
 import { storeToRefs } from 'pinia'
 import { useTaskStore, useUIStore, type Task } from '../stores'
@@ -168,7 +226,6 @@ const {
 
 // ---- Options ----
 type Category = 'work' | 'personal' | 'fitness' | 'ideas' | 'shopping' | 'other'
-type Priority = 'high' | 'medium' | 'low'
 
 const categoryOptions: { value: Category; label: string }[] = [
   { value: 'work', label: '工作' },
@@ -178,21 +235,11 @@ const categoryOptions: { value: Category; label: string }[] = [
   { value: 'shopping', label: '购物' },
   { value: 'other', label: '其他' }
 ]
-const priorityOptions: { value: Priority; label: string }[] = [
-  { value: 'high', label: '高' },
-  { value: 'medium', label: '中' },
-  { value: 'low', label: '低' }
-]
 
 const categoryLabel = (v: string) => categoryOptions.find(c => c.value === v)?.label ?? v
-const priorityLabel = (v: string) => priorityOptions.find(p => p.value === v)?.label ?? v
 const categoryTagType = (v: string) => {
   const map: Record<string, string> = { work: 'primary', personal: 'danger', fitness: 'success', ideas: 'warning', shopping: 'warning', other: 'info' }
   return (map[v] || 'info') as 'primary' | 'danger' | 'success' | 'warning' | 'info'
-}
-const priorityTagType = (v: string) => {
-  const map: Record<string, string> = { high: 'danger', medium: 'warning', low: 'info' }
-  return (map[v] || 'info') as 'danger' | 'warning' | 'info'
 }
 const levelTagType = (level: number) => {
   const map: Record<number, string> = { 1: 'primary', 2: 'warning', 3: 'info' }
@@ -208,6 +255,15 @@ const viewMode = ref<ViewMode>('active')
 const viewOptions = computed<{ value: ViewMode; label: string }[]>(() => [
   { value: 'active', label: '未完成' },
   { value: 'done', label: '已完成' }
+])
+
+// ---- Layout mode：树（层级表格）/ 矩阵（四象限看板）----
+type LayoutMode = 'tree' | 'matrix'
+const layoutMode = ref<LayoutMode>('tree')
+
+const layoutOptions = computed<{ value: LayoutMode; label: string }[]>(() => [
+  { value: 'tree', label: '树' },
+  { value: 'matrix', label: '矩阵' }
 ])
 
 const searchQuery = ref('')
@@ -257,11 +313,43 @@ const taskTree = computed<TaskNode[]>(() => {
 
 const displayData = computed(() => (hasFilter.value ? filteredFlat.value : taskTree.value))
 
+// ---- Matrix view（四象限看板） ----
+// vuedraggable 的 :list 需要可变数组（拖拽时原地 splice），store 派生列表不能直接喂；
+// 用本地镜像 + watcher 对齐 store，拖拽结束后 reconcileMatrixDrop 把落点象限写回
+const quadrantLists = reactive<Record<QuadrantKey, Task[]>>(
+  { q1: [], q2: [], q3: [], q4: [] }
+)
+
+// 矩阵数据源 = 当前视图可见任务的扁平集（沿用 未完成/已完成 + 搜索/分类筛选）
+const matrixSource = computed(() => (hasFilter.value ? filteredFlat.value : visibleTasks.value))
+
+const syncMatrixLists = () => {
+  const byKey: Record<QuadrantKey, Task[]> = { q1: [], q2: [], q3: [], q4: [] }
+  for (const t of matrixSource.value) byKey[quadrantOf(t)].push(t)
+  for (const q of QUADRANTS) quadrantLists[q.key] = byKey[q.key]
+}
+watch(matrixSource, syncMatrixLists, { immediate: true })
+
+// 拖拽结算：以四块本地列表的最终归属为准，凡与 store 两轴不一致的写回
+// （跨面板拖 = 改象限；面板内顺序调整不落库，展示顺序始终以 store 的 order 为准）
+const reconcileMatrixDrop = () => {
+  for (const q of QUADRANTS) {
+    const axes = quadrantAxes(q.key)
+    for (const t of quadrantLists[q.key]) {
+      if (!!t.important !== axes.important || !!t.urgent !== axes.urgent) {
+        updateTask(t.id, axes)
+      }
+    }
+  }
+  syncMatrixLists()
+}
+
 // ---- Create / Edit ----
 const formDialogVisible = ref(false)
 const editingId = ref<string | null>(null)
 const formParent = ref<Task | null>(null) // 非空 = 新建子任务
-const form = ref({ title: '', description: '', category: 'other' as Category, priority: 'medium' as Priority })
+// 象限在表单里以单值 key 编辑（四宫格选择），提交时解回两轴（避免 quadrant 混入 Task）
+const form = ref({ title: '', description: '', category: 'other' as Category, quadrant: 'q4' as QuadrantKey })
 
 const dialogTitle = computed(() => {
   if (editingId.value) return '编辑任务'
@@ -272,14 +360,14 @@ const dialogTitle = computed(() => {
 const openCreateDialog = (parent?: Task) => {
   editingId.value = null
   formParent.value = parent ?? null
-  form.value = { title: '', description: '', category: 'other', priority: 'medium' }
+  form.value = { title: '', description: '', category: 'other', quadrant: 'q4' }
   formDialogVisible.value = true
 }
 
 const openEditDialog = (row: Task) => {
   editingId.value = row.id
   formParent.value = null
-  form.value = { title: row.title, description: row.description, category: row.category as Category, priority: row.priority as Priority }
+  form.value = { title: row.title, description: row.description, category: row.category as Category, quadrant: quadrantOf(row) }
   formDialogVisible.value = true
 }
 
@@ -288,14 +376,16 @@ const saveForm = () => {
     ElMessage.warning('标题不能为空')
     return
   }
+  const { title, description, category, quadrant } = form.value
+  const data = { title, description, category, ...quadrantAxes(quadrant) }
   if (editingId.value) {
-    updateTask(editingId.value, { ...form.value })
+    updateTask(editingId.value, data)
     ElMessage.success('已更新')
   } else if (formParent.value) {
-    addChildTask(formParent.value.id, { ...form.value })
+    addChildTask(formParent.value.id, data)
     ElMessage.success('已新增子任务')
   } else {
-    addTask({ ...form.value })
+    addTask(data)
     ElMessage.success('已新增')
   }
   formDialogVisible.value = false
@@ -395,6 +485,7 @@ html.platform-mobile .manage-page {
   display: flex;
   align-items: center;
   gap: var(--space-lg);
+  flex-wrap: wrap; /* 移动端控件多（两组胶囊），放不下时折行而非溢出 */
   flex-shrink: 0;
 }
 
@@ -469,6 +560,165 @@ html.platform-mobile .manage-page {
 
 .text-secondary {
   color: var(--el-text-color-secondary);
+}
+
+/* 象限四宫格选择器（新增/编辑 dialog）：选中态描边用象限色（内联绑定），底色走主题 */
+.quadrant-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.quadrant-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  border: 1px solid var(--el-border-color);
+  border-radius: var(--radius-md);
+  background: var(--el-bg-color-page);
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.quadrant-option:hover {
+  border-color: var(--color-primary-alpha);
+}
+
+.quadrant-option.active {
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+  background: var(--el-color-primary-light-9);
+}
+
+/* 矩阵视图：四象限面板（移动端单列，桌面 2×2） */
+.matrix-view {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-md);
+  align-content: start;
+}
+
+/* 桌面：矩阵占满剩余高度，象限列表各自内部滚动（页面不滚）。
+   移动端保持整页滚动——竖排四面板若各自内滚，每块仅 1/4 屏高过分局促 */
+@media (width >= 769px) {
+  .matrix-view {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .quadrant-panel {
+    min-height: 0; /* 覆盖空面板 120px 落点高度，改为由列表的 48px 兜底 */
+    overflow: hidden;
+  }
+
+  .quadrant-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
+
+.quadrant-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-height: 120px; /* 空面板也保留拖拽落点 */
+  padding: var(--space-md);
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: var(--radius-lg);
+  /* 面板比页面底（--el-bg-color-page）亮一档：浅色=纯白、深色=微抬升；
+     卡片保持 --bg-card 灰调，与面板形成层次 */
+  background: var(--el-bg-color);
+}
+
+.quadrant-panel-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.quadrant-panel-title {
+  font-size: var(--font-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.quadrant-count {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  background: var(--el-fill-color);
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quadrant-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-height: 48px;
+}
+
+.matrix-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.matrix-card:hover {
+  border-color: var(--color-primary-alpha);
+}
+
+.matrix-card-title {
+  flex: 1;
+  font-size: var(--font-sm);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.matrix-card.is-done .matrix-card-title {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.quadrant-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.quadrant-list::-webkit-scrollbar-thumb {
+  background: var(--border-glass-subtle);
+  border-radius: 4px; /* stylelint-disable-line declaration-property-value-disallowed-list -- 滚动条微调特例 */
+}
+
+.matrix-empty {
+  margin: 0;
+  padding: var(--space-sm) 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+
+.matrix-view :deep(.matrix-ghost) {
+  opacity: 0.4;
 }
 
 .color-dot {

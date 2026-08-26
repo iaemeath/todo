@@ -65,7 +65,8 @@ const executeIntent = async (intent: VoiceIntent): Promise<string> => {
         title: payload.todoText || '新待办',
         description: '',
         category: 'ideas',
-        priority: 'medium'
+        important: payload.important === true,
+        urgent: payload.urgent === true
       })
       return '已成功添加待办：' + (payload.todoText || '新待办')
     } else {

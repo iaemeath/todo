@@ -50,9 +50,9 @@ test('parseBundle 保留合法自定义字段', () => {
 
 test('sanitizeTasks 过滤无 id/无 title 的条目', () => {
   const out = sanitizeTasks([
-    { id: 'a', parentId: null, title: 'ok', description: '', category: 'work', priority: 'high', completed: false, order: 0 },
-    { id: '', parentId: null, title: '空 id', description: '', category: 'work', priority: 'high', completed: false, order: 1 },
-    { id: 'b', parentId: null, title: '', description: '', category: 'work', priority: 'high', completed: false, order: 2 },
+    { id: 'a', parentId: null, title: 'ok', description: '', category: 'work', important: true, urgent: true, completed: false, order: 0 },
+    { id: '', parentId: null, title: '空 id', description: '', category: 'work', important: true, urgent: true, completed: false, order: 1 },
+    { id: 'b', parentId: null, title: '', description: '', category: 'work', important: true, urgent: true, completed: false, order: 2 },
     null as never
   ])
   assert.equal(out.length, 1)
@@ -61,12 +61,23 @@ test('sanitizeTasks 过滤无 id/无 title 的条目', () => {
 
 test('sanitizeTasks 把孤儿任务（parentId 悬空）提升为顶级', () => {
   const out = sanitizeTasks([
-    { id: 'p', parentId: null, title: '父', description: '', category: 'work', priority: 'high', completed: false, order: 0 },
-    { id: 'c1', parentId: 'p', title: '正常子', description: '', category: 'work', priority: 'high', completed: false, order: 0 },
-    { id: 'c2', parentId: 'ghost', title: '孤儿', description: '', category: 'work', priority: 'high', completed: false, order: 1 }
+    { id: 'p', parentId: null, title: '父', description: '', category: 'work', important: true, urgent: true, completed: false, order: 0 },
+    { id: 'c1', parentId: 'p', title: '正常子', description: '', category: 'work', important: true, urgent: true, completed: false, order: 0 },
+    { id: 'c2', parentId: 'ghost', title: '孤儿', description: '', category: 'work', important: true, urgent: true, completed: false, order: 1 }
   ])
   assert.equal(out.find(t => t.id === 'c1')!.parentId, 'p')
   assert.equal(out.find(t => t.id === 'c2')!.parentId, null) // ghost 不存在 → 顶级
+})
+
+test('sanitizeTasks 把象限两轴归一为布尔（旧数据缺字段按 false）', () => {
+  const out = sanitizeTasks([
+    { id: 'a', parentId: null, title: '旧格式', description: '', category: 'work', completed: false, order: 0 } as never,
+    { id: 'b', parentId: null, title: '脏数据', description: '', category: 'work', important: 'yes', urgent: 1, completed: false, order: 1 } as never
+  ])
+  assert.equal(out[0].important, false) // 缺字段 → false
+  assert.equal(out[0].urgent, false)
+  assert.equal(out[1].important, false) // 非 true 字面量 → false
+  assert.equal(out[1].urgent, false)
 })
 
 // ---- sanitizeSchedules：格式校验 + 时间补零 ----

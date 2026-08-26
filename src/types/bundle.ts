@@ -16,7 +16,9 @@ export interface Task {
   title: string
   description: string
   category: string // work, personal, fitness, ideas, shopping, other
-  priority: string // high, medium, low
+  /** 四象限两轴（艾森豪威尔矩阵）：重要/紧急各自独立标记 */
+  important: boolean
+  urgent: boolean
   completed: boolean
   order: number // 同级排序
   /** 记录级同步：修订时间（毫秒）——LWW 裁决依据，本地增改时自动打 */
@@ -170,9 +172,12 @@ export const sanitizeTasks = (list: Task[]): Task[] => {
     typeof (t as Task).title === 'string' && (t as Task).title !== ''
   )
   const ids = new Set(valid.map((t) => t.id))
-  // 孤儿任务（parentId 悬空）提升为顶级，否则会从任务管理树中消失却混进待办栏
+  // 孤儿任务（parentId 悬空）提升为顶级，否则会从任务管理树中消失却混进待办栏；
+  // 象限两轴布尔归一（旧数据/手改 JSON 缺字段按 false → 不重要不紧急）
   return valid.map((t) => ({
     ...t,
+    important: t.important === true,
+    urgent: t.urgent === true,
     parentId: t.parentId && ids.has(t.parentId) ? t.parentId : null
   }))
 }

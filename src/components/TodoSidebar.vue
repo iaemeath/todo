@@ -35,7 +35,7 @@
       :animation="200"
     >
       <template #item="{ element: todo }">
-        <div class="todo-item glass-card">
+        <div class="todo-item glass-card" :class="'todo-' + quadrantOf(todo)">
           <!-- SortableJS Handle -->
           <div class="drag-handle" title="上下拖拽排序">
             <GripVertical class="icon-sm" />
@@ -75,6 +75,7 @@ import { Plus, GripVertical, Trash2, X } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 import { confirmAction } from '../utils/confirm'
 import { useTaskStore, useUIStore, type Task } from '../stores'
+import { quadrantOf } from '../constants/quadrant'
 import { Draggable } from '@fullcalendar/interaction'
 import draggable from 'vuedraggable'
 
@@ -121,7 +122,8 @@ const handleCreateTodo = () => {
     title: newTodoTitle.value.trim(),
     description: '',
     category: 'other',
-    priority: 'medium'
+    important: false,
+    urgent: false
   })
   newTodoTitle.value = ''
 }
@@ -371,6 +373,19 @@ html.platform-mobile .todo-sidebar {
 
 .todo-item:active {
   cursor: grabbing;
+}
+
+/* 象限色条（左缘）：Q1 红 / Q2 蓝 / Q3 黄；Q4 不重要不紧急保持原样 */
+.todo-q1 {
+  border-left: 3px solid var(--el-color-danger);
+}
+
+.todo-q2 {
+  border-left: 3px solid var(--color-primary);
+}
+
+.todo-q3 {
+  border-left: 3px solid var(--el-color-warning);
 }
 
 .drag-handle {
