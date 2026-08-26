@@ -167,7 +167,7 @@ onMounted(async () => {
 }
 
 /* 移动端：下载卡纵排 */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .download-grid {
     grid-template-columns: 1fr;
   }
@@ -200,6 +200,7 @@ onMounted(async () => {
   font-size: var(--font-xs);
   line-height: 1.6;
   color: var(--el-text-color-secondary);
+
   /* 占满卡宽（flex 子项默认收缩为内容宽，会让长文案提前换行、三卡宽度不一）；
      不用 flex:1（会把无按钮卡的剩余空间全吃掉，desc 高度失控）；
      统一两行最小高——文案一行/两行时按钮基线仍对齐 */

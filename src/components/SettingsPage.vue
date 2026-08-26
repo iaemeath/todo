@@ -49,15 +49,16 @@ const { settings: form } = storeToRefs(settingsStore)
   box-sizing: border-box;
 }
 
+/* 桌面：单列内容区（子页导航在应用侧栏）；置于移动端规则前——
+   no-descending-specificity 要求低特异性选择器先行 */
+.settings-page:not(.is-mobile) {
+  display: flex;
+}
+
 /* 移动端 content-area 零内边距（日历贴屏惯例），页面自补；
    web 端不补——由 content-area 的浮岛 padding 统一提供（避免双重） */
 html.platform-mobile .settings-page {
   padding: var(--space-md) var(--space-lg);
-}
-
-/* 桌面：单列内容区（子页导航在应用侧栏） */
-.settings-page:not(.is-mobile) {
-  display: flex;
 }
 
 /* 移动端：纵向流 */

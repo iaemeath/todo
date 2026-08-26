@@ -349,6 +349,7 @@ const submitLabel = computed(() =>
   justify-content: center;
   padding: var(--space-lg);
   box-sizing: border-box;
+
   /* 移动端 content-area 零内边距，页面自补 */
   overflow-y: auto;
   background: url('../assets/auth-bg.jpg') center / cover no-repeat;
@@ -359,7 +360,7 @@ const submitLabel = computed(() =>
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(15, 18, 34, 0.45);
+  background: rgb(15 18 34 / 45%);
 }
 
 .auth-card {
@@ -372,17 +373,18 @@ const submitLabel = computed(() =>
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
   box-sizing: border-box;
+
   /* 玻璃拟态：与项目 glass-panel 语言一致，暗化底保证文字对比度 */
-  background: rgba(255, 255, 255, 0.78);
+  background: rgb(255 255 255 / 78%);
   backdrop-filter: blur(18px) saturate(1.2);
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgb(255 255 255 / 45%);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 35%);
 }
 
 /* scoped 下 html.dark 不带本组件属性，须 :global 提升才能命中暗色根类 */
 :global(html.dark) .auth-card {
-  background: rgba(30, 33, 48, 0.72);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: rgb(30 33 48 / 72%);
+  border-color: rgb(255 255 255 / 12%);
 }
 
 /* 品牌头：logo 圆点用主题色呼应 */
@@ -417,7 +419,7 @@ const submitLabel = computed(() =>
   display: flex;
   gap: var(--space-xs);
   margin-bottom: var(--space-md);
-  padding: 3px;
+  padding: 3px; /* stylelint-disable-line declaration-property-value-disallowed-list -- 胶囊指示器几何偏移特例（同 TaskManagePage .view-tabs） */
   border-radius: var(--radius-md);
   background: var(--el-fill-color-light);
 }

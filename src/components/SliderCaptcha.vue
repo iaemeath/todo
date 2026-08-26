@@ -199,13 +199,13 @@ const onUp = async () => {
   transition: background var(--duration-fast) ease;
 }
 
-.sc-refresh:hover:not(:disabled) {
-  background: rgb(15 18 34 / 65%);
-}
-
 .sc-refresh:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.sc-refresh:hover:not(:disabled) {
+  background: rgb(15 18 34 / 65%);
 }
 
 /* 轨道：滑块位移 = 拼图位移（提交坐标），fill 跟随制造拖动反馈 */

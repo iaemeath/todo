@@ -353,6 +353,7 @@ const navTitle = computed(() => {
   color: var(--el-color-danger);
   line-height: 1.4;
 }
+
 /* 移动优先：基础样式 = 移动端二级页返回条（横条），桌面 rail 形态在 min-width 断点增强 */
 .app-navbar {
   display: flex;

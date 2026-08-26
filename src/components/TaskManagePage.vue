@@ -632,6 +632,7 @@ html.platform-mobile .manage-page {
   padding: var(--space-md);
   border: 1px solid var(--el-border-color-lighter);
   border-radius: var(--radius-lg);
+
   /* 面板比页面底（--el-bg-color-page）亮一档：浅色=纯白、深色=微抬升；
      卡片保持 --bg-card 灰调，与面板形成层次 */
   background: var(--el-bg-color);
