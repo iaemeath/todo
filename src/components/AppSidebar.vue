@@ -98,10 +98,6 @@
           <el-icon><Clock /></el-icon>
           <span>日程管理</span>
         </button>
-        <button class="nav-drawer__item" :class="{ active: currentView === 'about' }" @click="go('about')">
-          <el-icon><InfoFilled /></el-icon>
-          <span>关于</span>
-        </button>
 
         <!-- 设置组：与桌面侧栏同构（移动端同样直达子页，无列表二级） -->
         <div class="nav-drawer__group-label">设置</div>
@@ -288,17 +284,17 @@ const handleBack = () => {
 }
 
 // 导航分组（「时间管理」= 主页，默认入口放首位；「屏保」是时钟的闲置展示形态，紧随其后；
-// 「关于」是产品说明+三端下载的分发入口（游客可达），收尾；logo 只负责隐藏导航不再返回主页）
+// logo 只负责隐藏导航不再返回主页）
 const mainItems: { key: AppView; label: string; icon: any }[] = [
   { key: 'home', label: '时间管理', icon: Timer },
   { key: 'screensaver', label: '屏保', icon: AlarmClock },
   { key: 'task', label: '任务管理', icon: List },
-  { key: 'schedule', label: '日程管理', icon: Clock },
-  { key: 'about', label: '关于', icon: InfoFilled }
+  { key: 'schedule', label: '日程管理', icon: Clock }
 ]
 
-// 设置子项直达（桌面一级导航；移动端仍走抽屉「设置」→ 列表二级）；
-// 用户管理仅管理员可见（features.admin 由服务端 ADMIN_USERS 邮箱白名单下发，显隐非安全边界）
+// 设置子项直达（桌面一级导航；移动端同样直达）；
+// 用户管理仅管理员可见（features.admin 由服务端 ADMIN_USERS 邮箱白名单下发，显隐非安全边界）；
+// 「关于」收尾 = 产品说明 + 三端下载分发入口（游客可达）
 const settingItems = computed(() => {
   const items: { key: SettingsSection; label: string; icon: any }[] = [
     { key: 'view', label: '视觉与外观', icon: Monitor },
@@ -307,6 +303,7 @@ const settingItems = computed(() => {
     { key: 'guide', label: '使用指南', icon: QuestionFilled }
   ]
   if (authStore.features.admin) items.push({ key: 'users', label: '用户管理', icon: User })
+  items.push({ key: 'about', label: '关于', icon: InfoFilled })
   return items
 })
 
@@ -329,7 +326,7 @@ const goSettings = (section: SettingsSection) => {
 
 // 移动端非主页返回按钮标题
 const settingsTitle = computed(() => {
-  const map: Record<string, string> = { view: '视觉与外观', ai: 'AI 助理', data: '数据管理', guide: '使用指南', users: '用户管理' }
+  const map: Record<string, string> = { view: '视觉与外观', ai: 'AI 助理', data: '数据管理', guide: '使用指南', users: '用户管理', about: '关于' }
   return map[settingsSection.value] || '设置'
 })
 const navTitle = computed(() => {
@@ -338,7 +335,6 @@ const navTitle = computed(() => {
   if (currentView.value === 'task') return '任务管理'
   if (currentView.value === 'schedule') return '日程管理'
   if (currentView.value === 'screensaver') return '屏保'
-  if (currentView.value === 'about') return '关于'
   return ''
 })
 </script>

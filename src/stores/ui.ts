@@ -10,8 +10,8 @@ import { router } from '../router'
  * 组件层调用签名不变。局部 UI 状态（抽屉/待办栏显隐等）仍为本店状态。
  */
 
-export type AppView = 'home' | 'task' | 'schedule' | 'screensaver' | 'settings' | 'auth' | 'about'
-export type SettingsSection = 'view' | 'ai' | 'data' | 'guide' | 'users'
+export type AppView = 'home' | 'task' | 'schedule' | 'screensaver' | 'settings' | 'auth'
+export type SettingsSection = 'view' | 'ai' | 'data' | 'guide' | 'users' | 'about'
 
 /** AppView → 路由路径（设置域为一级直达路由，v4.6 扁平化） */
 const viewPath = (v: AppView, section?: SettingsSection): string => {
@@ -19,14 +19,13 @@ const viewPath = (v: AppView, section?: SettingsSection): string => {
     case 'task': return '/task'
     case 'schedule': return '/schedule'
     case 'screensaver': return '/screensaver'
-    case 'about': return '/about'
     case 'settings': return `/${section || 'view'}`
     case 'auth': return '/auth'
     default: return '/'
   }
 }
 
-const VALID_SECTIONS: SettingsSection[] = ['view', 'ai', 'data', 'guide', 'users']
+const VALID_SECTIONS: SettingsSection[] = ['view', 'ai', 'data', 'guide', 'users', 'about']
 
 const MOBILE_BREAKPOINT = 768
 const LS_TODO_VISIBLE = 'todo_visible'
@@ -38,7 +37,6 @@ export const useUIStore = defineStore('ui', () => {
     if (path === '/task') return 'task'
     if (path === '/schedule') return 'schedule'
     if (path === '/screensaver') return 'screensaver'
-    if (path === '/about') return 'about'
     if (VALID_SECTIONS.includes(path.slice(1) as SettingsSection)) return 'settings'
     if (path === '/auth') return 'auth'
     return 'home'

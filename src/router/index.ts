@@ -15,7 +15,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 // 视图渲染由 App.vue 的 v-if 分支承担，路由记录仅承载 URL 状态（空渲染占位满足类型）
 const EmptyView = { render: () => null }
 
-export const SETTINGS_PATHS = ['view', 'ai', 'data', 'guide', 'users'] as const
+export const SETTINGS_PATHS = ['view', 'ai', 'data', 'guide', 'users', 'about'] as const
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -24,7 +24,6 @@ export const router = createRouter({
     { path: '/task', name: 'task', component: EmptyView },
     { path: '/schedule', name: 'schedule', component: EmptyView },
     { path: '/screensaver', name: 'screensaver', component: EmptyView },
-    { path: '/about', name: 'about', component: EmptyView },
     ...SETTINGS_PATHS.map(s => ({ path: `/${s}`, name: `settings-${s}`, component: EmptyView })),
     { path: '/auth', name: 'auth', component: EmptyView }
   ]

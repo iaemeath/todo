@@ -20,7 +20,6 @@ const ScheduleManagePage = defineAsyncComponent(() => import('./components/Sched
 const ScreensaverPage = defineAsyncComponent(() => import('./components/ScreensaverPage.vue'))
 const SettingsPage = defineAsyncComponent(() => import('./components/SettingsPage.vue'))
 const AuthPage = defineAsyncComponent(() => import('./components/AuthPage.vue'))
-const AboutPage = defineAsyncComponent(() => import('./components/AboutPage.vue'))
 
 const { loadTheme } = useThemeStore()
 const uiStore = useUIStore()
@@ -100,9 +99,6 @@ watch(
 
         <!-- 登录/注册页（openAuth 记录来源，closeAuth 返回） -->
         <AuthPage v-else-if="currentView === 'auth'" />
-
-        <!-- 关于：产品说明 + 三端下载（游客可达的分发入口） -->
-        <AboutPage v-else-if="currentView === 'about'" />
       </main>
 
       <VoiceAssistant />
