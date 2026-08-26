@@ -98,6 +98,10 @@
           <el-icon><Clock /></el-icon>
           <span>日程管理</span>
         </button>
+        <button class="nav-drawer__item" :class="{ active: currentView === 'about' }" @click="go('about')">
+          <el-icon><InfoFilled /></el-icon>
+          <span>关于</span>
+        </button>
 
         <!-- 设置组：与桌面侧栏同构（移动端同样直达子页，无列表二级） -->
         <div class="nav-drawer__group-label">设置</div>
@@ -173,7 +177,7 @@
 
 <script setup lang="ts">
 import { computed, ref, reactive } from 'vue'
-import { Calendar, List, Clock, ArrowLeft, Menu, Timer, Lock, SwitchButton, Monitor, ChatDotRound, FolderOpened, QuestionFilled, User, AlarmClock } from '@element-plus/icons-vue'
+import { Calendar, List, Clock, ArrowLeft, Menu, Timer, Lock, SwitchButton, Monitor, ChatDotRound, FolderOpened, QuestionFilled, User, AlarmClock, InfoFilled } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
 import { ElMessage } from 'element-plus'
 import { confirmAction } from '../utils/confirm'
@@ -284,12 +288,13 @@ const handleBack = () => {
 }
 
 // 导航分组（「时间管理」= 主页，默认入口放首位；「屏保」是时钟的闲置展示形态，紧随其后；
-// logo 只负责隐藏导航不再返回主页）
+// 「关于」是产品说明+三端下载的分发入口（游客可达），收尾；logo 只负责隐藏导航不再返回主页）
 const mainItems: { key: AppView; label: string; icon: any }[] = [
   { key: 'home', label: '时间管理', icon: Timer },
   { key: 'screensaver', label: '屏保', icon: AlarmClock },
   { key: 'task', label: '任务管理', icon: List },
-  { key: 'schedule', label: '日程管理', icon: Clock }
+  { key: 'schedule', label: '日程管理', icon: Clock },
+  { key: 'about', label: '关于', icon: InfoFilled }
 ]
 
 // 设置子项直达（桌面一级导航；移动端仍走抽屉「设置」→ 列表二级）；
@@ -333,6 +338,7 @@ const navTitle = computed(() => {
   if (currentView.value === 'task') return '任务管理'
   if (currentView.value === 'schedule') return '日程管理'
   if (currentView.value === 'screensaver') return '屏保'
+  if (currentView.value === 'about') return '关于'
   return ''
 })
 </script>
