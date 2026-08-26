@@ -20,7 +20,11 @@ export interface Task {
   important: boolean
   urgent: boolean
   completed: boolean
-  order: number // 同级排序
+  /**
+   * 象限内排序（order 只在同一象限内比较）：矩阵面板中的位置——
+   * 新增追加到所属象限末尾，矩阵面板内拖拽重编号；待办栏按象限主序+order 组内序展示
+   */
+  order: number
   /** 记录级同步：修订时间（毫秒）——LWW 裁决依据，本地增改时自动打 */
   revTime?: number
   /** 记录级同步：墓碑（软删除时间）。UI 层过滤，同步层保留用于跨端传播删除 */

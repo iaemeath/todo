@@ -24,60 +24,48 @@
       </button>
     </form>
 
-    <!-- Draggable Todo List -->
-    <draggable 
-      v-model="activeTodos" 
-      item-key="id" 
-      class="todo-list" 
-      ref="draggableContainer"
-      handle=".drag-handle"
-      ghost-class="ghost-todo"
-      :animation="200"
-    >
-      <template #item="{ element: todo }">
-        <div class="todo-item glass-card" :class="'todo-' + quadrantOf(todo)">
-          <!-- SortableJS Handle -->
-          <div class="drag-handle" title="上下拖拽排序">
-            <GripVertical class="icon-sm" />
-          </div>
-          
-          <!-- FullCalendar Draggable Target -->
-          <div
-            class="todo-content draggable-event"
-            @pointerdown="onTodoPointerDown"
-            title="往左侧拖拽进行排期"
-            :data-event="JSON.stringify({
-              title: todo.title,
-              id: todo.id,
-              taskId: todo.id,
-              color: 'blue'
-            })"
-          >
-            <span class="todo-title">{{ todo.title }}</span>
-          </div>
-
-          <button class="btn-delete" @click="handleDelete(todo)" title="删除待办">
-            <Trash2 class="icon-sm" />
-          </button>
+    <!-- Todo List（只读象限序：红 q1 顶置 → q4，组内序 = order 字段）。
+         顺序唯一编辑入口 = 任务管理·矩阵视图面板内拖拽；本栏不再提供重排 -->
+    <div class="todo-list" ref="listContainer">
+      <div
+        v-for="todo in activeTodos"
+        :key="todo.id"
+        class="todo-item glass-card"
+        :class="'todo-' + quadrantOf(todo)"
+      >
+        <!-- FullCalendar Draggable Target -->
+        <div
+          class="todo-content draggable-event"
+          @pointerdown="onTodoPointerDown"
+          title="往左侧拖拽进行排期"
+          :data-event="JSON.stringify({
+            title: todo.title,
+            id: todo.id,
+            taskId: todo.id,
+            color: 'blue'
+          })"
+        >
+          <span class="todo-title">{{ todo.title }}</span>
         </div>
-      </template>
-      
-      <template #header v-if="activeTodos.length === 0">
-        <p class="empty-state">目前没有待办事项</p>
-      </template>
-    </draggable>
+
+        <button class="btn-delete" @click="handleDelete(todo)" title="删除待办">
+          <Trash2 class="icon-sm" />
+        </button>
+      </div>
+
+      <p v-if="activeTodos.length === 0" class="empty-state">目前没有待办事项</p>
+    </div>
   </aside>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Plus, GripVertical, Trash2, X } from 'lucide-vue-next'
+import { Plus, Trash2, X } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 import { confirmAction } from '../utils/confirm'
 import { useTaskStore, useUIStore, type Task } from '../stores'
-import { quadrantOf } from '../constants/quadrant'
+import { quadrantOf, QUADRANT_RANK } from '../constants/quadrant'
 import { Draggable } from '@fullcalendar/interaction'
-import draggable from 'vuedraggable'
 
 const taskStore = useTaskStore()
 const { leafTasks } = storeToRefs(taskStore) // getter → storeToRefs
@@ -87,24 +75,16 @@ const { isMobile, mobileTodoDragging } = storeToRefs(uiStore) // state
 const { setTodoVisible, setMobileTodoDragging } = uiStore // action
 
 const newTodoTitle = ref('')
-const draggableContainer = ref<any>(null)
+const listContainer = ref<HTMLElement | null>(null)
 let fcDraggableInstance: Draggable | null = null
 
-const activeTodos = computed({
-  get: () => leafTasks.value.filter(t => !t.completed),
-  set: (val) => {
-    // 重排只作用于可见（未完成）叶子；已完成的沉底保持相对顺序。
-    // 若只给可见子集编号 0..n-1，完成→取消完成后 order 会与未重编号的混叠穿插
-    const hidden = leafTasks.value.filter(t => t.completed)
-    const now = Date.now()
-    ;[...val, ...hidden].forEach((t, i) => {
-      if (t.order === i) return
-      t.order = i
-      // order 是记录内容的一部分：必须重打修订时间，否则对端按 revTime 裁决会忽略重排
-      t.revTime = now
-    })
-  }
-})
+// 只读象限序：q1 红顶置 → q4 沉底，组内序 = order（矩阵面板内位置）。
+// 排序纯视图层；待办栏不写 order，重排唯一入口 = 矩阵视图
+const activeTodos = computed(() =>
+  [...leafTasks.value.filter(t => !t.completed)].sort(
+    (a, b) => QUADRANT_RANK[quadrantOf(a)] - QUADRANT_RANK[quadrantOf(b)] || a.order - b.order
+  )
+)
 
 // 删除待办：与管理页一致，先确认（避免移动端误触，级联删关联日程）
 const handleDelete = async (todo: Task) => {
@@ -160,8 +140,8 @@ const onDragEnd = () => {
 const closeSidebar = () => setTodoVisible(false)
 
 onMounted(() => {
-  // Use $el to get the DOM element from the vuedraggable component
-  const containerEl = draggableContainer.value?.$el
+  // 待办卡片是 FullCalendar 外部拖拽源（往日历排期）；列表本身只读无重排
+  const containerEl = listContainer.value
   if (containerEl) {
     fcDraggableInstance = new Draggable(containerEl, {
       itemSelector: '.draggable-event',
@@ -386,12 +366,6 @@ html.platform-mobile .todo-sidebar {
 
 .todo-q3 {
   border-left: 3px solid var(--el-color-warning);
-}
-
-.drag-handle {
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
 }
 
 .todo-content {

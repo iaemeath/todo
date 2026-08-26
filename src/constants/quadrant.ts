@@ -39,3 +39,6 @@ export const quadrantAxes = (key: QuadrantKey): { important: boolean; urgent: bo
 /** 象限 key → 元数据，未知回退 q4 */
 export const quadrantMeta = (key: QuadrantKey): QuadrantMeta =>
   QUADRANTS.find(q => q.key === key) ?? QUADRANTS[3]
+
+/** 象限 → 排序权重（待办栏「按象限」排序：q1 红顶置 → q4 沉底） */
+export const QUADRANT_RANK: Record<QuadrantKey, number> = { q1: 0, q2: 1, q3: 2, q4: 3 }

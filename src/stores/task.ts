@@ -2,6 +2,7 @@ import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
 import dayjs from 'dayjs'
 import type { Schedule, Task } from '../types/bundle'
+import { quadrantOf } from '../constants/quadrant'
 
 // ===== Types =====
 // 契约定义在 types/bundle.ts（前后端共享），此处 re-export 保持既有 import 路径兼容
@@ -39,13 +40,14 @@ export const useTaskStore = defineStore('task', () => {
     dayjs().add(offsetDays, 'day').format('YYYY-MM-DD')
 
   const seedInitialData = () => {
+    // seed 的 order 为各象限内的序号（q1:日程系统测试0 / q2:傍晚0·重构1·设计树2 / q3:超市0 / q4:探索0·编写1）
     const seedTasks: Task[] = [
       { id: 'todo-1', parentId: null, title: '探索玻璃拟态设计规范', description: '研究高颜值暗黑太空玻璃拟物化设计准则', category: 'work', important: false, urgent: false, completed: false, order: 0 },
-      { id: 'todo-2', parentId: null, title: '日程系统测试', description: '验证基于 Canvas 的拖动与拉伸调度交互', category: 'ideas', important: true, urgent: true, completed: false, order: 1 },
-      { id: 'todo-3', parentId: null, title: '傍晚去健身房锻炼', description: '做有氧和力量训练，保持健康状态', category: 'fitness', important: true, urgent: false, completed: false, order: 2 },
-      { id: 'todo-4', parentId: null, title: '超市采购食材', description: '买一些鸡蛋、牛奶、蔬菜和鸡胸肉', category: 'shopping', important: false, urgent: true, completed: false, order: 3 },
-      { id: 'todo-5', parentId: null, title: '重构数据模型', description: '任务树 + 独立日程', category: 'work', important: true, urgent: false, completed: false, order: 4 },
-      { id: 'todo-6', parentId: 'todo-5', title: '设计任务树结构', description: '', category: 'work', important: true, urgent: false, completed: false, order: 0 },
+      { id: 'todo-2', parentId: null, title: '日程系统测试', description: '验证基于 Canvas 的拖动与拉伸调度交互', category: 'ideas', important: true, urgent: true, completed: false, order: 0 },
+      { id: 'todo-3', parentId: null, title: '傍晚去健身房锻炼', description: '做有氧和力量训练，保持健康状态', category: 'fitness', important: true, urgent: false, completed: false, order: 0 },
+      { id: 'todo-4', parentId: null, title: '超市采购食材', description: '买一些鸡蛋、牛奶、蔬菜和鸡胸肉', category: 'shopping', important: false, urgent: true, completed: false, order: 0 },
+      { id: 'todo-5', parentId: null, title: '重构数据模型', description: '任务树 + 独立日程', category: 'work', important: true, urgent: false, completed: false, order: 1 },
+      { id: 'todo-6', parentId: 'todo-5', title: '设计任务树结构', description: '', category: 'work', important: true, urgent: false, completed: false, order: 2 },
       { id: 'todo-7', parentId: 'todo-5', title: '编写单元测试', description: '', category: 'work', important: false, urgent: false, completed: false, order: 1 }
     ]
 
@@ -137,9 +139,6 @@ export const useTaskStore = defineStore('task', () => {
   const deepCloneSchedule = (s: Schedule): Schedule => JSON.parse(JSON.stringify(s))
 
   // ===== Tree helpers（展示类基于活跃集；遍历类基于全集） =====
-  const getChildren = (parentId: string | null): Task[] =>
-    activeTasks.value.filter((t) => t.parentId === parentId).sort((a, b) => a.order - b.order)
-
   /** 所有祖先（从近到远）——活跃集：墓碑祖先不再参与完成态联动 */
   const getAncestors = (id: string): Task[] => {
     const result: Task[] = []
@@ -188,7 +187,10 @@ export const useTaskStore = defineStore('task', () => {
   // ===== Task actions =====
   const addTask = (data: Omit<Task, 'id' | 'completed' | 'order' | 'parentId'> & { parentId?: string | null }) => {
     const parentId = data.parentId ?? null
-    const siblings = getChildren(parentId)
+    // order = 象限内序号：新增追加到同象限末尾（活跃集计数）；
+    // 后续位置调整的唯一入口 = 矩阵视图面板内拖拽（reconcile 重编号）
+    const q = quadrantOf({ important: data.important, urgent: data.urgent })
+    const sameQuadrantCount = activeTasks.value.filter(t => quadrantOf(t) === q).length
     const newTask: Task = {
       id: generateId(),
       parentId,
@@ -198,7 +200,7 @@ export const useTaskStore = defineStore('task', () => {
       important: data.important,
       urgent: data.urgent,
       completed: false,
-      order: siblings.length
+      order: sameQuadrantCount
     }
     touch(newTask)
     tasks.value.push(newTask)

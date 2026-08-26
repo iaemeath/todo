@@ -315,13 +315,17 @@ const displayData = computed(() => (hasFilter.value ? filteredFlat.value : taskT
 
 // ---- Matrix view（四象限看板） ----
 // vuedraggable 的 :list 需要可变数组（拖拽时原地 splice），store 派生列表不能直接喂；
-// 用本地镜像 + watcher 对齐 store，拖拽结束后 reconcileMatrixDrop 把落点象限写回
+// 用本地镜像 + watcher 对齐 store，拖拽结束后 reconcileMatrixDrop 把落点写回
 const quadrantLists = reactive<Record<QuadrantKey, Task[]>>(
   { q1: [], q2: [], q3: [], q4: [] }
 )
 
-// 矩阵数据源 = 当前视图可见任务的扁平集（沿用 未完成/已完成 + 搜索/分类筛选）
-const matrixSource = computed(() => (hasFilter.value ? filteredFlat.value : visibleTasks.value))
+// 矩阵数据源 = 当前视图可见任务的扁平集（沿用 未完成/已完成 + 搜索/分类筛选），
+// 统一按 order 排序——order 语义即「象限内位置」，面板内顺序因此稳定
+const matrixSource = computed(() => {
+  const base = hasFilter.value ? filteredFlat.value : visibleTasks.value
+  return [...base].sort((a, b) => a.order - b.order)
+})
 
 const syncMatrixLists = () => {
   const byKey: Record<QuadrantKey, Task[]> = { q1: [], q2: [], q3: [], q4: [] }
@@ -330,16 +334,22 @@ const syncMatrixLists = () => {
 }
 watch(matrixSource, syncMatrixLists, { immediate: true })
 
-// 拖拽结算：以四块本地列表的最终归属为准，凡与 store 两轴不一致的写回
-// （跨面板拖 = 改象限；面板内顺序调整不落库，展示顺序始终以 store 的 order 为准）
+// 拖拽结算（唯一写 order 的入口）：以四块本地列表的最终顺序为准——
+// 跨面板拖 = 改两轴；面板内拖 = 改象限内位置。每个象限按「可见拖后序 + 被遮挡任务
+// 按原序垫底」重编号 0..n，order 有变化或两轴不符的任务写回（touch 打 revTime 供同步）
 const reconcileMatrixDrop = () => {
   for (const q of QUADRANTS) {
     const axes = quadrantAxes(q.key)
-    for (const t of quadrantLists[q.key]) {
-      if (!!t.important !== axes.important || !!t.urgent !== axes.urgent) {
-        updateTask(t.id, axes)
-      }
-    }
+    const list = quadrantLists[q.key]
+    const listIds = new Set(list.map(t => t.id))
+    // 被筛选/另一完成视图遮挡的同象限任务，追加在可见序之后保持原相对序
+    const hidden = activeTasks.value
+      .filter(t => quadrantOf(t) === q.key && !listIds.has(t.id))
+      .sort((a, b) => a.order - b.order)
+    ;[...list, ...hidden].forEach((t, i) => {
+      const axesChanged = !!t.important !== axes.important || !!t.urgent !== axes.urgent
+      if (axesChanged || t.order !== i) updateTask(t.id, { ...axes, order: i })
+    })
   }
   syncMatrixLists()
 }
