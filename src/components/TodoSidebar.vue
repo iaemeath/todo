@@ -48,8 +48,8 @@
           <span class="todo-title">{{ todo.title }}</span>
         </div>
 
-        <button class="btn-delete" @click="handleDelete(todo)" title="删除待办">
-          <Trash2 class="icon-sm" />
+        <button class="btn-done" @click="handleComplete(todo)" title="完成待办">
+          <Check class="icon-sm" />
         </button>
       </div>
 
@@ -60,16 +60,15 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Plus, Trash2, X } from 'lucide-vue-next'
+import { Plus, Check, X } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
-import { confirmAction } from '../utils/confirm'
 import { useTaskStore, useUIStore, type Task } from '../stores'
 import { quadrantOf, QUADRANT_RANK } from '../constants/quadrant'
 import { Draggable } from '@fullcalendar/interaction'
 
 const taskStore = useTaskStore()
 const { leafTasks } = storeToRefs(taskStore) // getter → storeToRefs
-const { addTask, deleteTask } = taskStore // action 直接解构
+const { addTask, setTaskCompleted } = taskStore // action 直接解构
 const uiStore = useUIStore()
 const { isMobile, mobileTodoDragging } = storeToRefs(uiStore) // state
 const { setTodoVisible, setMobileTodoDragging } = uiStore // action
@@ -86,14 +85,10 @@ const activeTodos = computed(() =>
   )
 )
 
-// 删除待办：与管理页一致，先确认（避免移动端误触，级联删关联日程）
-const handleDelete = async (todo: Task) => {
-  await confirmAction({
-    message: `确定删除待办「${todo.title}」吗？其子任务和关联日程也会一并删除。`,
-    title: '删除待办',
-    confirmText: '删除',
-    action: () => deleteTask(todo.id)
-  })
+// 完成待办：叶子任务打完成即从待办栏消失（完成联动/恢复入口在任务管理页）。
+// 叶子无子孙，setTaskCompleted 的下推/上推联动对此无副作用
+const handleComplete = (todo: Task) => {
+  setTaskCompleted(todo.id, true)
 }
 
 const handleCreateTodo = () => {
@@ -258,7 +253,7 @@ html.platform-mobile .todo-sidebar {
    radius-md、hover 语义色底。触控热区两套：移动端紧凑 32px（WCAG 2.5.8 AA ≥24），
    桌面 var(--touch-target)（36） */
 .btn-add,
-.btn-delete,
+.btn-done,
 .btn-close {
   background: transparent;
   border: none;
@@ -276,7 +271,7 @@ html.platform-mobile .todo-sidebar {
 
 @media (width >= 769px) {
   .btn-add,
-  .btn-delete,
+  .btn-done,
   .btn-close {
     min-width: var(--touch-target);
     min-height: var(--touch-target);
@@ -386,10 +381,10 @@ html.platform-mobile .todo-sidebar {
   text-overflow: ellipsis;
 }
 
-/* 行内图标按钮（删除/关闭）已并入上方统一形态组，仅保留各自的语义色 hover */
-.btn-delete:hover {
-  background: rgb(244 63 94 / 10%);
-  color: var(--color-danger);
+/* 行内图标按钮（完成/关闭）已并入上方统一形态组，仅保留各自的语义色 hover */
+.btn-done:hover {
+  background: var(--el-color-success-light-9);
+  color: var(--el-color-success);
 }
 
 .btn-close:hover {

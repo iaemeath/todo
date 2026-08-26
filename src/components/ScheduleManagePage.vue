@@ -340,14 +340,14 @@ html.platform-mobile .manage-page {
   flex-shrink: 0;
 }
 
-/* 二段切换（照搬任务页 未完成|已完成 胶囊样式） */
+/* 二段切换（照搬任务页 未完成|已完成 分段器样式） */
 .view-tabs {
   position: relative;
   display: inline-flex;
-  padding: 3px; /* stylelint-disable-line declaration-property-value-disallowed-list -- 胶囊指示器几何偏移特例 */
+  padding: 3px; /* stylelint-disable-line declaration-property-value-disallowed-list -- 分段器指示器几何偏移特例 */
   background: var(--el-fill-color-light);
   border: 1px solid var(--border-glass);
-  border-radius: 9999px;
+  border-radius: var(--radius-md);
 }
 
 .view-tab-indicator {
@@ -357,7 +357,7 @@ html.platform-mobile .manage-page {
   width: calc(50% - 3px);
   height: calc(100% - 6px);
   background: var(--color-primary);
-  border-radius: 9999px;
+  border-radius: var(--radius-sm);
   box-shadow: 0 2px 8px var(--color-primary-alpha);
   transition: transform var(--duration-base) var(--ease-standard);
   z-index: 0;
@@ -374,7 +374,7 @@ html.platform-mobile .manage-page {
   min-width: 56px;
   padding: 4px 12px;
   border: none;
-  border-radius: 9999px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
   font-size: var(--font-sm);
