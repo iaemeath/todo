@@ -250,7 +250,25 @@ const levelTagType = (level: number) => {
 // 视图按 L1（顶级任务）的 completed 归类：done = 已完成的 L1，active = 未完成的 L1。
 // 子任务（L2/L3）的完成状态不参与视图归类，子树跟随所属 L1 整体呈现。
 type ViewMode = 'active' | 'done'
-const viewMode = ref<ViewMode>('active')
+
+// 视图偏好持久化：App.vue 按 v-if 切换视图，组件每次重挂载本地 ref 会归零——
+// 未完成/已完成 + 树/矩阵两组选择记入 localStorage，进入页面恢复上次状态
+const LS_VIEW_PREFS = 'task_view_prefs'
+type ViewPrefs = { view: ViewMode; layout: LayoutMode }
+const readViewPrefs = (): ViewPrefs => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS_VIEW_PREFS) || '{}')
+    return {
+      view: raw.view === 'done' ? 'done' : 'active',
+      layout: raw.layout === 'matrix' ? 'matrix' : 'tree'
+    }
+  } catch {
+    return { view: 'active', layout: 'tree' }
+  }
+}
+const initialPrefs = readViewPrefs()
+
+const viewMode = ref<ViewMode>(initialPrefs.view)
 
 const viewOptions = computed<{ value: ViewMode; label: string }[]>(() => [
   { value: 'active', label: '未完成' },
@@ -259,12 +277,16 @@ const viewOptions = computed<{ value: ViewMode; label: string }[]>(() => [
 
 // ---- Layout mode：树（层级表格）/ 矩阵（四象限看板）----
 type LayoutMode = 'tree' | 'matrix'
-const layoutMode = ref<LayoutMode>('tree')
+const layoutMode = ref<LayoutMode>(initialPrefs.layout)
 
 const layoutOptions = computed<{ value: LayoutMode; label: string }[]>(() => [
   { value: 'tree', label: '树' },
   { value: 'matrix', label: '矩阵' }
 ])
+
+watch([viewMode, layoutMode], ([view, layout]) => {
+  localStorage.setItem(LS_VIEW_PREFS, JSON.stringify({ view, layout } satisfies ViewPrefs))
+})
 
 const searchQuery = ref('')
 const filterCategory = ref('')
