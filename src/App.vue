@@ -127,6 +127,12 @@ html, body {
   height: 100vh;
   width: 100%;
   box-sizing: border-box;
+
+  /* 安卓壳 edge-to-edge 让位系统栏/挖孔（viewport-fit=cover 后插件转 passthrough，
+     统一在总容器收敛，侧栏/内容区/移动抽屉同步内收；露出条带由 body 的
+     --el-bg-color-page 兜底）。web/桌面变量恒 0 无感 */
+  padding: var(--safe-area-inset-top) var(--safe-area-inset-right) var(--safe-area-inset-bottom)
+    var(--safe-area-inset-left);
 }
 
 /* 桌面：导航侧栏在左、内容在右（与 AppSidebar--side 的 769 断点同源）。

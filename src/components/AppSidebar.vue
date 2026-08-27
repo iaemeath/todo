@@ -559,9 +559,11 @@ const navTitle = computed(() => {
 
 .nav-drawer {
   position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 0;
+
+  /* fixed 挂视口，不吃 .app-layout 的 safe-area padding，需自行让位系统栏/挖孔 */
+  top: var(--safe-area-inset-top);
+  bottom: var(--safe-area-inset-bottom);
+  left: var(--safe-area-inset-left);
   width: 200px;
   z-index: 1100;
   background: var(--el-bg-color);

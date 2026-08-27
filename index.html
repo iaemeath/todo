@@ -3,7 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover：安卓壳官方 SystemBars 插件据此切换 passthrough（零 padding +
+         注入 --safe-area-inset-*），屏保全屏黑底得以铺进挖孔区；插件取最后一个 viewport meta，勿再加第二个 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>拾光</title>
   </head>
   <body>

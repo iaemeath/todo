@@ -16,6 +16,13 @@
   text-rendering: optimizelegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* 安卓壳：SystemBars 插件以行内样式注入覆盖（px 值）；
+     web/Electron：env() 兜底（桌面恒 0）。全 app 让位系统栏/挖孔统一消费此变量 */
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
 }
 
 body {

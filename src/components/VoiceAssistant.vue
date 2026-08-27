@@ -435,7 +435,7 @@ const toggleVoice = () => {
 <style scoped>
 .voice-assistant-fab {
   position: fixed;
-  bottom: 40px;
+  bottom: calc(40px + var(--safe-area-inset-bottom)); /* 手势条上方让位（全屏藏栏时变量归 0，球位不变） */
   right: 40px;
   z-index: var(--z-overlay);
   width: 64px;
