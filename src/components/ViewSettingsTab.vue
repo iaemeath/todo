@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { Moon, Sunny } from '@element-plus/icons-vue'
+import { onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
+import type { PermissionState } from '@capacitor/core'
+import { LocalNotifications } from '@capacitor/local-notifications'
 import { useThemeStore, type Settings } from '../stores'
-import { hasDesktopBridge } from '../services/apiClient'
+import { hasDesktopBridge, isNativeShell } from '../services/apiClient'
 
 const props = defineProps<{ form: Settings }>()
 
@@ -18,6 +21,24 @@ const onStartHourChange = (v: number | undefined) => {
 const onEndHourChange = (v: number | undefined) => {
   if (v == null) return
   if (v <= props.form.startHour) props.form.startHour = Math.max(0, v - 1)
+}
+
+// ===== 安卓通知权限引导（仅原生壳）：拒绝时闹钟照挂但通知不显示，需在此暴露状态 =====
+const permState = ref<PermissionState>('granted')
+onMounted(async () => {
+  if (!isNativeShell) return
+  try {
+    permState.value = (await LocalNotifications.checkPermissions()).display
+  } catch {
+    permState.value = 'prompt'
+  }
+})
+const requestPerm = async () => {
+  try {
+    permState.value = (await LocalNotifications.requestPermissions()).display
+  } catch {
+    /* 桥异常保持现状 */
+  }
 }
 </script>
 
@@ -149,9 +170,20 @@ const onEndHourChange = (v: number | undefined) => {
       <div class="setting-row">
         <div class="setting-info">
           <span class="setting-name">日程开始时提醒</span>
-          <span class="setting-desc">日程开始的瞬间弹系统通知并闪烁任务栏，点击通知定位到该日程；仅桌面客户端生效（网页端不提醒）</span>
+          <span class="setting-desc">日程开始的瞬间弹系统通知并定位到该日程：桌面客户端闪烁任务栏，安卓客户端横幅加提示音（应用被划掉也照常提醒）；网页端不提醒</span>
         </div>
         <el-switch v-model="form.remindEnabled" />
+      </div>
+      <div v-if="isNativeShell && form.remindEnabled" class="setting-row">
+        <div class="setting-info">
+          <span class="setting-name">安卓通知权限</span>
+          <span class="setting-desc">
+            {{ permState === 'granted'
+              ? '已授权，到点正常弹出通知'
+              : '未授权：到点闹钟仍会挂起，但系统通知不会显示。点击右侧按钮重新授权；若系统不再弹窗，请到 系统设置 → 应用 → 拾光 → 通知 手动开启' }}
+          </span>
+        </div>
+        <el-button v-if="permState !== 'granted'" size="small" @click="requestPerm">重新授权</el-button>
       </div>
       <div v-if="hasDesktopBridge" class="setting-row">
         <div class="setting-info">

@@ -39,4 +39,10 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 日程到点提醒：通知运行时权限（13+，插件 schedule 时也会自动请求） -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 精确闹钟（33+，日历/闹钟类豁免、安装即授予）；31/32 由插件清单的
+         SCHEDULE_EXACT_ALARM 兜底（未授予时插件会引导去系统设置，未授则降级不精确）；
+         RECEIVE_BOOT_COMPLETED + WAKE_LOCK 由插件清单合并带入，重启后自动重挂闹钟 -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 </manifest>
