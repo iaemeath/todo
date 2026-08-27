@@ -58,6 +58,13 @@ export const useUIStore = defineStore('ui', () => {
   // 移动端拖拽中视觉隐藏状态（DOM 保留供 FC 继续拖拽）
   const mobileTodoDragging = ref(false)
 
+  // 屏保全屏态（会话级，不持久化）：App 层据此隐藏语音球——壳内全屏是 CSS 伪装层，
+  // 盖不住 z 更高的球（--z-overlay）
+  const screensaverFullscreen = ref(false)
+  const setScreensaverFullscreen = (v: boolean) => {
+    screensaverFullscreen.value = v
+  }
+
   // 移动端导航抽屉（桌面 rail 常驻无需状态；入口在日历工具条左端/二级页返回条）
   const navDrawerOpen = ref(false)
 
@@ -152,6 +159,8 @@ export const useUIStore = defineStore('ui', () => {
     setMobileTodoDragging,
     navDrawerOpen,
     setNavDrawerOpen,
+    screensaverFullscreen,
+    setScreensaverFullscreen,
     navRailCollapsed,
     setNavRailCollapsed,
     gotoDateRequest,

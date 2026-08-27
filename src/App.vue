@@ -24,7 +24,7 @@ const AuthPage = defineAsyncComponent(() => import('./components/AuthPage.vue'))
 const { loadTheme } = useThemeStore()
 const uiStore = useUIStore()
 const authStore = useAuthStore()
-const { currentView, isMobile, todoVisible, mobileTodoDragging, navRailCollapsed } = storeToRefs(uiStore)
+const { currentView, isMobile, todoVisible, mobileTodoDragging, navRailCollapsed, screensaverFullscreen } = storeToRefs(uiStore)
 const { setTodoVisible } = uiStore // action 直接解构
 
 onMounted(() => {
@@ -101,7 +101,8 @@ watch(
         <AuthPage v-else-if="currentView === 'auth'" />
       </main>
 
-      <VoiceAssistant />
+      <!-- 屏保全屏藏语音球（壳内 CSS 伪装全屏盖不住 z 更高的球）；v-show 保拖拽位置等组件内状态 -->
+      <VoiceAssistant v-show="!screensaverFullscreen" />
     </div>
   </el-config-provider>
 </template>

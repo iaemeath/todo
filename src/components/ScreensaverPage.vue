@@ -17,10 +17,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { FullScreen } from '@element-plus/icons-vue'
 import FlipClock from './FlipClock.vue'
 import { useFullscreen } from '../composables/useFullscreen'
+import { useUIStore } from '../stores'
 
 /**
  * 屏保页（Fliqlo 风翻页时钟）。
@@ -32,6 +33,11 @@ const LS_HOUR12 = 'screensaver_hour12'
 const pageEl = ref<HTMLElement>()
 const { isFullscreen, isNativeFs, toggleFullscreen } = useFullscreen(pageEl)
 const hour12 = ref(localStorage.getItem(LS_HOUR12) === '1')
+
+// 全屏态上提 store：App 层据此 v-show 隐藏语音球（壳内 CSS 伪装全屏盖不住
+// z 更高的球）。Web 经 fullscreenchange、壳内经 toggle，均落回本 watch 同步
+const uiStore = useUIStore()
+watch(isFullscreen, (v) => uiStore.setScreensaverFullscreen(v))
 
 // ===== 工具条闲置隐藏：无操作 3s 淡出，任意指针活动唤出并重新计时 =====
 // 触屏无 hover（常显会破坏沉浸）、鼠标 hover 门控可发现性为零——统一交互动线两端通吃。
@@ -77,6 +83,9 @@ onUnmounted(() => {
   window.removeEventListener('pointermove', onPointerActivity)
   window.removeEventListener('pointerdown', onPointerActivity)
   document.removeEventListener('visibilitychange', onVisForToolbar)
+  // 全屏态直接路由离开（安卓系统返回键）：watch 已随组件销毁，兜底复位，
+  // 否则语音球在其他页面永久隐藏
+  uiStore.setScreensaverFullscreen(false)
 })
 
 const toggleHour12 = () => {
@@ -103,7 +112,8 @@ const toggleHour12 = () => {
 
 /* 壳内全屏铺满：锁横后 innerWidth>768 会让 app 误判桌面布局——content-area 的
    12px 浮岛 padding 露出页面灰白底（真机"四周白边"根因）。fixed 脱离布局
-   盖满 WebView 视口，不依赖 isMobile 判定；z 低于语音球（--z-overlay） */
+   盖满 WebView 视口，不依赖 isMobile 判定；语音球不经 z 压制，由 ui store
+   的屏保全屏态在 App 层 v-show 隐藏（抬 z 会盖住 ElNotification 等弹层） */
 .screensaver-page.is-native-fs {
   position: fixed;
   inset: 0;
