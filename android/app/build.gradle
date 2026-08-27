@@ -24,6 +24,15 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+
+    // APK 命名约定：shiguang-{versionName}.{versionCode}-{buildType}.apk（如 shiguang-0.2.0.160-debug.apk）。
+    // 与更新源（weekly.rl.ylh.pub/updates/）及关于页下载链接的拼接约定一致，
+    // 发版改 versionCode 后产物名自动跟随，勿手工改名
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            outputFileName = "shiguang-${variant.versionName}.${variant.versionCode}-${variant.buildType.name}.apk"
+        }
+    }
 }
 
 repositories {
