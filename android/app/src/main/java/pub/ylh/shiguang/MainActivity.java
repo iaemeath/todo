@@ -4,6 +4,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.WindowManager;
 
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
@@ -13,6 +14,14 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // 官方 edge-to-edge 三件套的最后一块（SHORT_EDGES + viewport-fit=cover 已就位）：
+        // 关掉 decor 级 inset 让位，WebView 才能真正铺满到挖孔/栏区。Android 15+ 系统
+        // 已强制 edge-to-edge（此行等价 belt-and-suspenders）；<15 上是白条根因的修复。
+        // 前提：SystemBars 插件 passthrough 生效（WebView ≥140 + viewport-fit=cover），
+        // 让位职责移交注入的 --safe-area-inset-* 变量；WebView <140 的老设备会退化为
+        // 栏叠内容（该组合 2026 年已不现实，遇真机再议）
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
         // 横屏内容延伸进挖孔区（SHORT_EDGES）：默认 cutoutMode 会让 WebView 避开
         // 横屏后位于左侧的摄像头挖孔，露出 window 白底（真机"左侧白条"根因）；
