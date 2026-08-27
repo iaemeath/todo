@@ -158,39 +158,25 @@
       </template>
     </el-dialog>
 
-    <!-- Schedule dialog (排期: create a Schedule from this leaf task) -->
-    <el-dialog v-model="scheduleDialogVisible" title="排期到日历" :width="isMobile ? '92vw' : '480px'" destroy-on-close>
-      <p class="schedule-hint">将任务「<strong>{{ schedulingTask?.title }}</strong>」排入日历日程。</p>
-      <el-form label-position="top">
-        <el-form-item label="日期">
-          <el-date-picker v-model="scheduleForm.date" type="date" value-format="YYYY-MM-DD" placeholder="选择日期" style="width: 100%;" />
-        </el-form-item>
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="开始时间">
-              <el-time-picker v-model="scheduleForm.startTime" value-format="HH:mm" format="HH:mm" placeholder="开始" style="width: 100%;" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="结束时间">
-              <el-time-picker v-model="scheduleForm.endTime" value-format="HH:mm" format="HH:mm" placeholder="结束" style="width: 100%;" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item label="颜色">
-          <el-select v-model="scheduleForm.color" style="width: 100%;">
-            <el-option v-for="c in colorOptions" :key="c.value" :label="c.label" :value="c.value">
-              <span class="color-dot" :style="{ background: c.hex }"></span>
-              <span style="margin-left: 8px;">{{ c.label }}</span>
-            </el-option>
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="scheduleDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmSchedule">创建日程</el-button>
+    <!-- Schedule dialog (排期: create a Schedule from this leaf task)——表单/校验在 ScheduleDialog -->
+    <ScheduleDialog
+      v-model:visible="scheduleDialogVisible"
+      header="排期到日历"
+      :initial="{
+        title: '',
+        date: todayLocal(),
+        startTime: DEFAULT_SCHEDULE_START,
+        endTime: DEFAULT_SCHEDULE_END,
+        color: DEFAULT_SCHEDULE_COLOR
+      }"
+      :show-title="false"
+      confirm-text="创建日程"
+      @save="confirmSchedule"
+    >
+      <template #hint>
+        <p class="schedule-hint">将任务「<strong>{{ schedulingTask?.title }}</strong>」排入日历日程。</p>
       </template>
-    </el-dialog>
+    </ScheduleDialog>
   </div>
 </template>
 
@@ -201,8 +187,9 @@ import { Plus, Search, Delete, Edit, Calendar } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import draggable from 'vuedraggable'
 import { confirmAction } from '../utils/confirm'
-import { colorOptions, type EventColor } from '../constants/colors'
 import { QUADRANTS, quadrantOf, quadrantAxes, quadrantMeta, type QuadrantKey } from '../constants/quadrant'
+import { DEFAULT_SCHEDULE_START, DEFAULT_SCHEDULE_END, DEFAULT_SCHEDULE_COLOR } from '../constants/schedule'
+import ScheduleDialog, { type ScheduleFormValue } from './ScheduleDialog.vue'
 import { todayLocal } from '../utils/dates'
 import { storeToRefs } from 'pinia'
 import { useTaskStore, useUIStore, type Task } from '../stores'
@@ -439,31 +426,20 @@ const handleDelete = async (row: Task) => {
   })
 }
 
-// ---- Schedule (排期，仅叶子任务) ----
+// ---- Schedule (排期，仅叶子任务)——表单/校验在 ScheduleDialog，此处只留任务上下文与落库 ----
 const scheduleDialogVisible = ref(false)
 const schedulingTask = ref<Task | null>(null)
-const scheduleForm = ref({ date: todayLocal(), startTime: '09:00', endTime: '10:00', color: 'blue' as EventColor })
 
 const openScheduleDialog = (row: Task) => {
   schedulingTask.value = row
-  scheduleForm.value = { date: todayLocal(), startTime: '09:00', endTime: '10:00', color: 'blue' }
   scheduleDialogVisible.value = true
 }
 
-const confirmSchedule = () => {
+const confirmSchedule = (form: ScheduleFormValue) => {
   if (!schedulingTask.value) return
-  const { date, startTime, endTime, color } = scheduleForm.value
-  if (!date || !startTime || !endTime) {
-    ElMessage.warning('请填写完整的日期和时间')
-    return
-  }
-  if (startTime >= endTime) {
-    ElMessage.warning('结束时间必须晚于开始时间')
-    return
-  }
+  const { date, startTime, endTime, color } = form
   addScheduleFromTask(schedulingTask.value.id, date, startTime, endTime, color)
   ElMessage.success('已排入日历')
-  scheduleDialogVisible.value = false
 }
 </script>
 

@@ -93,42 +93,16 @@
 
     <FullCalendar ref="fullCalendar" :options="calendarOptions" />
 
-    <!-- 日程新增/编辑弹窗（web 右击、移动双击事件打开编辑） -->
-    <el-dialog v-model="newScheduleDialogVisible" :title="editingScheduleId ? '编辑日程' : '新增日程'" :width="isMobile ? '92vw' : '480px'" destroy-on-close>
-      <el-form label-position="top">
-        <el-form-item label="标题">
-          <el-input v-model="newScheduleForm.title" placeholder="请输入日程标题" />
-        </el-form-item>
-        <el-form-item label="日期">
-          <el-date-picker v-model="newScheduleForm.date" type="date" value-format="YYYY-MM-DD" placeholder="选择日期" style="width: 100%;" />
-        </el-form-item>
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="开始时间">
-              <el-time-picker v-model="newScheduleForm.startTime" value-format="HH:mm" format="HH:mm" placeholder="开始" style="width: 100%;" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="结束时间">
-              <el-time-picker v-model="newScheduleForm.endTime" value-format="HH:mm" format="HH:mm" placeholder="结束" style="width: 100%;" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item label="颜色">
-          <el-select v-model="newScheduleForm.color" style="width: 100%;">
-            <el-option v-for="c in colorOptions" :key="c.value" :label="c.label" :value="c.value">
-              <span class="color-dot" :style="{ background: c.hex }"></span>
-              <span style="margin-left: 8px;">{{ c.label }}</span>
-            </el-option>
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button v-if="editingScheduleId" type="danger" @click="handleDeleteSchedule">删除</el-button>
-        <el-button @click="newScheduleDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmNewSchedule">{{ editingScheduleId ? '保存' : '创建' }}</el-button>
-      </template>
-    </el-dialog>
+    <!-- 日程新增/编辑弹窗（web 右击、移动双击事件打开编辑）——表单/校验在 ScheduleDialog -->
+    <ScheduleDialog
+      v-model:visible="newScheduleDialogVisible"
+      :header="editingScheduleId ? '编辑日程' : '新增日程'"
+      :initial="scheduleDialogInitial"
+      :confirm-text="editingScheduleId ? '保存' : '创建'"
+      :show-delete="!!editingScheduleId"
+      @save="confirmNewSchedule"
+      @delete="handleDeleteSchedule"
+    />
   </div>
 </template>
 
@@ -149,7 +123,10 @@ import { storeToRefs } from 'pinia'
 import { useTaskStore, useSettingsStore, useThemeStore, useUIStore } from '../stores'
 import { PanelRight, PanelRightClose, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight, Menu } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
-import { colorOptions, colorScheme } from '../constants/colors'
+import { colorScheme } from '../constants/colors'
+import { DEFAULT_SCHEDULE_START, DEFAULT_SCHEDULE_END, DEFAULT_SCHEDULE_COLOR } from '../constants/schedule'
+import ScheduleDialog, { type ScheduleFormValue } from './ScheduleDialog.vue'
+import { useSwipe } from '../composables/useSwipe'
 
 const taskStore = useTaskStore()
 const { activeSchedules } = storeToRefs(taskStore) // 活跃视图（墓碑已滤）
@@ -172,33 +149,16 @@ watch(gotoDateRequest, (req) => {
 let resizeObserver: ResizeObserver | null = null
 let wrapperEl: HTMLElement | null = null
 
-// ---- 移动端：左右滑动翻页（FC 标准版无滑动导航，手势自实现）----
-// 判定：单指快速水平滑动（|dx|≥60px、水平位移≥1.5×垂直位移、<800ms）；
-// 起点须在日历网格内且不在日程块上（日程块交给 FC 拖拽，工具条上的滑动不翻页）。
+// ---- 移动端：左右滑动翻页（FC 标准版无滑动导航，手势判定细节见 useSwipe）----
+// 起点须在日历网格内且不在日程块上（日程块交给 FC 拖拽，工具条上的滑动不翻页）；
 // 快速轻扫与长按拖选（FC touch 下按 longPressDelay 才触发）天然错开；
-// 翻页后 datesSet 自动回写中央时间选择器。
-const SWIPE_MIN_DX = 60
-let touchStart: { x: number; y: number; t: number } | null = null
-
-const onTouchStart = (e: TouchEvent) => {
-  touchStart = null
-  if (!isMobile.value || e.touches.length !== 1) return
-  const target = e.target as HTMLElement
-  if (!target.closest('.fc') || target.closest('.fc-event')) return
-  touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() }
-}
-
-const onTouchEnd = (e: TouchEvent) => {
-  const s = touchStart
-  touchStart = null
-  if (!s || e.changedTouches.length !== 1) return
-  const dx = e.changedTouches[0].clientX - s.x
-  const dy = e.changedTouches[0].clientY - s.y
-  if (Math.abs(dx) < SWIPE_MIN_DX || Math.abs(dx) < 1.5 * Math.abs(dy)) return
-  if (Date.now() - s.t > 800) return // 慢速拖动（可能是长按拖选）不翻页
-  // 与 ‹ › 按钮共用 shiftPeriod：单日视图翻天，多日区间整段平移（按视图类型分支）
-  shiftPeriod(dx < 0 ? 1 : -1)
-}
+// 翻页后 datesSet 自动回写中央时间选择器。与 ‹ › 按钮共用 shiftPeriod：
+// 单日视图翻天，多日区间整段平移（按视图类型分支）
+useSwipe('.calendar-wrapper', (dir) => shiftPeriod(dir), {
+  enabled: () => isMobile.value,
+  targetSel: '.fc',
+  skipSel: '.fc-event'
+})
 
 onMounted(() => {
   // Initialize ResizeObserver to fix FullCalendar flex resize issue
@@ -210,9 +170,6 @@ onMounted(() => {
       }
     })
     resizeObserver.observe(wrapperEl)
-    // passive：不阻断浏览器原生滚动与 FC 事件拖拽
-    wrapperEl.addEventListener('touchstart', onTouchStart, { passive: true })
-    wrapperEl.addEventListener('touchend', onTouchEnd, { passive: true })
   }
 })
 
@@ -220,8 +177,6 @@ onBeforeUnmount(() => {
   if (resizeObserver) {
     resizeObserver.disconnect()
   }
-  wrapperEl?.removeEventListener('touchstart', onTouchStart)
-  wrapperEl?.removeEventListener('touchend', onTouchEnd)
 })
 
 // Convert our schedules to FullCalendar event format
@@ -291,7 +246,7 @@ const handleEventReceive = (info: EventReceiveArg) => {
     }
 
     // 将叶子任务排期为日程
-    addScheduleFromTask(taskId, dateStr, startTimeStr, endTimeStr, event.extendedProps.color || 'blue')
+    addScheduleFromTask(taskId, dateStr, startTimeStr, endTimeStr, event.extendedProps.color || DEFAULT_SCHEDULE_COLOR)
   }
   
   // Revert the temporary event inserted by FullCalendar
@@ -301,9 +256,12 @@ const handleEventReceive = (info: EventReceiveArg) => {
   if (isMobile.value) setTodoVisible(false)
 }
 
-// ---- 日程弹窗（新增/编辑共用）+ 事件交互 ----
+// ---- 日程弹窗（新增/编辑共用，表单态/校验在 ScheduleDialog）+ 事件交互 ----
 const newScheduleDialogVisible = ref(false)
-const newScheduleForm = ref({ title: '', date: '', startTime: '09:00', endTime: '10:00', color: 'blue' })
+// 弹窗打开时的表单初始值（组件在 visible 翻真时拷贝为本地可编辑副本）
+const scheduleDialogInitial = ref<ScheduleFormValue>({
+  title: '', date: '', startTime: DEFAULT_SCHEDULE_START, endTime: DEFAULT_SCHEDULE_END, color: DEFAULT_SCHEDULE_COLOR
+})
 // 非空 = 编辑模式（更新/删除），空 = 新增模式
 const editingScheduleId = ref<string | null>(null)
 
@@ -312,7 +270,7 @@ const fmtDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
 const fmtTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`
 const openNewScheduleDialog = (dateStr: string, startTimeStr: string, endTimeStr: string) => {
   editingScheduleId.value = null
-  newScheduleForm.value = { title: '', date: dateStr, startTime: startTimeStr, endTime: endTimeStr, color: 'blue' }
+  scheduleDialogInitial.value = { title: '', date: dateStr, startTime: startTimeStr, endTime: endTimeStr, color: DEFAULT_SCHEDULE_COLOR }
   newScheduleDialogVisible.value = true
 }
 
@@ -321,7 +279,7 @@ const openEditDialog = (eventId: string) => {
   const s = activeSchedules.value.find(x => x.id === eventId)
   if (!s) return
   editingScheduleId.value = s.id
-  newScheduleForm.value = { title: s.title, date: s.date, startTime: s.startTime, endTime: s.endTime, color: s.color }
+  scheduleDialogInitial.value = { title: s.title, date: s.date, startTime: s.startTime, endTime: s.endTime, color: s.color }
   newScheduleDialogVisible.value = true
 }
 
@@ -360,11 +318,9 @@ const handleSelect = (info: DateSelectArg) => {
   openNewScheduleDialog(fmtDate(start), fmtTime(start), fmtTime(end))
 }
 
-const confirmNewSchedule = () => {
-  const { title, date, startTime, endTime, color } = newScheduleForm.value
-  if (!title.trim()) { ElMessage.warning('标题不能为空'); return }
-  if (!date || !startTime || !endTime) { ElMessage.warning('请填写完整的日期和时间'); return }
-  if (startTime >= endTime) { ElMessage.warning('结束时间必须晚于开始时间'); return }
+// 落库与提示（校验已由 ScheduleDialog 完成，save 携带合法表单值）
+const confirmNewSchedule = (form: ScheduleFormValue) => {
+  const { title, date, startTime, endTime, color } = form
   if (editingScheduleId.value) {
     updateSchedule(editingScheduleId.value, { title: title.trim(), date, startTime, endTime, color })
     ElMessage.success('已更新')
@@ -372,7 +328,6 @@ const confirmNewSchedule = () => {
     addSchedule({ title: title.trim(), date, startTime, endTime, color })
     ElMessage.success('已新增日程')
   }
-  newScheduleDialogVisible.value = false
 }
 
 const handleDeleteSchedule = () => {
@@ -580,13 +535,7 @@ html.platform-mobile .calendar-wrapper {
   border: none;
 }
 
-/* 新增日程弹窗颜色选项圆点 */
-.color-dot {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
+/* 新增日程弹窗颜色选项圆点：已随 ScheduleDialog 组件化（scoped 自带），此处移除 */
 
 /* ===== 移动端 daterange 面板收窄为单月（popper 传送至 body，需全局样式）=====
    EP 范围面板双月并排 ~646px 溢出手机屏；unlink-panels 使左面板自带前进箭头，
