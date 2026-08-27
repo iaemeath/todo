@@ -19,13 +19,18 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { FullScreen } from '@element-plus/icons-vue'
+import { ScreenOrientation } from '@capacitor/screen-orientation'
 import FlipClock from './FlipClock.vue'
+import { isNativeShell } from '../services/apiClient'
+import { ImmersiveBars } from '../services/nativeBars'
 
 /**
  * 屏保页（Fliqlo 风翻页时钟）。
  * 固定纯黑是屏保语义的一部分（黑底白字机械翻牌），不随应用主题令牌切换；
  * 全屏对页面元素自身 requestFullscreen——侧栏随文档流留在原页面，天然沉浸；
  * 移动端全屏顺带锁横屏（床头钟形态），不支持的平台降级竖屏全屏（见 toggleFullscreen）。
+ * 安卓壳：WebView 全屏无权控制系统栏——状态栏/手势条由原生插件处理（见 onFsChange），
+ * 锁横走 @capacitor/screen-orientation（WebView 的 JS 锁通常不生效）。
  */
 const LS_HOUR12 = 'screensaver_hour12'
 
@@ -39,10 +44,30 @@ const hour12 = ref(localStorage.getItem(LS_HOUR12) === '1')
  * 会 reject → 降级为竖屏全屏，时钟照常显示，无新增破坏面。
  */
 const unlockOrientation = () => {
+  if (isNativeShell) {
+    // 壳内：原生解锁（与 lock 同一通道）；壳外不可达（页面本身不在壳里跑）
+    void ScreenOrientation.unlock().catch(() => {})
+    return
+  }
   try {
     screen.orientation.unlock()
   } catch {
     /* 本就未锁（桌面/竖屏设备） */
+  }
+}
+
+/** 壳内走原生 setRequestedOrientation；Web 维持原 JS 锁横（降级语义不变） */
+const lockLandscape = async () => {
+  if (isNativeShell) {
+    await ScreenOrientation.lock({ orientation: 'landscape' }).catch(() => {
+      /* 壳内锁横异常降级竖屏 */
+    })
+    return
+  }
+  try {
+    await screen.orientation.lock('landscape')
+  } catch {
+    /* 降级：保持竖屏全屏 */
   }
 }
 
@@ -53,11 +78,7 @@ const toggleFullscreen = async () => {
       await document.exitFullscreen()
     } else {
       await pageEl.value?.requestFullscreen()
-      try {
-        await screen.orientation.lock('landscape')
-      } catch {
-        /* 降级：保持竖屏全屏 */
-      }
+      await lockLandscape()
     }
   } catch {
     /* 全屏被浏览器策略拒绝时静默降级（时钟正常显示） */
@@ -66,6 +87,11 @@ const toggleFullscreen = async () => {
 
 const onFsChange = () => {
   isFullscreen.value = !!document.fullscreenElement
+  // 壳内系统栏：WebView 全屏无此权限，走自定义原生插件（ImmersiveBars）——
+  // 状态栏+手势条一起沉浸，边缘滑动临时唤出；重复调用幂等，恢复侧防残留
+  if (isNativeShell) {
+    void (isFullscreen.value ? ImmersiveBars.hide() : ImmersiveBars.show()).catch(() => {})
+  }
   // 手势/系统键退出全屏时补解锁，防系统仍停留横屏锁定
   if (!isFullscreen.value) {
     unlockOrientation()
@@ -146,8 +172,14 @@ onUnmounted(() => {
   window.clearTimeout(idleTimer)
   window.removeEventListener('pointermove', onPointerActivity)
   window.removeEventListener('pointerdown', onPointerActivity)
-  document.removeEventListener('visibilitychange', onVisForToolbar)
+  window.removeEventListener('visibilitychange', onVisForToolbar)
   document.removeEventListener('fullscreenchange', onFsChange)
+  // 全屏态直接路由离开：元素移除触发的 fullscreenchange 可能晚于上面的监听器移除，
+  // 壳内系统栏在此兜底恢复（验收项：退出后其他页面系统栏无残留）
+  if (isNativeShell && isFullscreen.value) {
+    void ImmersiveBars.show().catch(() => {})
+    unlockOrientation()
+  }
   void releaseWakeLock()
 })
 
