@@ -1,5 +1,5 @@
 <template>
-  <div ref="pageEl" class="screensaver-page">
+  <div ref="pageEl" class="screensaver-page" :class="{ 'is-native-fs': isNativeShell && isFullscreen }">
     <!-- 工具条：闲置 3s 淡出、任意指针活动唤出（屏保沉浸 + 全端可达，替代触屏常显/hover 门控双分支） -->
     <div class="screensaver-toolbar" :class="{ 'is-idle': !toolbarVisible }">
       <button class="scv-btn" :title="isFullscreen ? '退出全屏' : '全屏'" @click="toggleFullscreen">
@@ -19,18 +19,20 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { FullScreen } from '@element-plus/icons-vue'
+import { SystemBars } from '@capacitor/core'
 import { ScreenOrientation } from '@capacitor/screen-orientation'
 import FlipClock from './FlipClock.vue'
 import { isNativeShell } from '../services/apiClient'
-import { ImmersiveBars } from '../services/nativeBars'
 
 /**
  * 屏保页（Fliqlo 风翻页时钟）。
  * 固定纯黑是屏保语义的一部分（黑底白字机械翻牌），不随应用主题令牌切换；
  * 全屏对页面元素自身 requestFullscreen——侧栏随文档流留在原页面，天然沉浸；
  * 移动端全屏顺带锁横屏（床头钟形态），不支持的平台降级竖屏全屏（见 toggleFullscreen）。
- * 安卓壳：WebView 全屏无权控制系统栏——状态栏/手势条由原生插件处理（见 onFsChange），
- * 锁横走 @capacitor/screen-orientation（WebView 的 JS 锁通常不生效）。
+ * 安卓壳：不走 Web Fullscreen API（WebView 元素全屏依赖 onShowCustomView，Capacitor
+ * Bridge 未实现，requestFullscreen 常被静默 reject）——本地状态驱动官方 SystemBars
+ * 插件（core 8 内置，原生端随 Bridge 自动注册）隐藏/恢复系统栏；锁横走
+ * @capacitor/screen-orientation（WebView 的 JS 锁不生效）。
  */
 const LS_HOUR12 = 'screensaver_hour12'
 
@@ -72,6 +74,24 @@ const lockLandscape = async () => {
 }
 
 const toggleFullscreen = async () => {
+  // 壳内：不走 Web Fullscreen API——安卓 WebView 的元素全屏依赖
+  // WebChromeClient.onShowCustomView（Capacitor Bridge 未实现），requestFullscreen
+  // 被 reject 时事件不触发、链路整个哑掉。本地状态直接驱动官方 SystemBars
+  //（bar 缺省=状态栏+手势条一起）——真机修复实证方案
+  if (isNativeShell) {
+    if (isFullscreen.value) {
+      isFullscreen.value = false
+      void SystemBars.show().catch(() => {})
+      unlockOrientation()
+      void releaseWakeLock()
+    } else {
+      isFullscreen.value = true
+      void SystemBars.hide().catch(() => {})
+      await lockLandscape()
+      void requestWakeLock()
+    }
+    return
+  }
   try {
     if (document.fullscreenElement) {
       unlockOrientation()
@@ -87,12 +107,8 @@ const toggleFullscreen = async () => {
 
 const onFsChange = () => {
   isFullscreen.value = !!document.fullscreenElement
-  // 壳内系统栏：WebView 全屏无此权限，走自定义原生插件（ImmersiveBars）——
-  // 状态栏+手势条一起沉浸，边缘滑动临时唤出；重复调用幂等，恢复侧防残留
-  if (isNativeShell) {
-    void (isFullscreen.value ? ImmersiveBars.hide() : ImmersiveBars.show()).catch(() => {})
-  }
-  // 手势/系统键退出全屏时补解锁，防系统仍停留横屏锁定
+  // 手势/系统键退出全屏时补解锁，防系统仍停留横屏锁定（纯 web 路径；
+  // 壳内不触发 fullscreenchange，退出走 toggleFullscreen 壳分支）
   if (!isFullscreen.value) {
     unlockOrientation()
     void releaseWakeLock()
@@ -108,8 +124,10 @@ const onFsChange = () => {
 let wakeLock: WakeLockSentinel | null = null
 
 const requestWakeLock = async () => {
-  // 双前置：当前在全屏 + 平台支持（narrow 探测兼顾旧类型定义）
-  if (!document.fullscreenElement || !('wakeLock' in navigator)) return
+  // 双前置：当前在全屏 + 平台支持（narrow 探测兼顾旧类型定义）。
+  // 壳内不走 Web Fullscreen API（无 fullscreenElement），以本地状态为准
+  const fs = isNativeShell ? isFullscreen.value : !!document.fullscreenElement
+  if (!fs || !('wakeLock' in navigator)) return
   try {
     wakeLock = await navigator.wakeLock.request('screen')
   } catch {
@@ -174,10 +192,10 @@ onUnmounted(() => {
   window.removeEventListener('pointerdown', onPointerActivity)
   window.removeEventListener('visibilitychange', onVisForToolbar)
   document.removeEventListener('fullscreenchange', onFsChange)
-  // 全屏态直接路由离开：元素移除触发的 fullscreenchange 可能晚于上面的监听器移除，
-  // 壳内系统栏在此兜底恢复（验收项：退出后其他页面系统栏无残留）
+  // 全屏态直接路由离开：壳内无 fullscreenchange 事件，系统栏在此兜底恢复
+  // （验收项：退出后其他页面系统栏无残留）
   if (isNativeShell && isFullscreen.value) {
-    void ImmersiveBars.show().catch(() => {})
+    void SystemBars.show().catch(() => {})
     unlockOrientation()
   }
   void releaseWakeLock()
@@ -199,8 +217,9 @@ const toggleHour12 = () => {
   display: flex;
 }
 
-/* 自身进入全屏：铺满视口、直角 */
-.screensaver-page:fullscreen {
+/* 自身进入全屏：铺满视口、直角（壳内 Web Fullscreen API 不可用，用本地状态类等价驱动） */
+.screensaver-page:fullscreen,
+.screensaver-page.is-native-fs {
   border-radius: 0;
 }
 
