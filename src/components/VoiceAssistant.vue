@@ -36,6 +36,7 @@ import { parseVoiceCommand, type VoiceIntent } from '../services/llmService'
 import { storeToRefs } from 'pinia'
 import { useTaskStore, useSettingsStore } from '../stores'
 import { todayLocal } from '../utils/dates'
+import { DEFAULT_SCHEDULE_START, DEFAULT_SCHEDULE_END, DEFAULT_SCHEDULE_COLOR } from '../constants/schedule'
 
 type VoiceState = 'idle' | 'listening' | 'processing' | 'success' | 'error'
 
@@ -57,88 +58,102 @@ const { settings } = storeToRefs(useSettingsStore())
 // 语音删除属模糊匹配（谐音推断 + Fuse），且任务删除会级联子孙与关联日程，必须先确认
 const CANCELLED = '__CANCELLED__'
 
-const executeIntent = async (intent: VoiceIntent): Promise<string> => {
-  if (intent.action === 'add') {
-    if (intent.target === 'todo') {
-      const payload = intent.payload || {}
-      addTask({
-        title: payload.todoText || '新待办',
-        description: '',
-        category: 'ideas',
-        important: payload.important === true,
-        urgent: payload.urgent === true
-      })
-      return '已成功添加待办：' + (payload.todoText || '新待办')
-    } else {
-      const payload = intent.payload || {}
-      addSchedule({
-        title: payload.title || '新日程',
-        date: payload.date || todayLocal(),
-        startTime: payload.startTime || '12:00',
-        endTime: payload.endTime || '13:00',
-        color: payload.color || 'blue'
-      })
-      return '已成功添加日程：' + (payload.title || '新日程')
-    }
-  }
+// --- 意图执行：处理器表（action×target 摊平为 'add.todo' 式键，新增意图只注册不改嵌套链） ---
 
-  const listToSearch = intent.target === 'todo' ? tasks.value : schedules.value
-  let bestMatch: any = null
-
+/** 目标定位：targetId 直取（谐音容错由 LLM 侧完成），未命中再 Fuse 模糊兜底 */
+const resolveTarget = (intent: VoiceIntent): any => {
+  const list: any[] = intent.target === 'todo' ? tasks.value : schedules.value
   if (intent.targetId) {
-    bestMatch = listToSearch.find(item => String(item.id) === String(intent.targetId))
+    const hit = list.find((item) => String(item.id) === String(intent.targetId))
+    if (hit) return hit
   }
-
-  if (!bestMatch) {
-    if (!intent.searchQuery) {
-      throw new Error('未提供搜索关键词，也未找到确切目标，无法执行操作')
-    }
-
-    const fuse = new Fuse(listToSearch as any[], {
-      keys: ['title', 'description'],
-      threshold: 0.4
-    })
-
-    const results = fuse.search(intent.searchQuery)
-    if (results.length === 0) {
-      throw new Error(`找不到符合 "${intent.searchQuery}" 的记录`)
-    }
-
-    bestMatch = results[0].item
+  if (!intent.searchQuery) {
+    throw new Error('未提供搜索关键词，也未找到确切目标，无法执行操作')
   }
-
-  if (intent.action === 'delete') {
-    const label = intent.target === 'todo' ? '待办' : '日程'
-    const extra = intent.target === 'todo' ? '，其子任务和关联日程也会一并删除' : ''
-    const ok = await confirmDialog(
-      `语音指令将删除${label}「${bestMatch.title}」${extra}，确定执行吗？`,
-      '删除确认',
-      { confirmText: '删除' }
-    )
-    if (!ok) throw new Error(CANCELLED)
-    if (intent.target === 'todo') {
-      deleteTask(bestMatch.id)
-      return `已删除待办：${bestMatch.title}`
-    } else {
-      deleteSchedule(bestMatch.id)
-      return `已删除日程：${bestMatch.title}`
-    }
+  const fuse = new Fuse(list, {
+    keys: ['title', 'description'],
+    threshold: 0.4
+  })
+  const results = fuse.search(intent.searchQuery)
+  if (results.length === 0) {
+    throw new Error(`找不到符合 "${intent.searchQuery}" 的记录`)
   }
+  return results[0].item
+}
 
-  if (intent.action === 'edit') {
-    const payload = intent.payload || {}
-    if (intent.target === 'todo') {
-      updateTask(bestMatch.id, { title: payload.todoText || bestMatch.title })
-      return `已修改待办：${payload.todoText || bestMatch.title}`
-    } else {
-      // Clean undefined keys from payload
-      const updates = Object.fromEntries(Object.entries(payload).filter(([_, v]) => v != null))
-      updateSchedule(bestMatch.id, updates)
-      return `已修改日程：${updates.title || bestMatch.title}`
-    }
+const addTodoIntent = (intent: VoiceIntent): string => {
+  const payload = intent.payload || {}
+  addTask({
+    title: payload.todoText || '新待办',
+    description: '',
+    category: 'ideas',
+    important: payload.important === true,
+    urgent: payload.urgent === true
+  })
+  return '已成功添加待办：' + (payload.todoText || '新待办')
+}
+
+const addEventIntent = (intent: VoiceIntent): string => {
+  const payload = intent.payload || {}
+  const title = payload.title || '新日程'
+  addSchedule({
+    title,
+    date: payload.date || todayLocal(),
+    startTime: payload.startTime || DEFAULT_SCHEDULE_START,
+    endTime: payload.endTime || DEFAULT_SCHEDULE_END,
+    color: payload.color || DEFAULT_SCHEDULE_COLOR
+  })
+  return '已成功添加日程：' + title
+}
+
+/** 删除：todo/event 共用（文案差异按 target 派生）；级联删除必须先确认 */
+const deleteIntent = async (intent: VoiceIntent): Promise<string> => {
+  const isTodo = intent.target === 'todo'
+  const bestMatch = resolveTarget(intent)
+  const label = isTodo ? '待办' : '日程'
+  const extra = isTodo ? '，其子任务和关联日程也会一并删除' : ''
+  const ok = await confirmDialog(
+    `语音指令将删除${label}「${bestMatch.title}」${extra}，确定执行吗？`,
+    '删除确认',
+    { confirmText: '删除' }
+  )
+  if (!ok) throw new Error(CANCELLED)
+  if (isTodo) {
+    deleteTask(bestMatch.id)
+    return `已删除待办：${bestMatch.title}`
   }
+  deleteSchedule(bestMatch.id)
+  return `已删除日程：${bestMatch.title}`
+}
 
-  throw new Error('未知的操作指令')
+/** 编辑：todo 只改标题；event 合并非空 payload 字段 */
+const editIntent = async (intent: VoiceIntent): Promise<string> => {
+  const isTodo = intent.target === 'todo'
+  const bestMatch = resolveTarget(intent)
+  const payload = intent.payload || {}
+  if (isTodo) {
+    updateTask(bestMatch.id, { title: payload.todoText || bestMatch.title })
+    return `已修改待办：${payload.todoText || bestMatch.title}`
+  }
+  // Clean undefined keys from payload
+  const updates = Object.fromEntries(Object.entries(payload).filter(([_, v]) => v != null))
+  updateSchedule(bestMatch.id, updates)
+  return `已修改日程：${updates.title || bestMatch.title}`
+}
+
+const intentHandlers: Record<string, (intent: VoiceIntent) => string | Promise<string>> = {
+  'add.todo': addTodoIntent,
+  'add.event': addEventIntent,
+  'delete.todo': deleteIntent,
+  'delete.event': deleteIntent,
+  'edit.todo': editIntent,
+  'edit.event': editIntent
+}
+
+const executeIntent = async (intent: VoiceIntent): Promise<string> => {
+  const handler = intentHandlers[`${intent.action}.${intent.target}`]
+  if (!handler) throw new Error('未知的操作指令')
+  return handler(intent)
 }
 
 // --- Draggable Logic ---
