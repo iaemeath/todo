@@ -212,11 +212,12 @@ interface PullRecord {
  * - usage：按 id upsert / {deleted:true} 移除
  * force=true（云端恢复）：整体替换，无视裁决。
  */
-// ===== 拉取合并：按集合拆分的应用器（applyRecords 只做编排与基线回写）=====
-// 应用器统一返回"是否对齐基线"：
+// ===== 拉取合并：按集合注册的应用器（applyRecords 只做编排与基线回写）=====
+// 应用器统一签名 (r, ctx) => boolean，返回"是否对齐基线"：
 // - settings 本机脏：跳过赋值但仍对齐——下轮 diff 会发现本机值≠基线而推上去
 // - meta 本机脏：整条跳过（含基线）——等本机上行后自然对齐
-// 两种脏处理策略与拆分前行为逐一等价，勿"顺手统一"
+// 两种脏处理策略与拆分前行为逐一等价，勿"顺手统一"；
+// 新增同步集合 = 在 recordHandlers 注册一行，applyRecords 本体不再改动
 
 type TaskStore = ReturnType<typeof useTaskStore>
 type SettingsStore = ReturnType<typeof useSettingsStore>
@@ -224,74 +225,90 @@ type ThemeStore = ReturnType<typeof useThemeStore>
 type UsageStore = ReturnType<typeof useUsageStore>
 type UIStore = ReturnType<typeof useUIStore>
 
+/** 应用器统一上下文：stores 整轮取好一次；dirty/key/force 按记录派生；forceSink 为 force 时的落地累积区 */
+interface ApplyCtx {
+  stores: { task: TaskStore; settings: SettingsStore; theme: ThemeStore; usage: UsageStore; ui: UIStore }
+  dirty: Set<string>
+  key: string
+  force: boolean
+  forceSink: { tasks: Task[]; schedules: Schedule[] } | null
+}
+
+type RecordHandler = (r: PullRecord, ctx: ApplyCtx) => boolean
+
 /** tasks：force 时攒入落地区（整轮后整体替换），否则走增量合并通道 */
-function applyTaskRecord(r: PullRecord, taskStore: TaskStore, forceSink: Task[] | null): boolean {
+const applyTaskRecord: RecordHandler = (r, { stores, forceSink }) => {
   const t = r.data as Task
-  if (forceSink) forceSink.push(t)
-  else taskStore.upsertSyncedTask(t)
+  if (forceSink) forceSink.tasks.push(t)
+  else stores.task.upsertSyncedTask(t)
   return true
 }
 
-function applyScheduleRecord(r: PullRecord, taskStore: TaskStore, forceSink: Schedule[] | null): boolean {
+const applyScheduleRecord: RecordHandler = (r, { stores, forceSink }) => {
   const s = r.data as Schedule
-  if (forceSink) forceSink.push(s)
-  else taskStore.upsertSyncedSchedule(s)
+  if (forceSink) forceSink.schedules.push(s)
+  else stores.task.upsertSyncedSchedule(s)
   return true
 }
 
-function applySettingsRecord(
-  r: PullRecord, settingsStore: SettingsStore, dirty: Set<string>, key: string, force: boolean
-): boolean {
-  if (!dirty.has(key) || force) (settingsStore.settings as Record<string, unknown>)[r.id] = r.data
+const applySettingsRecord: RecordHandler = (r, { stores, dirty, key, force }) => {
+  if (!dirty.has(key) || force) (stores.settings.settings as Record<string, unknown>)[r.id] = r.data
   return true
 }
 
-function applyMetaRecord(
-  r: PullRecord, themeStore: ThemeStore, uiStore: UIStore, dirty: Set<string>, key: string, force: boolean
-): boolean {
+const applyMetaRecord: RecordHandler = (r, { stores, dirty, key, force }) => {
   if (dirty.has(key) && !force) return false
-  if (r.id === 'theme') themeStore.isDark = r.data === true
-  else if (r.id === 'todoVisible') uiStore.setTodoVisible(r.data === true)
+  if (r.id === 'theme') stores.theme.isDark = r.data === true
+  else if (r.id === 'todoVisible') stores.ui.setTodoVisible(r.data === true)
   return true
 }
 
 /** usage 追加型流水：墓碑按 id 移除，普通记录 upsert（已存在则忽略——对端旧版不回退本地） */
-function applyUsageRecord(r: PullRecord, usageStore: UsageStore): boolean {
+const applyUsageRecord: RecordHandler = (r, { stores }) => {
   const d = r.data as { deleted?: boolean }
-  if (d?.deleted) usageStore.usageHistory = usageStore.usageHistory.filter(u => u.id !== r.id)
+  if (d?.deleted) stores.usage.usageHistory = stores.usage.usageHistory.filter(u => u.id !== r.id)
   else {
     const u = r.data as UsageRecord
-    if (!usageStore.usageHistory.some(x => x.id === r.id)) usageStore.usageHistory = [u, ...usageStore.usageHistory]
+    if (!stores.usage.usageHistory.some(x => x.id === r.id)) stores.usage.usageHistory = [u, ...stores.usage.usageHistory]
   }
   return true
 }
 
-function applyRecords(records: PullRecord[], force: boolean): void {
-  const taskStore = useTaskStore()
-  const settingsStore = useSettingsStore()
-  const themeStore = useThemeStore()
-  const usageStore = useUsageStore()
-  const uiStore = useUIStore()
+/** 集合名 → 应用器注册表。未知集合 no-op 对齐基线（等价拆分前 else-if 链落空分支） */
+const noopHandler: RecordHandler = () => true
+const recordHandlers: Record<string, RecordHandler> = {
+  tasks: applyTaskRecord,
+  schedules: applyScheduleRecord,
+  settings: applySettingsRecord,
+  meta: applyMetaRecord,
+  usage: applyUsageRecord
+}
 
-  const dirty = force ? new Set<string>() : new Set(diffChanges(collectAll()).map(r => recKey(r.c, r.id)))
-  const forceTasks: Task[] = []
-  const forceSchedules: Schedule[] = []
+function applyRecords(records: PullRecord[], force: boolean): void {
+  const stores = {
+    task: useTaskStore(),
+    settings: useSettingsStore(),
+    theme: useThemeStore(),
+    usage: useUsageStore(),
+    ui: useUIStore()
+  }
+  const base = {
+    stores,
+    dirty: force ? new Set<string>() : new Set(diffChanges(collectAll()).map(r => recKey(r.c, r.id))),
+    force,
+    forceSink: force ? { tasks: [] as Task[], schedules: [] as Schedule[] } : null
+  }
 
   for (const r of records) {
     const key = recKey(r.c, r.id)
-    let align = true
-    if (r.c === 'tasks') align = applyTaskRecord(r, taskStore, force ? forceTasks : null)
-    else if (r.c === 'schedules') align = applyScheduleRecord(r, taskStore, force ? forceSchedules : null)
-    else if (r.c === 'settings') align = applySettingsRecord(r, settingsStore, dirty, key, force)
-    else if (r.c === 'meta') align = applyMetaRecord(r, themeStore, uiStore, dirty, key, force)
-    else if (r.c === 'usage') align = applyUsageRecord(r, usageStore)
+    const handler = recordHandlers[r.c] ?? noopHandler
     // 基线对齐：已应用的记录进入基线（避免下轮 diff 误判为本机变更；meta 脏跳过除外）
-    if (align) lastSyncedMap.set(key, { json: ser(r.data), rev: r.rev })
+    if (handler(r, { ...base, key })) lastSyncedMap.set(key, { json: ser(r.data), rev: r.rev })
   }
 
   if (force) {
-    taskStore.tasks = forceTasks
-    taskStore.schedules = forceSchedules
+    stores.task.tasks = base.forceSink!.tasks
+    stores.task.schedules = base.forceSink!.schedules
   }
 }
 

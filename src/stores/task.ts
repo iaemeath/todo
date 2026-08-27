@@ -1,8 +1,9 @@
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, type Ref } from 'vue'
 import { defineStore } from 'pinia'
 import dayjs from 'dayjs'
 import type { Schedule, Task } from '../types/bundle'
 import { quadrantOf } from '../constants/quadrant'
+import { DEFAULT_SCHEDULE_COLOR } from '../constants/schedule'
 
 // ===== Types =====
 // 契约定义在 types/bundle.ts（前后端共享），此处 re-export 保持既有 import 路径兼容
@@ -124,19 +125,29 @@ export const useTaskStore = defineStore('task', () => {
   /**
    * 同步层写入通道：按 revTime 裁决后覆盖（不走 action——action 会重打本地时间）。
    * 覆盖数组元素保持响应式引用（index 替换）。
+   * tasks/schedules 记录结构同构——deepClone/upsert/patch 泛型收敛为单一实现，
+   * 改裁决/克隆策略只改一处（历史上三组函数逐字重复，双份维护易改一漏一）。
    */
-  const upsertSyncedTask = (t: Task) => {
-    const idx = tasks.value.findIndex((x) => x.id === t.id)
-    if (idx === -1) tasks.value.push(deepCloneTask(t))
-    else if ((t.revTime || 0) >= (tasks.value[idx].revTime || 0)) tasks.value[idx] = deepCloneTask(t)
+  const deepClone = <T>(x: T): T => JSON.parse(JSON.stringify(x))
+
+  const upsertSynced = <T extends { id: string; revTime?: number }>(list: Ref<T[]>, item: T) => {
+    const idx = list.value.findIndex((x) => x.id === item.id)
+    if (idx === -1) list.value.push(deepClone(item))
+    else if ((item.revTime || 0) >= (list.value[idx].revTime || 0)) list.value[idx] = deepClone(item)
   }
-  const upsertSyncedSchedule = (s: Schedule) => {
-    const idx = schedules.value.findIndex((x) => x.id === s.id)
-    if (idx === -1) schedules.value.push(deepCloneSchedule(s))
-    else if ((s.revTime || 0) >= (schedules.value[idx].revTime || 0)) schedules.value[idx] = deepCloneSchedule(s)
+  const upsertSyncedTask = (t: Task) => upsertSynced(tasks, t)
+  const upsertSyncedSchedule = (s: Schedule) => upsertSynced(schedules, s)
+
+  /** 定位合并补丁并打点（updateTask/updateSchedule 共享实现） */
+  const patchById = <T extends { id: string; revTime?: number; deletedAt?: number }>(
+    list: Ref<T[]>, id: string, updates: Partial<T>
+  ) => {
+    const idx = list.value.findIndex((x) => x.id === id)
+    if (idx !== -1) {
+      list.value[idx] = { ...list.value[idx], ...updates }
+      touch(list.value[idx])
+    }
   }
-  const deepCloneTask = (t: Task): Task => JSON.parse(JSON.stringify(t))
-  const deepCloneSchedule = (s: Schedule): Schedule => JSON.parse(JSON.stringify(s))
 
   // ===== Tree helpers（展示类基于活跃集；遍历类基于全集） =====
   /** 所有祖先（从近到远）——活跃集：墓碑祖先不再参与完成态联动 */
@@ -213,13 +224,7 @@ export const useTaskStore = defineStore('task', () => {
     return addTask({ ...data, parentId })
   }
 
-  const updateTask = (id: string, updates: Partial<Task>) => {
-    const idx = tasks.value.findIndex((t) => t.id === id)
-    if (idx !== -1) {
-      tasks.value[idx] = { ...tasks.value[idx], ...updates }
-      touch(tasks.value[idx])
-    }
-  }
+  const updateTask = (id: string, updates: Partial<Task>) => patchById(tasks, id, updates)
 
   /**
    * 设置完成状态，自动联动：
@@ -283,13 +288,7 @@ export const useTaskStore = defineStore('task', () => {
     return newSchedule
   }
 
-  const updateSchedule = (id: string, updates: Partial<Schedule>) => {
-    const idx = schedules.value.findIndex((s) => s.id === id)
-    if (idx !== -1) {
-      schedules.value[idx] = { ...schedules.value[idx], ...updates }
-      touch(schedules.value[idx])
-    }
-  }
+  const updateSchedule = (id: string, updates: Partial<Schedule>) => patchById(schedules, id, updates)
 
   const deleteSchedule = (id: string) => {
     const s = schedules.value.find((x) => x.id === id)
@@ -300,7 +299,7 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   // 从叶子任务创建日程（排期）——活跃集：墓碑任务不可再排期
-  const addScheduleFromTask = (taskId: string, date: string, startTime: string, endTime: string, color = 'blue') => {
+  const addScheduleFromTask = (taskId: string, date: string, startTime: string, endTime: string, color: string = DEFAULT_SCHEDULE_COLOR) => {
     const task = activeTasks.value.find((t) => t.id === taskId)
     if (!task) return null
     return addSchedule({ taskId, title: task.title, date, startTime, endTime, color })
