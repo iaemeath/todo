@@ -223,6 +223,15 @@ const toggleHour12 = () => {
   border-radius: 0;
 }
 
+/* 壳内全屏铺满：锁横后 innerWidth>768 会让 app 误判桌面布局——content-area 的
+   12px 浮岛 padding 露出页面灰白底（真机"四周白边"根因）。fixed 脱离布局
+   盖满 WebView 视口，不依赖 isMobile 判定；z 低于语音球（--z-overlay） */
+.screensaver-page.is-native-fs {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+}
+
 .screensaver-stage {
   flex: 1;
   display: flex;
