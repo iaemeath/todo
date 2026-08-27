@@ -29,15 +29,3 @@ export const router = createRouter({
   ]
 })
 
-// 冷启动特判：屏保是展示态而非工作位置——上次会话停在屏保页时，浏览器/壳恢复
-// hash 会让"初次进入"直接落进只剩时钟的屏保视图（移动端侧栏抽屉/待办浮层
-// 均收起）。首导航是屏保则回主页；屏保内刷新同理回主页（临时态不保持位置，
-// "刷新保持位置"特性对其余视图照旧）。应用内正常跳转不受影响（标志只拦首次）
-let firstNav = true
-router.beforeEach((to) => {
-  if (!firstNav) return true
-  firstNav = false
-  if (to.path === '/screensaver') return { path: '/' }
-  return true
-})
-
