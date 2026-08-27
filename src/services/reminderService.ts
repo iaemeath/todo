@@ -4,20 +4,19 @@
  * 调度模型（事件驱动，无轮询）：四个配套机制，桌面/安卓共用——
  * ① 变更驱动重算：schedules 深度 watch（新增/拖拽/编辑/删除/同步落地）防抖重挂；
  *    remindEnabled 开关切换即时重挂/解除
- * ② 启动/唤醒一次性扫描：应用关着或系统睡过去的日程——仍进行中补一条「已开始」，
- *    已结束静默跳过（不打扰陈年旧账）
+ * ② 启动/唤醒一次性扫描：只认 15s 到点窗口（时钟微漂/扫描竞态）——错过的静默跳过，
+ *    过期补提醒是噪音（2026-08-27 用户裁决；安卓侧准时响由系统闹钟保证）
  * ③ 唤醒兜底：桌面 powerMonitor(onWake)/visibilitychange/online——睡眠时定时器冻结
  *    或进程被杀是唯一盲区
- * ④ 已触发去重：localStorage FIRED 表留 7 天，防刷新/重启重复弹
+ * ④ 已触发去重：localStorage FIRED 表留 7 天，防到点窗口内多轮扫描/刷新重复弹
  *
  * 双后端（编排层共用，触发器分平台）：
  * - timer（桌面壳，window.shiguang 桥）：单定时器指向最近的未来开始时刻，触发走桥
  *   notify（closeToTray 驻留托盘保活 JS）；漂移自校：onDue 时目标未到则 arm 重定向
  * - alarms（安卓壳，isNativeShell）：JS 只编排——syncAlarms 把「未来 14 天」候选差集
- *   同步成系统闹钟（AlarmManager 持有，应用被杀/重启照发，插件内置 BOOT_COMPLETED
- *   恢复），到点由原生直接发通知；应用前台时插件同时回传 localNotificationReceived
- *   （记 FIRED），点击通知回传 extra（回主页 + 跳日期）。被杀期间错过且不在通知栏
- *   在显的，仍由 scanDue 兜底补「已开始」。
+ *   同步成系统闹钟（AlarmManager 持有，应用被杀照发；force-stop 会清闹钟是系统语义，
+ *   下次打开差集自愈重挂），到点由原生直接发通知；应用前台时插件同时回传
+ *   localNotificationReceived（记 FIRED），点击通知回传 extra（回主页 + 跳日期）。
  * 网页端两个后端都没有 → startReminders 直接返回。
  */
 import { watch, type WatchStopHandle } from 'vue'
@@ -34,8 +33,8 @@ const FIRED_RETENTION_MS = 7 * 24 * 60 * 60_000
 const REARM_DEBOUNCE_MS = 500
 /** setTimeout 延时上限截断（2^31-1ms ≈ 24.8 天，超限会立即触发）——截断后靠漂移自校补差值 */
 const MAX_TIMEOUT_MS = 2 ** 30
-/** 超过该迟到的触发改叫「已开始」（正常到点触发与它文案不同） */
-const LATE_THRESHOLD_MS = 15_000
+/** 到点窗口：开点后 15s 内的扫描仍算准时触发；更晚的一律静默跳过（过期提醒是噪音） */
+const ON_TIME_WINDOW_MS = 15_000
 
 /** 闹钟挂载视野：只预挂近两周（通常百条内）；出窗的日程随每次变更/唤醒/打开的
  *  差集同步自然补挂（与 webMaxRangeDays=14 的选择习惯呼应，但不联动该设置） */
@@ -103,17 +102,16 @@ const candidates = (): Schedule[] => {
 // ===== 触发 =====
 
 const fire = (s: Schedule) => {
-  const late = Date.now() - startMs(s) > LATE_THRESHOLD_MS
   markFired(fireKey(s))
   if (backend === 'alarms') {
-    // scanDue 兜底路径（系统闹钟被 ROM 吞/用户 force stop 后的首开）：1 秒后经同一渠道
-    // 补发；id 与原闹钟同源，若原闹钟仍在等发（不精确被推迟）会被本次重挂顶掉，不重复
+    // 到点窗口内的 JS 侧触发（原生闹钟被 ROM 吞后的短窗抢救/竞态兜底）：1 秒后经同一
+    // 渠道补发；id 与原闹钟同源，若原闹钟仍在等发（非精确被推迟）会被本次重挂顶掉，不重复
     void LocalNotifications.schedule({
-      notifications: [alarmRequest(s, new Date(Date.now() + 1000), late, false)]
+      notifications: [alarmRequest(s, new Date(Date.now() + 1000), false)]
     }).catch(() => undefined) // 通知权限被拒时静默（设置页有引导态）
   } else {
     window.shiguang?.notify({
-      title: late ? '日程已开始' : '日程开始',
+      title: '日程开始',
       body: `《${s.title}》 ${s.startTime} 开始`,
       scheduleId: s.id,
       date: s.date
@@ -122,14 +120,15 @@ const fire = (s: Schedule) => {
 }
 
 /**
- * 扫描并触发所有「已到点且仍在进行中」的候选（启动/唤醒/定时器到期共用）。
- * 到点但已结束的不补（陈年旧账不打扰）；未到点的留给 arm 的定时器。
+ * 扫描并触发所有「刚到点」的候选（启动/唤醒/定时器到期共用）。
+ * 只认 15s 到点窗口：开得更早的一律静默跳过（过期补提醒是噪音）；
+ * 未到点的留给 arm 的定时器 / 安卓侧的系统闹钟。
  */
 const scanDue = () => {
   const now = Date.now()
   for (const s of candidates()) {
     const st = startMs(s)
-    if (st <= now && now < endMs(s)) fire(s)
+    if (st <= now && now - st <= ON_TIME_WINDOW_MS && now < endMs(s)) fire(s)
   }
 }
 
@@ -171,11 +170,11 @@ const alarmId = (s: Schedule): number => {
 }
 
 /** 通知请求体：extra 带定位三元组，前台接收/点击事件据此回主页跳日期。
- *  exact 仅常规挂载用；兜底补发（1 秒后）走非精确——避免 API 31/32 无精确闹钟权限时
+ *  exact 仅常规挂载用；JS 侧短窗补发（1 秒后）走非精确——避免 API 31/32 无精确闹钟权限时
  *  schedule() 触发插件拉起系统设置页打断用户 */
-const alarmRequest = (s: Schedule, at: Date, late = false, exact = true): LocalNotificationSchema => ({
+const alarmRequest = (s: Schedule, at: Date, exact = true): LocalNotificationSchema => ({
   id: alarmId(s),
-  title: late ? '日程已开始' : '日程开始',
+  title: '日程开始',
   body: `《${s.title}》 ${s.startTime} 开始`,
   channelId: ALARM_CHANNEL_ID,
   // 安卓：foreground 抬优先级 → 前台也走横幅；exact + allowWhileIdle 双保险穿透 Doze
@@ -192,8 +191,6 @@ let alarmSyncQueued = false
  * 差集同步（防抖后的安卓侧重算入口）：期望集 = 候选中「未来 14 天内」者，与插件已存
  * 闹钟对账——缺失补挂、at 不符（改时间）换挂、多余（删日程/已触发/关开关）cancel。
  * 对已送达的在显通知 cancel 只清闹钟和记录、不撤横幅（插件语义），放心清。
- * 顺带对账已过点候选：通知栏仍在显 = 原生已送达（应用被杀期间发的）→ 记 FIRED 防
- * scanDue 重复补发；不在显（被 ROM 吞/用户已划掉）→ 不记，留给 scanDue 补「已开始」。
  */
 const syncAlarms = async (): Promise<void> => {
   if (alarmSyncing) {
@@ -205,36 +202,24 @@ const syncAlarms = async (): Promise<void> => {
     const now = Date.now()
     const enabled = useSettingsStore().settings.remindEnabled
     const desired = new Map<number, { s: Schedule; st: number }>()
-    const dueKeys = new Map<number, string>()
     if (enabled) {
       for (const s of candidates()) {
         const st = startMs(s)
-        const id = alarmId(s)
-        if (st > now && st <= now + ALARM_HORIZON_MS) desired.set(id, { s, st })
-        else if (st <= now) dueKeys.set(id, fireKey(s))
+        if (st > now && st <= now + ALARM_HORIZON_MS) desired.set(alarmId(s), { s, st })
       }
     }
     let pending: Awaited<ReturnType<typeof LocalNotifications.getPending>> = { notifications: [] }
-    let delivered: Awaited<ReturnType<typeof LocalNotifications.getDeliveredNotifications>> = {
-      notifications: []
-    }
     try {
-      ;[pending, delivered] = await Promise.all([
-        LocalNotifications.getPending(),
-        LocalNotifications.getDeliveredNotifications()
-      ])
+      pending = await LocalNotifications.getPending()
     } catch {
       return // 桥偶发不可用：跳过本轮，下次变更/唤醒自然重算
     }
-    const deliveredIds = new Set(delivered.notifications.map((n) => n.id))
     const toCancel: number[] = []
     for (const p of pending.notifications) {
       const want = desired.get(p.id)
       const at = p.schedule?.at ? new Date(p.schedule.at).getTime() : NaN
       if (want !== undefined && at === want.st) desired.delete(p.id) // 已挂且时刻一致
       else toCancel.push(p.id)
-      const key = dueKeys.get(p.id)
-      if (key !== undefined && deliveredIds.has(p.id)) markFired(key)
     }
     if (toCancel.length) {
       await LocalNotifications.cancel({ notifications: toCancel.map((id) => ({ id })) })
@@ -338,7 +323,7 @@ export const startReminders = () => {
 
   if (backend === 'alarms') void initAlarmBackend()
   else {
-    // 启动扫描：应用关着错过的进行中日程补一条「已开始」，然后挂第一个定时器
+    // 启动扫描（只认到点窗口）后挂第一个定时器
     scanDue()
     arm()
   }

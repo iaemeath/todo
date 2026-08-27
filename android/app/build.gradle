@@ -9,7 +9,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // 版本纪律见 scripts/version.mjs：versionName 对齐 package.json 三段语义版本；
         // versionCode = 发版时 git rev-list --count HEAD（构建号第四位，只增不减）
-        versionCode 176
+        versionCode 177
         versionName "0.2.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
