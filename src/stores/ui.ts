@@ -50,13 +50,9 @@ export const useUIStore = defineStore('ui', () => {
   const isMobile = ref(false)
 
   // 主页待办可见性（web 常驻侧栏 / 移动 60% 浮层，同一状态），持久化保留用户偏好。
-  const readTodoVisible = (): boolean => {
-    const stored = typeof window !== 'undefined' ? localStorage.getItem(LS_TODO_VISIBLE) : null
-    if (stored !== null) return stored === '1'
-    // 首次：web 默认显示，移动默认隐藏。必须按窗口宽度现判——
-    // 此时 initResize() 尚未执行，isMobile 还是初始值 false，读它会误判移动端。
-    return typeof window === 'undefined' || window.innerWidth > MOBILE_BREAKPOINT
-  }
+  // 首次无记录默认隐藏，用户点击工具条开关后记忆
+  const readTodoVisible = (): boolean =>
+    typeof window !== 'undefined' && localStorage.getItem(LS_TODO_VISIBLE) === '1'
   const todoVisible = ref<boolean>(readTodoVisible())
 
   // 移动端拖拽中视觉隐藏状态（DOM 保留供 FC 继续拖拽）
@@ -69,12 +65,10 @@ export const useUIStore = defineStore('ui', () => {
     navDrawerOpen.value = v
   }
 
-  // 桌面 rail 显隐（工具条左端开关；持久化保留用户偏好，刷新不复位）
+  // 桌面 rail 显隐（工具条左端开关；持久化保留用户偏好，刷新不复位）。首次默认收起
   const LS_NAV_RAIL = 'nav_rail_visible'
-  const readNavRailCollapsed = (): boolean => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem(LS_NAV_RAIL) === '0'
-  }
+  const readNavRailCollapsed = (): boolean =>
+    typeof window === 'undefined' || localStorage.getItem(LS_NAV_RAIL) !== '1'
   const navRailCollapsed = ref<boolean>(readNavRailCollapsed())
 
   const setNavRailCollapsed = (v: boolean) => {
