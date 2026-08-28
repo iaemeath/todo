@@ -69,6 +69,15 @@
         <el-form-item label="标题">
           <el-input v-model="form.title" placeholder="请输入日程标题" />
         </el-form-item>
+        <el-form-item label="描述">
+          <el-input
+            v-model="form.description"
+            type="textarea"
+            :rows="2"
+            maxlength="200"
+            placeholder="日程描述（可选，屏保任务卡与日历悬浮展示）"
+          />
+        </el-form-item>
         <el-form-item label="日期">
           <el-date-picker v-model="form.date" type="date" value-format="YYYY-MM-DD" placeholder="选择日期" style="width: 100%;" />
         </el-form-item>
@@ -214,17 +223,17 @@ const filteredSchedules = computed(() => {
 // ---- Create / Edit ----
 const formDialogVisible = ref(false)
 const editingId = ref<string | null>(null)
-const form = ref({ title: '', date: todayLocal(), startTime: '09:00', endTime: '10:00', color: 'blue' as EventColor })
+const form = ref({ title: '', description: '', date: todayLocal(), startTime: '09:00', endTime: '10:00', color: 'blue' as EventColor })
 
 const openCreateDialog = () => {
   editingId.value = null
-  form.value = { title: '', date: todayLocal(), startTime: '09:00', endTime: '10:00', color: 'blue' }
+  form.value = { title: '', description: '', date: todayLocal(), startTime: '09:00', endTime: '10:00', color: 'blue' }
   formDialogVisible.value = true
 }
 
 const openEditDialog = (row: Schedule) => {
   editingId.value = row.id
-  form.value = { title: row.title, date: row.date, startTime: row.startTime, endTime: row.endTime, color: row.color as EventColor }
+  form.value = { title: row.title, description: row.description ?? '', date: row.date, startTime: row.startTime, endTime: row.endTime, color: row.color as EventColor }
   formDialogVisible.value = true
 }
 
