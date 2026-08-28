@@ -84,42 +84,8 @@
       </el-table-column>
     </el-table>
 
-    <!-- Matrix view（四象限看板）：跨面板拖拽 = 改重要/紧急两轴，点击卡片 = 编辑 -->
-    <div v-if="layoutMode === 'matrix'" class="matrix-view">
-      <div v-for="q in QUADRANTS" :key="q.key" class="quadrant-panel">
-        <div class="quadrant-panel-header">
-          <span class="color-dot" :style="{ background: q.color }"></span>
-          <span class="quadrant-panel-title">{{ q.label }}</span>
-          <span class="quadrant-count">{{ quadrantLists[q.key].length }}</span>
-        </div>
-        <draggable
-          :list="quadrantLists[q.key]"
-          item-key="id"
-          group="quadrants"
-          class="quadrant-list"
-          ghost-class="matrix-ghost"
-          :animation="200"
-          :delay="200"
-          delay-on-touch-only
-          @end="reconcileMatrixDrop"
-        >
-          <template #item="{ element }">
-            <div class="matrix-card" :class="{ 'is-done': element.completed }" @click="openEditDialog(element as Task)">
-              <el-checkbox
-                :model-value="element.completed"
-                @change="toggleComplete(element as Task, $event)"
-                @click.stop
-              />
-              <span class="matrix-card-title">{{ element.title }}</span>
-              <el-tag size="small" :type="categoryTagType(element.category)" effect="plain">{{ categoryLabel(element.category) }}</el-tag>
-            </div>
-          </template>
-          <template #header v-if="quadrantLists[q.key].length === 0">
-            <p class="matrix-empty">暂无任务</p>
-          </template>
-        </draggable>
-      </div>
-    </div>
+    <!-- Matrix view（四象限看板）：数据源与编辑事件见 QuadrantMatrix 组件 -->
+    <QuadrantMatrix v-if="layoutMode === 'matrix'" :tasks="matrixTasks" @edit="openEditDialog" />
 
     <!-- Create / Edit dialog -->
     <el-dialog v-model="formDialogVisible" :title="dialogTitle" :width="isMobile ? '92vw' : '480px'" destroy-on-close>
@@ -181,187 +147,51 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
-import Fuse from 'fuse.js'
+import { ref, computed } from 'vue'
 import { Plus, Search, Delete, Edit, Calendar } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import draggable from 'vuedraggable'
 import { confirmAction } from '../utils/confirm'
 import { QUADRANTS, quadrantOf, quadrantAxes, quadrantMeta, type QuadrantKey } from '../constants/quadrant'
 import { DEFAULT_SCHEDULE_START, DEFAULT_SCHEDULE_END, DEFAULT_SCHEDULE_COLOR } from '../constants/schedule'
+import { categoryOptions, categoryLabel, categoryTagType, levelTagType, type Category } from '../constants/categories'
 import ScheduleDialog, { type ScheduleFormValue } from './ScheduleDialog.vue'
+import QuadrantMatrix from './QuadrantMatrix.vue'
 import { todayLocal } from '../utils/dates'
 import { storeToRefs } from 'pinia'
 import { useTaskStore, useUIStore, type Task } from '../stores'
+import { useTaskViewFilter } from '../composables/useTaskViewFilter'
 
 const { isMobile } = storeToRefs(useUIStore())
 
 const taskStore = useTaskStore()
-const { activeTasks } = storeToRefs(taskStore) // 活跃视图（墓碑已滤）
 const {
   addTask,
   addChildTask,
   updateTask,
   deleteTask,
   setTaskCompleted,
-  getDescendants,
   getTaskLevel,
   canAddChild,
   isLeaf,
   addScheduleFromTask
 } = taskStore // action 直接解构（原 useTasks + useSchedules 合并于此）
 
-// ---- Options ----
-type Category = 'work' | 'personal' | 'fitness' | 'ideas' | 'shopping' | 'other'
+// ---- 视图状态与筛选（偏好持久化/搜索/树与扁平推导在组合式）----
+const {
+  viewMode,
+  viewOptions,
+  layoutMode,
+  layoutOptions,
+  searchQuery,
+  filterCategory,
+  hasFilter,
+  visibleTasks,
+  filteredFlat,
+  displayData
+} = useTaskViewFilter()
 
-const categoryOptions: { value: Category; label: string }[] = [
-  { value: 'work', label: '工作' },
-  { value: 'personal', label: '个人' },
-  { value: 'fitness', label: '健身' },
-  { value: 'ideas', label: '想法' },
-  { value: 'shopping', label: '购物' },
-  { value: 'other', label: '其他' }
-]
-
-const categoryLabel = (v: string) => categoryOptions.find(c => c.value === v)?.label ?? v
-const categoryTagType = (v: string) => {
-  const map: Record<string, string> = { work: 'primary', personal: 'danger', fitness: 'success', ideas: 'warning', shopping: 'warning', other: 'info' }
-  return (map[v] || 'info') as 'primary' | 'danger' | 'success' | 'warning' | 'info'
-}
-const levelTagType = (level: number) => {
-  const map: Record<number, string> = { 1: 'primary', 2: 'warning', 3: 'info' }
-  return (map[level] || 'info') as 'primary' | 'warning' | 'info'
-}
-
-// ---- View mode & filter ----
-// 视图按 L1（顶级任务）的 completed 归类：done = 已完成的 L1，active = 未完成的 L1。
-// 子任务（L2/L3）的完成状态不参与视图归类，子树跟随所属 L1 整体呈现。
-type ViewMode = 'active' | 'done'
-
-// 视图偏好持久化：App.vue 按 v-if 切换视图，组件每次重挂载本地 ref 会归零——
-// 未完成/已完成 + 树/矩阵两组选择记入 localStorage，进入页面恢复上次状态
-const LS_VIEW_PREFS = 'task_view_prefs'
-type ViewPrefs = { view: ViewMode; layout: LayoutMode }
-const readViewPrefs = (): ViewPrefs => {
-  try {
-    const raw = JSON.parse(localStorage.getItem(LS_VIEW_PREFS) || '{}')
-    return {
-      view: raw.view === 'done' ? 'done' : 'active',
-      layout: raw.layout === 'tree' ? 'tree' : 'matrix'
-    }
-  } catch {
-    return { view: 'active', layout: 'matrix' }
-  }
-}
-const initialPrefs = readViewPrefs()
-
-const viewMode = ref<ViewMode>(initialPrefs.view)
-
-const viewOptions = computed<{ value: ViewMode; label: string }[]>(() => [
-  { value: 'active', label: '未完成' },
-  { value: 'done', label: '已完成' }
-])
-
-// ---- Layout mode：象限（四象限看板，默认）/ 树（层级表格）----
-type LayoutMode = 'tree' | 'matrix'
-const layoutMode = ref<LayoutMode>(initialPrefs.layout)
-
-const layoutOptions = computed<{ value: LayoutMode; label: string }[]>(() => [
-  { value: 'matrix', label: '象限' },
-  { value: 'tree', label: '树' }
-])
-
-watch([viewMode, layoutMode], ([view, layout]) => {
-  localStorage.setItem(LS_VIEW_PREFS, JSON.stringify({ view, layout } satisfies ViewPrefs))
-})
-
-const searchQuery = ref('')
-const filterCategory = ref('')
-
-const hasFilter = computed(() => !!searchQuery.value.trim() || !!filterCategory.value)
-
-const fuse = computed(() => new Fuse(activeTasks.value, { keys: ['title', 'description'], threshold: 0.4 }))
-
-// 当前视图的顶级任务（L1）
-const viewRoots = computed(() =>
-  activeTasks.value.filter(t => t.parentId === null && t.completed === (viewMode.value === 'done'))
-)
-
-// 当前视图可见的全部任务 = 这些 L1 + 其全部子孙
-const visibleTasks = computed(() => {
-  const ids = new Set<string>()
-  for (const r of viewRoots.value) {
-    ids.add(r.id)
-    getDescendants(r.id).forEach(d => ids.add(d.id))
-  }
-  return activeTasks.value.filter(t => ids.has(t.id))
-})
-
-// 扁平过滤结果（搜索/筛选时，在当前可见任务范围内）
-const filteredFlat = computed(() => {
-  let list = visibleTasks.value.slice()
-  if (filterCategory.value) list = list.filter(t => t.category === filterCategory.value)
-  if (searchQuery.value.trim()) {
-    const matchedIds = new Set(fuse.value.search(searchQuery.value.trim()).map(r => r.item.id))
-    list = list.filter(t => matchedIds.has(t.id))
-  }
-  return list
-})
-
-// 树形结构（无筛选时使用，基于当前可见任务）
-type TaskNode = Task & { children: TaskNode[] }
-const taskTree = computed<TaskNode[]>(() => {
-  const visIds = new Set(visibleTasks.value.map(t => t.id))
-  const build = (parentId: string | null): TaskNode[] =>
-    activeTasks.value
-      .filter(t => t.parentId === parentId && visIds.has(t.id))
-      .sort((a, b) => a.order - b.order)
-      .map(t => ({ ...t, children: build(t.id) }))
-  return build(null)
-})
-
-const displayData = computed(() => (hasFilter.value ? filteredFlat.value : taskTree.value))
-
-// ---- Matrix view（四象限看板） ----
-// vuedraggable 的 :list 需要可变数组（拖拽时原地 splice），store 派生列表不能直接喂；
-// 用本地镜像 + watcher 对齐 store，拖拽结束后 reconcileMatrixDrop 把落点写回
-const quadrantLists = reactive<Record<QuadrantKey, Task[]>>(
-  { q1: [], q2: [], q3: [], q4: [] }
-)
-
-// 矩阵数据源 = 当前视图可见任务的扁平集（沿用 未完成/已完成 + 搜索/分类筛选），
-// 统一按 order 排序——order 语义即「象限内位置」，面板内顺序因此稳定
-const matrixSource = computed(() => {
-  const base = hasFilter.value ? filteredFlat.value : visibleTasks.value
-  return [...base].sort((a, b) => a.order - b.order)
-})
-
-const syncMatrixLists = () => {
-  const byKey: Record<QuadrantKey, Task[]> = { q1: [], q2: [], q3: [], q4: [] }
-  for (const t of matrixSource.value) byKey[quadrantOf(t)].push(t)
-  for (const q of QUADRANTS) quadrantLists[q.key] = byKey[q.key]
-}
-watch(matrixSource, syncMatrixLists, { immediate: true })
-
-// 拖拽结算（唯一写 order 的入口）：以四块本地列表的最终顺序为准——
-// 跨面板拖 = 改两轴；面板内拖 = 改象限内位置。每个象限按「可见拖后序 + 被遮挡任务
-// 按原序垫底」重编号 0..n，order 有变化或两轴不符的任务写回（touch 打 revTime 供同步）
-const reconcileMatrixDrop = () => {
-  for (const q of QUADRANTS) {
-    const axes = quadrantAxes(q.key)
-    const list = quadrantLists[q.key]
-    const listIds = new Set(list.map(t => t.id))
-    // 被筛选/另一完成视图遮挡的同象限任务，追加在可见序之后保持原相对序
-    const hidden = activeTasks.value
-      .filter(t => quadrantOf(t) === q.key && !listIds.has(t.id))
-      .sort((a, b) => a.order - b.order)
-    ;[...list, ...hidden].forEach((t, i) => {
-      const axesChanged = !!t.important !== axes.important || !!t.urgent !== axes.urgent
-      if (axesChanged || t.order !== i) updateTask(t.id, { ...axes, order: i })
-    })
-  }
-  syncMatrixLists()
-}
+// 矩阵数据源 = 无筛选用可见全集、有筛选用过滤扁平集（QuadrantMatrix 内部再按 order 排序）
+const matrixTasks = computed(() => (hasFilter.value ? filteredFlat.value : visibleTasks.value))
 
 // ---- Create / Edit ----
 const formDialogVisible = ref(false)
@@ -602,134 +432,7 @@ html.platform-mobile .manage-page {
   background: var(--el-color-primary-light-9);
 }
 
-/* 矩阵视图：四象限面板（移动端单列，桌面 2×2） */
-.matrix-view {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-md);
-  align-content: start;
-}
-
-/* 桌面：矩阵占满剩余高度，象限列表各自内部滚动（页面不滚）。
-   移动端保持整页滚动——竖排四面板若各自内滚，每块仅 1/4 屏高过分局促 */
-@media (width >= 769px) {
-  .matrix-view {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-    flex: 1;
-    min-height: 0;
-  }
-
-  .quadrant-panel {
-    min-height: 0; /* 覆盖空面板 120px 落点高度，改为由列表的 48px 兜底 */
-    overflow: hidden;
-  }
-
-  .quadrant-list {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-  }
-}
-
-.quadrant-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  min-height: 120px; /* 空面板也保留拖拽落点 */
-  padding: var(--space-md);
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: var(--radius-lg);
-
-  /* 面板比页面底（--el-bg-color-page）亮一档：浅色=纯白、深色=微抬升；
-     卡片保持 --bg-card 灰调，与面板形成层次 */
-  background: var(--el-bg-color);
-}
-
-.quadrant-panel-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-}
-
-.quadrant-panel-title {
-  font-size: var(--font-sm);
-  font-weight: var(--weight-semibold);
-  color: var(--text-primary);
-}
-
-.quadrant-count {
-  margin-left: auto;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 9999px;
-  background: var(--el-fill-color);
-  color: var(--text-secondary);
-  font-size: var(--font-sm);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.quadrant-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  min-height: 48px;
-}
-
-.matrix-card {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-xs) var(--space-sm);
-  border: 1px solid var(--border-glass);
-  border-radius: var(--radius-md);
-  background: var(--bg-card);
-  cursor: pointer;
-  transition: all var(--duration-fast) ease;
-}
-
-.matrix-card:hover {
-  border-color: var(--color-primary-alpha);
-}
-
-.matrix-card-title {
-  flex: 1;
-  font-size: var(--font-sm);
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.matrix-card.is-done .matrix-card-title {
-  color: var(--text-muted);
-  text-decoration: line-through;
-}
-
-.quadrant-list::-webkit-scrollbar {
-  width: 4px;
-}
-
-.quadrant-list::-webkit-scrollbar-thumb {
-  background: var(--border-glass-subtle);
-  border-radius: 4px; /* stylelint-disable-line declaration-property-value-disallowed-list -- 滚动条微调特例 */
-}
-
-.matrix-empty {
-  margin: 0;
-  padding: var(--space-sm) 0;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: var(--font-sm);
-}
-
-.matrix-view :deep(.matrix-ghost) {
-  opacity: 0.4;
-}
-
+/* 与 QuadrantMatrix 矩阵卡共用同一视觉（两处 scoped 各持一份，7 行微样式） */
 .color-dot {
   display: inline-block;
   width: 12px;
