@@ -12,7 +12,8 @@
  *       rev=客户端时钟管裁决方向，recv=服务端时钟管游标完整性，时钟漂移不丢数据）
  *
  * 推送触发：① 数据变更防抖 30s ② 每 5 分钟兜底 ③ 页面隐藏/卸载 keepalive ④ 手动 syncNow
- * 拉取触发：① push 成功后（含被拒即拉）② 5min 兜底 ③ SSE 变更信号（对端 push 秒级唤醒，丢了由轮询兜底）
+ * 拉取触发：① push 成功后（含被拒即拉）② 兜底定时（SSE 健在时降频，见 SSE_FALLBACK_TICKS）
+ *           ③ SSE 变更信号（对端 push 秒级唤醒，丢了由兜底轮询补齐）
  */
 import { ref, watch, type WatchStopHandle } from 'vue'
 import { useAuthStore } from '../stores/auth'
@@ -34,6 +35,10 @@ const LS_LAST_SYNC = 'shiguang_last_synced_at'
 const LS_CURSOR = 'shiguang_sync_cursor'
 const PUSH_DEBOUNCE_MS = 30_000
 const PUSH_INTERVAL_MS = 5 * 60_000
+/** SSE 健在时兜底轮询的降频系数：实发间隔 = PUSH_INTERVAL_MS × 该值（5min × 6 = 30min）。
+ *  信令正常时轮询只是保险，不必勤快；信号丢失的最坏补齐窗口 = 该间隔，
+ *  且期间任何一次成功 push 都会顺带 pull，实际数据时滞远小于此。 */
+const SSE_FALLBACK_TICKS = 6
 /** fetch keepalive 的 body 上限是 64KB，逼近即放弃（等定时兜底），避免请求被浏览器拒绝 */
 const KEEPALIVE_MAX_BYTES = 60_000
 
@@ -46,6 +51,8 @@ let intervalTimer: number | null = null
 let debounceTimer: number | null = null
 let syncing = false
 let pulling = false
+/** 兜底降频计数：SSE 健在时每 tick +1 取模跳发；断开即清零回全速兜底 */
+let fallbackTicks = 0
 
 // ===== 记录模型 =====
 
@@ -447,6 +454,14 @@ export function startSync(): void {
     { deep: true }
   )
   intervalTimer = window.setInterval(() => {
+    // 兜底降频：SSE 健在（连接对象存在即健在；真断了 onerror 会置空）→ 跳过 6 个 tick 里的 5 个；
+    // 断开 → 立即回 5min 全速兜底。定时器本身不重排，避免连接状态抖动引发的重排竞态。
+    if (es) {
+      fallbackTicks = (fallbackTicks + 1) % SSE_FALLBACK_TICKS
+      if (fallbackTicks !== 0) return
+    } else {
+      fallbackTicks = 0
+    }
     void push().then(ok => { if (ok) void pull() })
   }, PUSH_INTERVAL_MS)
   document.addEventListener('visibilitychange', onVisibility)
@@ -464,6 +479,7 @@ export function stopSync(): void {
   document.removeEventListener('visibilitychange', onVisibility)
   document.removeEventListener('pagehide', onPageHide)
   stopSSE()
+  fallbackTicks = 0
   syncState.value = 'off'
   lastSyncedMap.clear()
   localStorage.removeItem(LS_CURSOR)
