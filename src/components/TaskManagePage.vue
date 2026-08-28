@@ -134,14 +134,20 @@
         date: todayLocal(),
         startTime: DEFAULT_SCHEDULE_START,
         endTime: DEFAULT_SCHEDULE_END,
-        color: DEFAULT_SCHEDULE_COLOR
+        color: DEFAULT_SCHEDULE_COLOR,
+        remindMinutes: 0
       }"
       :show-title="false"
       confirm-text="创建日程"
       @save="confirmSchedule"
     >
       <template #hint>
-        <p class="schedule-hint">将任务「<strong>{{ schedulingTask?.title }}</strong>」排入日历日程。</p>
+        <!-- 选中任务的只读预览卡（上标题/下描述），替代原提示文案 -->
+        <TaskPreviewCard
+          class="schedule-task-preview"
+          :title="schedulingTask?.title ?? ''"
+          :description="schedulingTask?.description ?? ''"
+        />
       </template>
     </ScheduleDialog>
   </div>
@@ -156,6 +162,7 @@ import { QUADRANTS, quadrantOf, quadrantAxes, quadrantMeta, type QuadrantKey } f
 import { DEFAULT_SCHEDULE_START, DEFAULT_SCHEDULE_END, DEFAULT_SCHEDULE_COLOR } from '../constants/schedule'
 import { categoryOptions, categoryLabel, categoryTagType, levelTagType, type Category } from '../constants/categories'
 import ScheduleDialog, { type ScheduleFormValue } from './ScheduleDialog.vue'
+import TaskPreviewCard from './TaskPreviewCard.vue'
 import QuadrantMatrix from './QuadrantMatrix.vue'
 import { todayLocal } from '../utils/dates'
 import { storeToRefs } from 'pinia'
@@ -268,8 +275,8 @@ const openScheduleDialog = (row: Task) => {
 
 const confirmSchedule = (form: ScheduleFormValue) => {
   if (!schedulingTask.value) return
-  const { date, startTime, endTime, color, description } = form
-  addScheduleFromTask(schedulingTask.value.id, date, startTime, endTime, color, description.trim())
+  const { date, startTime, endTime, color, description, remindMinutes } = form
+  addScheduleFromTask(schedulingTask.value.id, date, startTime, endTime, color, description.trim(), remindMinutes)
   ElMessage.success('已排入日历')
 }
 </script>
@@ -442,8 +449,7 @@ html.platform-mobile .manage-page {
   vertical-align: middle;
 }
 
-.schedule-hint {
-  margin: 0 0 var(--space-lg);
-  color: var(--el-text-color-regular);
+.schedule-task-preview {
+  margin-bottom: var(--space-lg); /* 预览卡与下方表单的区块间距 */
 }
 </style>
