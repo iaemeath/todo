@@ -45,4 +45,7 @@
          SCHEDULE_EXACT_ALARM 兜底（未授予时插件会引导去系统设置，未授则降级不精确）；
          RECEIVE_BOOT_COMPLETED + WAKE_LOCK 由插件清单合并带入，重启后自动重挂闹钟 -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- 电池优化豁免引导（设置页按钮拉起系统确认弹窗）：normal 权限声明即可，
+         是 ROM 激进查杀场景下唯一的标准干预点 -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 </manifest>

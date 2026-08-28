@@ -13,6 +13,9 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // 自定义插件必须在 super.onCreate 之前注册：BridgeActivity.onCreate 尾部的
+        // load() 就会用 bridgeBuilder 构建 bridge，之后再 registerPlugin 等于空操作
+        registerPlugin(BatteryOptimPlugin.class);
         super.onCreate(savedInstanceState);
 
         // 官方 edge-to-edge 三件套的最后一块（SHORT_EDGES + viewport-fit=cover 已就位）：

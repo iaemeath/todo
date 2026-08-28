@@ -6,6 +6,7 @@ import type { PermissionState } from '@capacitor/core'
 import { LocalNotifications } from '@capacitor/local-notifications'
 import { useThemeStore, type Settings } from '../stores'
 import { hasDesktopBridge, isNativeShell } from '../services/apiClient'
+import { batteryIgnoring, requestBatteryIgnore } from '../services/batteryOptim'
 
 const props = defineProps<{ form: Settings }>()
 
@@ -25,6 +26,9 @@ const onEndHourChange = (v: number | undefined) => {
 
 // ===== 安卓通知权限引导（仅原生壳）：拒绝时闹钟照挂但通知不显示，需在此暴露状态 =====
 const permState = ref<PermissionState>('granted')
+// ===== 电池优化豁免引导（仅原生壳）：ROM 把「划掉」当强停清闹钟，豁免是唯一标准干预点 =====
+// null = 桥不可用/未判定前的隐藏态；已豁免也隐藏（自证修复，保持设置页干净）
+const batteryExempt = ref<boolean | null>(null)
 onMounted(async () => {
   if (!isNativeShell) return
   try {
@@ -32,12 +36,31 @@ onMounted(async () => {
   } catch {
     permState.value = 'prompt'
   }
+  batteryExempt.value = await batteryIgnoring()
 })
 const requestPerm = async () => {
   try {
     permState.value = (await LocalNotifications.requestPermissions()).display
   } catch {
     /* 桥异常保持现状 */
+  }
+}
+const onBatteryExempt = async () => {
+  try {
+    await requestBatteryIgnore()
+  } catch {
+    /* 极少数 ROM 裁剪了该入口：文案已引导手动设置 */
+    return
+  }
+  // 壳内 visibilitychange 不触发（WebView 不随 Activity 暂停，实测恒 visible），
+  // 弹窗返回后轮询对账，豁免生效即隐藏引导行；10 轮后仍 false（用户点了拒绝）保持引导
+  for (let i = 0; i < 10; i++) {
+    await new Promise((r) => setTimeout(r, 1500))
+    const ignoring = await batteryIgnoring()
+    if (ignoring) {
+      batteryExempt.value = ignoring
+      break
+    }
   }
 }
 </script>
@@ -184,6 +207,15 @@ const requestPerm = async () => {
           </span>
         </div>
         <el-button v-if="permState !== 'granted'" size="small" @click="requestPerm">重新授权</el-button>
+      </div>
+      <div v-if="isNativeShell && form.remindEnabled && batteryExempt === false" class="setting-row">
+        <div class="setting-info">
+          <span class="setting-name">电池优化豁免</span>
+          <span class="setting-desc">
+            部分系统会把「划掉应用」当作强停并清掉闹钟，导致到点不提醒。点击右侧按钮申请忽略电池优化；另建议在系统设置中允许拾光自启动，并在最近任务中锁定
+          </span>
+        </div>
+        <el-button size="small" @click="onBatteryExempt">申请豁免</el-button>
       </div>
       <div v-if="hasDesktopBridge" class="setting-row">
         <div class="setting-info">
