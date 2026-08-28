@@ -66,12 +66,13 @@ watch(
 </script>
 
 <style scoped>
-/* 屏保专属固定深色板：黑底白字是 Fliqlo 风屏保语义的一部分，恒定不随主题令牌切换 */
+/* 色板由屏保页 --scv-* 变量注入（ScreensaverPage 按变体单点赋值，dark/light 各一套），
+   本组件不感知主题；fallback 保留原深色板值，兜独立使用场景 */
 .flip-card {
-  --flip-face-top: #232326; /* 上半受顶光 */
-  --flip-face-bottom: #17171a; /* 下半背光更暗 */
-  --flip-ink: #f5f5f0;
-  --flip-seam: rgb(255 255 255 / 14%);
+  --flip-face-top: var(--scv-card-top, #232326); /* 上半受顶光 */
+  --flip-face-bottom: var(--scv-card-bottom, #17171a); /* 下半背光更暗 */
+  --flip-ink: var(--scv-ink, #f5f5f0);
+  --flip-seam: var(--scv-seam, rgb(255 255 255 / 14%));
   --flip-dur: var(--duration-base); /* 翻转时长与 JS 侧 FLIP_TOTAL_MS 对应 */
   --flip-delay: calc(var(--flip-dur) / 2); /* 下页半程跟上 */
   position: relative;
@@ -79,7 +80,7 @@ watch(
   height: calc(var(--flip-w) * 1.18);
   border-radius: var(--radius-sm);
   perspective: calc(var(--flip-w) * 3);
-  box-shadow: 0 3px 12px rgb(0 0 0 / 45%);
+  box-shadow: 0 3px 12px var(--scv-card-shadow, rgb(0 0 0 / 45%));
 }
 
 /* 数字铺满整卡坐标系（上下半各裁一半）：衬线粗体贴近 Fliqlo 的窄长字感 */
