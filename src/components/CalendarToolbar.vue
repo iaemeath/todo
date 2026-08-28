@@ -1,0 +1,338 @@
+<template>
+  <!-- 顶部工具条统一四段式（双端同构）：
+       左 导航开关 | 中 时间选择器（选范围按跨度智能切视图）| 右 月视图 + 待办开关 -->
+  <div class="calendar-toolbar">
+    <div class="calendar-toolbar__side">
+      <!-- 左端导航开关：桌面 toggle rail 显隐 / 移动端拉出导航抽屉 -->
+      <button
+        v-if="isMobile"
+        class="toolbar-burger"
+        title="导航菜单"
+        @click="setNavDrawerOpen(true)"
+      >
+        <Menu :size="20" />
+      </button>
+      <button
+        v-else
+        class="toolbar-nav-toggle"
+        :title="navRailCollapsed ? '显示导航栏' : '隐藏导航栏'"
+        @click="setNavRailCollapsed(!navRailCollapsed)"
+      >
+        <PanelLeftClose v-if="!navRailCollapsed" :size="20" />
+        <PanelLeftOpen v-else :size="20" />
+      </button>
+    </div>
+    <div class="calendar-toolbar__center">
+      <button class="period-nav" title="上一时段" @click="emit('shift', -1)">
+        <ChevronLeft :size="20" />
+      </button>
+      <!-- 区间模式：两端共用 EP daterange（所见=所选）。移动端面板收窄为单月：
+           unlink-panels 使左面板自带前进箭头，CSS 隐藏右面板（EP 双月 646px 溢出手机屏） -->
+      <el-date-picker
+        v-if="pickerMode !== 'month'"
+        ref="pickerRef"
+        v-model="selectedRange"
+        class="calendar-title-picker"
+        type="daterange"
+        :unlink-panels="isMobile"
+        :popper-class="isMobile ? 'mobile-range-panel' : undefined"
+        range-separator="–"
+        start-placeholder="开始日期"
+        end-placeholder="结束日期"
+        format="M月D日"
+        :clearable="false"
+        @change="onRangeChange"
+      />
+      <!-- 月模式（两端共用）：月选择器 + 月视图 -->
+      <el-date-picker
+        v-else
+        ref="pickerRef"
+        v-model="selectedMonth"
+        class="calendar-title-picker calendar-month-picker"
+        type="month"
+        :clearable="false"
+        format="YYYY年M月"
+        @change="onMonthPick"
+      />
+      <button class="period-nav" title="下一时段" @click="emit('shift', 1)">
+        <ChevronRight :size="20" />
+      </button>
+    </div>
+    <div class="calendar-toolbar__side calendar-toolbar__side--right">
+      <!-- 月视图 toggle：激活时选择器切换为月选择器。
+           网页端常驻；移动端由「设置-视觉与外观」控制（默认隐藏） -->
+      <button v-if="!isMobile || settings.showMonthButton" class="month-toggle" :class="{ active: pickerMode === 'month' }" @click="emit('toggleMonth')" title="月视图">
+        月
+      </button>
+      <!-- 待办面板开关（原待办头部"收起待办栏"按钮移此，双端统一）：
+           web 收/展侧栏，移动端收/开浮层 -->
+      <button
+        class="todo-toggle"
+        :title="todoVisible ? '收起待办栏' : '展开待办栏'"
+        @click="setTodoVisible(!todoVisible)"
+      >
+        <PanelRightClose v-if="todoVisible" :size="20" />
+        <PanelRight v-else :size="20" />
+      </button>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useSettingsStore, useUIStore } from '../stores'
+import { PanelRight, PanelRightClose, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight, Menu } from 'lucide-vue-next'
+
+defineProps<{ pickerMode: 'range' | 'month' }>()
+const selectedRange = defineModel<[Date, Date]>('selectedRange', { required: true })
+const selectedMonth = defineModel<Date>('selectedMonth', { required: true })
+const emit = defineEmits<{
+  shift: [dir: 1 | -1]
+  rangeChange: [range: [Date, Date] | null]
+  monthPick: [d: Date | null]
+  toggleMonth: []
+}>()
+
+const { settings } = storeToRefs(useSettingsStore())
+const uiStore = useUIStore()
+const { isMobile, todoVisible, navRailCollapsed } = storeToRefs(uiStore)
+const { setTodoVisible, setNavDrawerOpen, setNavRailCollapsed } = uiStore
+
+const pickerRef = ref<{ handleClose?: () => void } | null>(null)
+const closePicker = () => pickerRef.value?.handleClose?.()
+// 原序保持：emit 同步触发父组件应用区间，随后收起弹层
+const onRangeChange = (range: [Date, Date] | null) => {
+  emit('rangeChange', range)
+  closePicker()
+}
+const onMonthPick = (d: Date | null) => {
+  emit('monthPick', d)
+  closePicker()
+}
+</script>
+
+<style>
+/* ===== 移动端 daterange 面板收窄为单月（popper 传送至 body，需全局样式）=====
+   EP 范围面板双月并排 ~646px 溢出手机屏；unlink-panels 使左面板自带前进箭头，
+   隐藏右侧面板后仍是可完整导航的单月范围选择。
+   左面板定宽 322px（同 EP 单日期面板），单元格 ≈44px 触控友好；
+   content 为 table-cell 布局，不定宽会自适应撑满 body */
+.mobile-range-panel .el-date-range-picker {
+  width: fit-content;
+  max-width: calc(100vw - var(--space-lg));
+}
+
+.mobile-range-panel .el-picker-panel__body,
+.mobile-range-panel .el-picker-panel__body-wrapper {
+  width: auto;
+
+  /* EP 给范围面板 body 预留 min-width 513px（双月表格最小宽），
+     隐藏右面板后它就是右侧空白区的来源，必须显式清零 */
+  min-width: 0;
+}
+
+.mobile-range-panel .el-date-range-picker__content.is-left {
+  width: 322px;
+}
+
+.mobile-range-panel .el-date-range-picker__content.is-right {
+  display: none;
+}
+
+/* ===== 顶部工具条（文档流三段式，替代已移除的 FC 工具栏）===== */
+
+/* 左右等宽占位 + 中央选择器，保证 picker 始终水平居中；右侧承载待办开关。
+   与待办头部（TodoSidebar .sidebar-header）同构的灰带：12px 灰顶边 + 44 内容 + 1px 底边，
+   两带用同一 calc 定高（子元素不撑高）几何严格相等；底边直接贴 FC 网格（无间距） */
+.calendar-toolbar {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: calc(44px + var(--space-md) + 1px); /* 桌面 57 / 移动 53（顶边随令牌） */
+
+  /* 上下边框不对称（12px 顶 / 1px 底），flex 只在内容盒居中会整体偏下 (12-1)/2=5.5px；
+     补「边框差」等量 padding-bottom，把按钮/选择器抬回整条灰带的视觉中心 */
+  padding: 0 var(--space-md) calc(var(--space-md) - 1px);
+  border-top: var(--space-md) solid var(--el-fill-color-light);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  background: var(--el-fill-color-light);
+}
+
+.calendar-toolbar__side {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.calendar-toolbar__side--right {
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
+/* 中央组合：‹ 选择器 › */
+.calendar-toolbar__center {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+/* ‹ › 按钮：移动优先默认隐藏（移动端翻时段由左右滑动手势承担），桌面恢复显示。
+   「月」按钮不再由 CSS 控制——显示与否走 settings.showMonthButton（v-if）。
+   .calendar-toolbar 祖先提权：全局 button:not(.el-button)（theme.css）特异性更高，
+   单类 .period-nav 会被其 display:flex 压过导致隐藏失效 */
+.calendar-toolbar .period-nav {
+  display: none;
+}
+
+@media (width >= 769px) {
+  .calendar-toolbar .period-nav {
+    display: inline-flex;
+  }
+}
+
+/* 工具条按钮统一形态：32×32 透明底、无边框、hover 灰底 + 主题色。
+   period-nav / month / nav 开关 / todo 开关 / burger 五者共用一组规则（display 与居中
+   由全局 button 规则和上方恢复块管理，这里不再声明）；month-toggle 仅追加文字排版 */
+.calendar-toolbar .period-nav,
+.calendar-toolbar .month-toggle,
+.calendar-toolbar .toolbar-nav-toggle,
+.calendar-toolbar .todo-toggle,
+.calendar-toolbar .toolbar-burger {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--el-text-color-regular);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+/* 月按钮：统一形态内的文字排版（字号与 20px 图标视觉等重） */
+.calendar-toolbar .month-toggle {
+  font-size: var(--font-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+}
+
+.calendar-toolbar .period-nav:hover,
+.calendar-toolbar .month-toggle:hover,
+.calendar-toolbar .toolbar-nav-toggle:hover,
+.calendar-toolbar .todo-toggle:hover,
+.calendar-toolbar .toolbar-burger:hover {
+  background: var(--el-fill-color); /* 工具条灰带上 hover 需更深一档可见 */
+  color: var(--el-color-primary);
+}
+
+.calendar-toolbar .month-toggle.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+/* 宽度与高度：daterange 根元素带内联 --el-date-editor-width 变量 + 组件单类 width 规则，
+   须用「祖先+双类」高优先级选择器 + 直接 width 声明才能覆盖。
+   .calendar-wrapper 祖先由父组件渲染，选择器原样保留即与拆分前特异性一致 */
+.calendar-wrapper .calendar-title-picker.el-date-editor {
+  width: 250px;
+
+  --el-date-editor-width: 250px;
+  height: 40px;
+}
+
+/* 胶囊底：白底浮于工具条灰带（原灰底会融进带子），与 FC 按钮组质感统一 */
+.calendar-title-picker.el-range-editor {
+  background: var(--el-bg-color);
+  box-shadow: none !important;
+  border-radius: var(--radius-md);
+  padding: var(--space-xs) var(--space-lg);
+  cursor: pointer;
+  transition: background var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+}
+
+.calendar-title-picker.el-range-editor:hover,
+.calendar-title-picker.el-range-editor.is-active {
+  background: var(--el-fill-color);
+  box-shadow: var(--shadow-sm) !important;
+}
+
+/* 移动端紧凑档：左右内边距 8→4、宽度 250→230 同步收窄（空隙压掉后内容可用区不减，
+   纯省屏宽）；month picker 共用 calendar-title-picker 类同宽，避免模式切换宽度跳动 */
+html.platform-mobile .calendar-wrapper .calendar-title-picker.el-date-editor {
+  width: 230px;
+
+  --el-date-editor-width: 230px;
+}
+
+html.platform-mobile .calendar-title-picker.el-range-editor {
+  padding: var(--space-xs);
+}
+
+/* 日期文本：大号加粗居中 */
+.calendar-title-picker .el-range-input {
+  background: transparent;
+  font-size: 1.08rem;
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  cursor: pointer;
+  text-align: center;
+}
+
+/* 两个日期框 EP 默认 39% 定宽；移动端胶囊收窄 20px 后按 42% 回补，
+   保证最长 "12月31日"（1.08rem×5 字 ≈ 87px）不贴边截字 */
+html.platform-mobile .calendar-title-picker .el-range-input {
+  width: 42%;
+}
+
+/* 清除按钮隐藏态仍占 14px、破坏胶囊内对称，隐藏；左侧日历图标保留（主题色点缀） */
+.calendar-title-picker .el-range__close-icon {
+  display: none;
+}
+
+/* 日历图标：主题色，调大一档（18px）与 1.08rem 粗体日期文字视觉等重 */
+.calendar-title-picker .el-range__icon {
+  color: var(--el-color-primary);
+  font-size: 18px;
+  margin-right: 2px;
+}
+
+/* 分隔符：主题色点缀 */
+.calendar-title-picker .el-range-separator {
+  color: var(--el-color-primary);
+  font-weight: var(--weight-semibold);
+}
+
+/* 分隔符 "–"：en-dash 字面自带留白，移动端紧凑档去掉 EP 默认 padding 0 5px */
+html.platform-mobile .calendar-title-picker .el-range-separator {
+  padding: 0;
+}
+
+/* 桌面月模式选择器，type=month 的 el-input 结构。
+   宽度规则：月选择器带 calendar-title-picker 类，宽度由上方 daterange 的 250px 规则统一生效 */
+.calendar-month-picker .el-input__wrapper {
+  background: var(--el-bg-color); /* 白底浮于工具条灰带（同 daterange 胶囊） */
+  box-shadow: none !important;
+  border-radius: var(--radius-md);
+  padding: var(--space-xs) var(--space-sm);
+  cursor: pointer;
+  transition: background var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+}
+
+.calendar-month-picker .el-input__wrapper:hover,
+.calendar-month-picker .el-input__wrapper.is-active {
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.calendar-month-picker .el-input__inner {
+  font-size: var(--font-base);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  text-align: center;
+  cursor: pointer;
+}
+
+.calendar-month-picker .el-input__prefix {
+  color: var(--el-color-primary);
+}
+</style>
