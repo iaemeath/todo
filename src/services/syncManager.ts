@@ -140,9 +140,11 @@ export function importBundle(bundle: ExportBundle): void {
   for (const s of taskStore.schedules) {
     if (!inBundleSchedules.has(s.id) && !s.deletedAt) { s.deletedAt = now; s.revTime = now }
   }
-  // 墓碑记录随活跃记录一起写入（同步层全集）
-  taskStore.tasks = [...tasks, ...taskStore.tasks.filter(t => t.deletedAt)]
-  taskStore.schedules = [...schedules, ...taskStore.schedules.filter(s => s.deletedAt)]
+  // 墓碑记录随活跃记录一起写入（同步层全集）。
+  // 包内已含的 id 不保留旧墓碑对象：否则同 id 重复入列，collectAll 的 Map 后写覆盖先写，
+  // 旧墓碑会反向覆盖刚复活的记录并作为墓碑推上云端——"导入复活已删任务"静默失效。
+  taskStore.tasks = [...tasks, ...taskStore.tasks.filter(t => t.deletedAt && !inBundleTasks.has(t.id))]
+  taskStore.schedules = [...schedules, ...taskStore.schedules.filter(s => s.deletedAt && !inBundleSchedules.has(s.id))]
   settingsStore.settings = { ...bundle.settings, apiKey: bundle.settings.apiKey || settingsStore.settings.apiKey }
   themeStore.isDark = bundle.theme.isDark
   usageStore.usageHistory = bundle.usage
