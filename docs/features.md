@@ -91,7 +91,7 @@ Android APK 手动分发。
 | SSE 实时同步 | ✅ 2026-08-28（ADR-0008） |
 | 兜底降频 + 前沿/后沿推送调度 | ✅ 2026-08-28（ADR-0009/0010） |
 | 架构文档体系 docs/ | ✅ 2026-08-28 |
-| **巨型组件拆分**（CalendarArea 890 / TaskManagePage 745 / AppSidebar 669 行） | 🚧 进行中 |
+| 巨型组件拆分（CalendarArea/TaskManagePage/AppSidebar） | ✅ 2026-08-28（三组件均 <450 行，职责化抽取，行为零变化） |
 | 重复日程（RRULE/简化枚举，三处联动） | ⏳ 排期 |
 | 提前提醒（全局 remindOffset + fireKey 细化） | ⏳ 排期（方案已探讨，见对话记录/ADR 待补） |
 | usage 流水保留窗口 + localStorage 占用指示 | ⏳ 待排 |
