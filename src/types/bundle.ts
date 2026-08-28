@@ -38,6 +38,8 @@ export interface Schedule {
   id: string
   taskId?: string // 关联叶子任务；独立日程为空
   title: string
+  /** 日程描述（可选）：屏保当前任务卡小字 / 日历事件悬浮展示；旧数据无此字段 */
+  description?: string
   date: string // YYYY-MM-DD
   startTime: string // HH:MM
   endTime: string // HH:MM

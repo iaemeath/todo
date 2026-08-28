@@ -12,6 +12,15 @@
       <el-form-item v-if="showTitle" label="标题">
         <el-input v-model="form.title" placeholder="请输入日程标题" />
       </el-form-item>
+      <el-form-item label="描述">
+        <el-input
+          v-model="form.description"
+          type="textarea"
+          :rows="2"
+          maxlength="200"
+          placeholder="日程描述（可选，屏保任务卡与日历悬浮展示）"
+        />
+      </el-form-item>
       <el-form-item label="日期">
         <el-date-picker v-model="form.date" type="date" value-format="YYYY-MM-DD" placeholder="选择日期" style="width: 100%;" />
       </el-form-item>
@@ -58,6 +67,7 @@ import { useUIStore } from '../stores'
  */
 export interface ScheduleFormValue {
   title: string
+  description: string
   date: string
   startTime: string
   endTime: string

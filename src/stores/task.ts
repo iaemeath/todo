@@ -298,11 +298,12 @@ export const useTaskStore = defineStore('task', () => {
     }
   }
 
-  // 从叶子任务创建日程（排期）——活跃集：墓碑任务不可再排期
-  const addScheduleFromTask = (taskId: string, date: string, startTime: string, endTime: string, color: string = DEFAULT_SCHEDULE_COLOR) => {
+  // 从叶子任务创建日程（排期）——活跃集：墓碑任务不可再排期。
+  // description 缺省继承任务描述（日程描述字段本就源自任务场景，屏保任务卡/日历悬浮展示用）
+  const addScheduleFromTask = (taskId: string, date: string, startTime: string, endTime: string, color: string = DEFAULT_SCHEDULE_COLOR, description?: string) => {
     const task = activeTasks.value.find((t) => t.id === taskId)
     if (!task) return null
-    return addSchedule({ taskId, title: task.title, date, startTime, endTime, color })
+    return addSchedule({ taskId, title: task.title, description: description ?? task.description, date, startTime, endTime, color })
   }
 
   return {

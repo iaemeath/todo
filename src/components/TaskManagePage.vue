@@ -130,6 +130,7 @@
       header="排期到日历"
       :initial="{
         title: '',
+        description: schedulingTask?.description ?? '',
         date: todayLocal(),
         startTime: DEFAULT_SCHEDULE_START,
         endTime: DEFAULT_SCHEDULE_END,
@@ -267,8 +268,8 @@ const openScheduleDialog = (row: Task) => {
 
 const confirmSchedule = (form: ScheduleFormValue) => {
   if (!schedulingTask.value) return
-  const { date, startTime, endTime, color } = form
-  addScheduleFromTask(schedulingTask.value.id, date, startTime, endTime, color)
+  const { date, startTime, endTime, color, description } = form
+  addScheduleFromTask(schedulingTask.value.id, date, startTime, endTime, color, description.trim())
   ElMessage.success('已排入日历')
 }
 </script>
