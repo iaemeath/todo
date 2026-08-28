@@ -35,7 +35,8 @@ export function setServerUrl(url: string): void {
   else localStorage.removeItem('shiguang_server_url')
 }
 
-const apiBase = () => (isShellApp ? getServerUrl() : '')
+/** Electron / Capacitor 壳指向远程服务器，Web 同源走相对路径（SSE 等直连场景拼 URL 用） */
+export const apiBase = () => (isShellApp ? getServerUrl() : '')
 
 export class ApiError extends Error {
   status: number
@@ -63,6 +64,8 @@ export interface ApiOptions {
   method?: string
   body?: unknown
   keepalive?: boolean
+  /** x-sync-tag：设备自报标识——服务端 SSE 广播变更信号时排除发起推送的设备自身 */
+  tag?: string
 }
 
 export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Promise<T> {
@@ -70,6 +73,7 @@ export async function api<T = unknown>(path: string, opts: ApiOptions = {}): Pro
   const token = getToken()
   if (token) headers.Authorization = `Bearer ${token}`
   if (opts.body !== undefined) headers['Content-Type'] = 'application/json'
+  if (opts.tag) headers['x-sync-tag'] = opts.tag
 
   let res: Response
   try {

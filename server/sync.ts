@@ -1,15 +1,79 @@
 /**
- * 记录级同步：POST /api/sync/push、GET /api/sync/pull（requireAuth）。
+ * 记录级同步：POST /api/sync/push、GET /api/sync/pull、SSE /api/sync/events（requireAuth）。
  * 服务端是"带账号的记录仓库"：逐条 LWW 裁决（rev_time 新者胜），
  * 不解析业务字段（data 原样整存整取），墓碑记录与普通记录同权。
  */
 import { Router, type Response } from 'express'
+import { randomBytes } from 'node:crypto'
 import { db } from './db'
 import { requireAuth } from './auth'
 import type { JwtPayload } from './jwt'
 
 export const router = Router()
+
+// ===== SSE 实时同步信号 =====
+// /events 必须先于下方 router.use(requireAuth) 注册：EventSource 无法携带 Authorization 头，
+// 认证改走"一次性短时连接票"（POST /sse-ticket 在 requireAuth 之后，正常鉴权后签发票据）。
+// 通道只广播"有新记录"裸信号、不携带数据——客户端收到后照常走 pull 增量（游标语义不变，
+// 信号丢了也没事，30s 防抖/5min 兜底轮询仍在）。多设备实时性从分钟级到秒级。
+
+interface SseConn { res: Response; tag: string }
+/** 一次性连接票：ticket → { uid, 过期时刻 }。30s 有效、单次使用（防 URL 重放） */
+const sseTickets = new Map<string, { uid: string; expires: number }>()
+/** 在线连接：uid → 连接集合。tag = 设备自报标识，广播时排除发起推送的设备（它刚拿到裁决结果） */
+const sseClients = new Map<string, Set<SseConn>>()
+const TICKET_TTL_MS = 30_000
+const MAX_CONNS_PER_USER = 8
+const HEARTBEAT_MS = 25_000
+
+router.get('/events', (req, res) => {
+  const ticket = String(req.query.ticket || '')
+  const entry = sseTickets.get(ticket)
+  sseTickets.delete(ticket) // 无论成败即销毁（单次使用）
+  const now = Date.now()
+  for (const [k, t] of sseTickets) if (t.expires < now) sseTickets.delete(k) // 顺手清过期票
+  if (!entry || entry.expires < now) {
+    return res.status(401).json({ ok: false, message: '连接票无效或已过期' })
+  }
+  const conns = sseClients.get(entry.uid) ?? new Set<SseConn>()
+  if (conns.size >= MAX_CONNS_PER_USER) {
+    return res.status(429).json({ ok: false, message: '实时同步连接数已达上限' })
+  }
+
+  // X-Accel-Buffering: no —— nginx 按此响应头逐流转发，无需为 SSE 单独改反代配置
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  })
+  res.write(`data: ${JSON.stringify({ type: 'hello' })}\n\n`)
+  const conn: SseConn = { res, tag: String(req.query.tag || '') }
+  conns.add(conn)
+  sseClients.set(entry.uid, conns)
+  const heartbeat = setInterval(() => res.write(': hb\n\n'), HEARTBEAT_MS) // 心跳续命反代 read_timeout
+  req.on('close', () => {
+    clearInterval(heartbeat)
+    conns.delete(conn)
+    if (conns.size === 0) sseClients.delete(entry.uid)
+  })
+})
+
+/** push 落库后广播变更信号给同账号其他设备（无订阅者零开销） */
+function notifyRecordsChanged(uid: string, excludeTag: string): void {
+  for (const c of sseClients.get(uid) ?? []) {
+    if (c.tag !== excludeTag) c.res.write(`data: ${JSON.stringify({ type: 'changed' })}\n\n`)
+  }
+}
+
 router.use(requireAuth)
+
+/** POST /sync/sse-ticket —— 签发一次性 SSE 连接票（EventSource 建连时以 ?ticket= 呈现） */
+router.post('/sse-ticket', (_req, res) => {
+  const ticket = randomBytes(24).toString('hex')
+  sseTickets.set(ticket, { uid: me(res), expires: Date.now() + TICKET_TTL_MS })
+  res.json({ ok: true, data: { ticket } })
+})
 
 const me = (res: Response) => (res.locals.user as JwtPayload).uid
 
@@ -66,6 +130,9 @@ router.post('/push', (req, res) => {
 
   const now = Date.now()
   const rejected: string[] = []
+  let accepted = 0
+  // 发起设备自报标识（与 SSE 连接的 ?tag= 同值）：广播变更信号时排除自身
+  const srcTag = String(req.headers['x-sync-tag'] || '')
   const select = db.prepare('SELECT rev_time FROM records WHERE user_id = ? AND collection = ? AND record_id = ?')
   const upsert = db.prepare(`
     INSERT INTO records (user_id, collection, record_id, data, rev_time, recv_time)
@@ -84,7 +151,11 @@ router.post('/push', (req, res) => {
       continue
     }
     upsert.run(uid, ch.c, ch.id, JSON.stringify(ch.data ?? null), ch.rev, now)
+    accepted += 1
   }
+
+  // 有记录落库 → 秒级唤醒同账号其他设备来拉（排除发起设备自身）
+  if (accepted > 0) notifyRecordsChanged(uid, srcTag)
 
   res.json({ ok: true, data: { rejected, serverNow: now } })
 })

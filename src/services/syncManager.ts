@@ -12,6 +12,7 @@
  *       rev=客户端时钟管裁决方向，recv=服务端时钟管游标完整性，时钟漂移不丢数据）
  *
  * 推送触发：① 数据变更防抖 30s ② 每 5 分钟兜底 ③ 页面隐藏/卸载 keepalive ④ 手动 syncNow
+ * 拉取触发：① push 成功后（含被拒即拉）② 5min 兜底 ③ SSE 变更信号（对端 push 秒级唤醒，丢了由轮询兜底）
  */
 import { ref, watch, type WatchStopHandle } from 'vue'
 import { useAuthStore } from '../stores/auth'
@@ -27,7 +28,7 @@ import {
 } from '../stores'
 import type { Schedule } from '../types/bundle'
 import { sanitizeSchedules, sanitizeTasks } from '../types/bundle'
-import { api, ApiError } from './apiClient'
+import { api, ApiError, apiBase } from './apiClient'
 
 const LS_LAST_SYNC = 'shiguang_last_synced_at'
 const LS_CURSOR = 'shiguang_sync_cursor'
@@ -44,6 +45,7 @@ let stopWatch: WatchStopHandle | null = null
 let intervalTimer: number | null = null
 let debounceTimer: number | null = null
 let syncing = false
+let pulling = false
 
 // ===== 记录模型 =====
 
@@ -169,7 +171,8 @@ async function push(keepalive = false): Promise<boolean> {
     const r = await api<{ rejected: string[]; serverNow: number }>('/sync/push', {
       method: 'POST',
       body: { changes },
-      keepalive
+      keepalive,
+      tag: SYNC_TAG
     })
     const rejected = new Set(r.rejected || [])
     // 基线更新：被拒条目不更新基线（本机旧版会在 pull 中被对端新记录修正）
@@ -315,10 +318,12 @@ function applyRecords(records: PullRecord[], force: boolean): void {
 }
 
 async function pull(force = false): Promise<void> {
-  const PAGE = 500
-  let since = force ? 0 : Number(localStorage.getItem(LS_CURSOR) || 0)
-  let sinceId = '' // 复合游标的组内偏移（recv_time 平局组内按 record_id 推进）
+  if (pulling && !force) return // SSE 信号突发防重入（force 的云端恢复不排队，整轮幂等）
+  pulling = true
   try {
+    const PAGE = 500
+    let since = force ? 0 : Number(localStorage.getItem(LS_CURSOR) || 0)
+    let sinceId = '' // 复合游标的组内偏移（recv_time 平局组内按 record_id 推进）
     // 分页循环，整轮拉完才一次性应用：force 的整体替换必须看到全集；
     // 中途失败（离线/限流 429）整轮作废，下轮从旧游标重拉（幂等无损耗）
     let allRecords: PullRecord[] = []
@@ -338,7 +343,76 @@ async function pull(force = false): Promise<void> {
     if (syncState.value !== 'error') syncState.value = 'synced'
   } catch {
     // 拉取失败（离线）不阻塞本地使用
+  } finally {
+    pulling = false
   }
+}
+
+// ===== SSE 实时同步信号：对端 push → 服务端广播 → 立即 pull =====
+// 与 30s 防抖/5min 兜底互补：轮询保底不丢，SSE 把多设备触达从分钟级提到秒级。
+// 信号不携带数据，拉取仍走增量游标——与轮询共用同一合并路径，语义零分叉。
+
+/** 设备自报标识：SSE 连接 ?tag= 与推送头 x-sync-tag 同值，服务端据此不给自己发信号 */
+const SYNC_TAG = Math.random().toString(36).slice(2)
+let es: EventSource | null = null
+let esRetryTimer: number | null = null
+let esBackoffMs = 1_000
+let ssePullTimer: number | null = null
+
+/** 信号合流：500ms 窗口内的突发广播只拉一次 */
+const scheduleSSEPull = () => {
+  if (ssePullTimer) return
+  ssePullTimer = window.setTimeout(() => {
+    ssePullTimer = null
+    void pull()
+  }, 500)
+}
+
+function closeES(): void {
+  es?.close()
+  es = null
+}
+
+function queueReconnect(): void {
+  closeES()
+  if (esRetryTimer) return
+  esRetryTimer = window.setTimeout(() => {
+    esRetryTimer = null
+    connectSSE()
+  }, esBackoffMs)
+  esBackoffMs = Math.min(esBackoffMs * 2, 60_000)
+}
+
+function connectSSE(): void {
+  if (es || esRetryTimer) return // 已连接 / 重连已在排队
+  if (typeof EventSource === 'undefined') return // 环境兜底（三端均支持，理论不可达）
+  void api<{ ticket: string }>('/sync/sse-ticket', { method: 'POST' })
+    .then(({ ticket }) => {
+      if (es || esRetryTimer) return // 领票期间 stopSync 过
+      es = new EventSource(`${apiBase()}/api/sync/events?ticket=${ticket}&tag=${SYNC_TAG}`)
+      es.onopen = () => { esBackoffMs = 1_000 }
+      es.onmessage = (ev: MessageEvent) => {
+        try {
+          if ((JSON.parse(ev.data) as { type?: string }).type === 'changed') scheduleSSEPull()
+        } catch { /* 坏帧忽略 */ }
+      }
+      es.onerror = () => {
+        // 连接票一次性：EventSource 自带的重连必然 401，必须关闭后自管退避重连（重新领票）
+        queueReconnect()
+      }
+    })
+    .catch((e) => {
+      // 旧版服务端无此接口（404）：实时通道不可用，停止重试（防无限循环；轮询兜底照常）
+      if (e instanceof ApiError && e.status === 404) return
+      queueReconnect() // 领票失败（离线/登录态失效）：退避重试；401 由 auth 层统一登出
+    })
+}
+
+function stopSSE(): void {
+  closeES()
+  if (esRetryTimer) { clearTimeout(esRetryTimer); esRetryTimer = null }
+  if (ssePullTimer) { clearTimeout(ssePullTimer); ssePullTimer = null }
+  esBackoffMs = 1_000
 }
 
 // ===== 生命周期（App 挂载/登录态变化时调用） =====
@@ -377,6 +451,7 @@ export function startSync(): void {
   }, PUSH_INTERVAL_MS)
   document.addEventListener('visibilitychange', onVisibility)
   document.addEventListener('pagehide', onPageHide)
+  connectSSE()
 }
 
 export function stopSync(): void {
@@ -388,6 +463,7 @@ export function stopSync(): void {
   debounceTimer = null
   document.removeEventListener('visibilitychange', onVisibility)
   document.removeEventListener('pagehide', onPageHide)
+  stopSSE()
   syncState.value = 'off'
   lastSyncedMap.clear()
   localStorage.removeItem(LS_CURSOR)
