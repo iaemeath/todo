@@ -6,8 +6,9 @@
  * - 拉取：复合游标分页、LWW 合并、settings/meta 脏保护、usage 幂等合并、整轮失败游标不动
  * - 导入：覆盖语义（revTime 重打复活）、差集墓碑、apiKey 回退、墓碑随推送传播
  *
- * 设计取舍：不测 startSync（watcher/定时器胶水），测 push/pull/merge 的数据裁决语义——
- * 那是数据安全的核，胶水坏了症状明显（不同步），裁决坏了症状是静默丢数据。
+ * 设计取舍：数据裁决语义（push/pull/merge）全量覆盖；推送调度语义（前沿/后沿）用
+ * mock timers 走真实 startSync watch 链路覆盖；其余定时器胶水（keepalive 等）不测——
+ * 裁决坏了症状是静默丢数据，调度坏了症状是快慢与请求量，风险等级不同。
  */
 import { test, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
@@ -439,4 +440,59 @@ test('importBundle 后立即同步：墓碑随推送传播（删除跨端语义�
   assert.ok(doomed, '墓碑记录随全量推送上行')
   const data = doomed!.data as { deletedAt?: number }
   assert.ok(data.deletedAt, '墓碑标记在推送数据中（对端据此删除）')
+})
+
+// ===== 推送调度：前沿立即 + 后沿微批（mock timers 走真实 startSync watch 链路） =====
+
+/** 真实异步冲刷（setImmediate 未被 mock）：让 stub fetch 的 promise 链跑完 */
+const flushAsync = async (rounds = 8) => {
+  for (let i = 0; i < rounds; i++) await new Promise((r) => setImmediate(r))
+}
+
+/** 启动同步并冲掉启动期全量推拉（mock timers 环境：tick + setImmediate 冲刷） */
+async function startSyncAndFlush(t: import('node:test').TestContext, routes: Parameters<typeof stubFetch>[0]) {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'] })
+  const calls = stubFetch(routes)
+  sm.startSync()
+  t.mock.timers.tick(1)
+  await flushAsync()
+  return calls
+}
+
+test('前沿立即推：距上次成功推送超 30s 的变更立即上云，不等防抖', async (t) => {
+  const calls = await startSyncAndFlush(t, [
+    { match: '/sync/pull', reply: () => ({ records: [], hasMore: false, nextSince: 0, nextSinceId: '', serverNow: 1 }) },
+    { match: '/sync/push', reply: () => ({ rejected: [], serverNow: 1 }) }
+  ])
+  const base = pushCalls(calls).length
+  t.mock.timers.tick(31_000) // 拉开前沿窗口（Date 同被 mock，lastPushedAt 距今 >30s）
+  await flushAsync()
+
+  useTaskStore().tasks = [...useTaskStore().tasks, mkTask({ id: 't-lead' })]
+  await flushAsync() // 只冲微任务，未推进任何定时器
+  assert.equal(pushCalls(calls).length, base + 1, '变更后立即推送（零定时器等待）')
+  sm.stopSync()
+})
+
+test('后沿微批：刚推过时的变更进 2s 节流窗，窗内多次变更合并为一次推送', async (t) => {
+  const calls = await startSyncAndFlush(t, [
+    { match: '/sync/pull', reply: () => ({ records: [], hasMore: false, nextSince: 0, nextSinceId: '', serverNow: 1 }) },
+    { match: '/sync/push', reply: () => ({ rejected: [], serverNow: 1 }) }
+  ])
+  const base = pushCalls(calls).length
+  const ts = useTaskStore()
+
+  ts.tasks = [...ts.tasks, mkTask({ id: 't-b1' })] // 距始次推送 <30s → 后沿窗
+  t.mock.timers.tick(500)
+  await flushAsync()
+  ts.tasks = [...ts.tasks, mkTask({ id: 't-b2' })] // 窗内第二次变更 → 合并
+  await flushAsync()
+  assert.equal(pushCalls(calls).length, base, '节流窗内不发请求')
+
+  t.mock.timers.tick(2_000)
+  await flushAsync()
+  assert.equal(pushCalls(calls).length, base + 1, '窗到期只推一次')
+  const ids = parsePushBody(pushCalls(calls).at(-1)!).changes.map((c) => c.id)
+  assert.ok(ids.includes('t-b1') && ids.includes('t-b2'), '两次变更合并在同一次推送里')
+  sm.stopSync()
 })

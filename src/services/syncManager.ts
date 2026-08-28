@@ -11,7 +11,8 @@
  * 拉取：recv_time 游标增量（服务端时钟，绝不漏数据）→ 按 revTime 合并（双时间戳：
  *       rev=客户端时钟管裁决方向，recv=服务端时钟管游标完整性，时钟漂移不丢数据）
  *
- * 推送触发：① 数据变更防抖 30s ② 每 5 分钟兜底 ③ 页面隐藏/卸载 keepalive ④ 手动 syncNow
+ * 推送触发：① 数据变更——前沿立即推（距上次成功推送 >30s）/ 后沿 2s 微批节流 ② 每 5 分钟兜底
+ *           ③ 页面隐藏/卸载 keepalive ④ 手动 syncNow
  * 拉取触发：① push 成功后（含被拒即拉）② 兜底定时（SSE 健在时降频，见 SSE_FALLBACK_TICKS）
  *           ③ SSE 变更信号（对端 push 秒级唤醒，丢了由兜底轮询补齐）
  */
@@ -33,7 +34,10 @@ import { api, ApiError, apiBase } from './apiClient'
 
 const LS_LAST_SYNC = 'shiguang_last_synced_at'
 const LS_CURSOR = 'shiguang_sync_cursor'
-const PUSH_DEBOUNCE_MS = 30_000
+/** 前沿窗口：距上次成功推送超过该值的变更立即上云（单次编辑秒级达对端） */
+const PUSH_LEADING_GAP_MS = 30_000
+/** 后沿节流窗：前沿推过之后的连续变更（拖拽排序/导入/连续勾选）在窗内合并，不放大请求量 */
+const PUSH_TRAILING_MS = 2_000
 const PUSH_INTERVAL_MS = 5 * 60_000
 /** SSE 健在时兜底轮询的降频系数：实发间隔 = PUSH_INTERVAL_MS × 该值（5min × 6 = 30min）。
  *  信令正常时轮询只是保险，不必勤快；信号丢失的最坏补齐窗口 = 该间隔，
@@ -48,9 +52,11 @@ export const lastSyncAt = ref<string | null>(localStorage.getItem(LS_LAST_SYNC))
 
 let stopWatch: WatchStopHandle | null = null
 let intervalTimer: number | null = null
-let debounceTimer: number | null = null
+let trailingTimer: number | null = null
 let syncing = false
 let pulling = false
+/** 上次成功推送时刻（0 = 本会话还没推过）：前沿/后沿调度与离线重试的依据 */
+let lastPushedAt = 0
 /** 兜底降频计数：SSE 健在时每 tick +1 取模跳发；断开即清零回全速兜底 */
 let fallbackTicks = 0
 
@@ -168,7 +174,10 @@ async function push(keepalive = false): Promise<boolean> {
   if (!useAuthStore().isLoggedIn || syncing) return false
   const all = collectAll()
   const changes = diffChanges(all)
-  if (changes.length === 0) return true
+  if (changes.length === 0) {
+    lastPushedAt = Date.now() // 与云端已对齐：前沿窗口照常刷新
+    return true
+  }
   const body = JSON.stringify({ changes })
   if (keepalive && body.length > KEEPALIVE_MAX_BYTES) return false // 太大不让 keepalive 扛
 
@@ -189,6 +198,7 @@ async function push(keepalive = false): Promise<boolean> {
     lastSyncAt.value = new Date(r.serverNow).toISOString()
     localStorage.setItem(LS_LAST_SYNC, lastSyncAt.value)
     syncState.value = 'synced'
+    lastPushedAt = Date.now()
     if (rejected.size > 0) void pull() // 对端有更新 → 立即拉取修正
     return true
   } catch (e) {
@@ -200,12 +210,33 @@ async function push(keepalive = false): Promise<boolean> {
   }
 }
 
-const scheduleDebouncedPush = () => {
-  if (debounceTimer) clearTimeout(debounceTimer)
-  debounceTimer = window.setTimeout(() => {
-    debounceTimer = null
+// ===== 变更推送调度：前沿立即 + 后沿微批 =====
+// 前沿：距上次成功推送超过 PUSH_LEADING_GAP_MS 的首个变更立即推（单次编辑秒级上云）；
+// 后沿：刚推过/推送在途时，变更进 2s 节流窗合并（拖拽排序/导入等连续变更不放大请求量）。
+// 节流用固定窗（窗内不重置）而非纯防抖——持续编辑下滞后有 2s 上界，不会无限饿着。
+// 失败不无限重试：前沿失败转后沿补一枪，仍失败则停，等下一次变更（前沿条件已重新满足）
+// 或兜底轮询收尾——避免离线期高频空转。
+
+const scheduleTrailingPush = () => {
+  if (trailingTimer) return // 节流窗已在倒计时：窗内变更自然合并
+  trailingTimer = window.setTimeout(() => {
+    trailingTimer = null
+    if (syncing) {
+      scheduleTrailingPush() // 在途推送落下后的漏网变更，再给一窗
+      return
+    }
     void push()
-  }, PUSH_DEBOUNCE_MS)
+  }, PUSH_TRAILING_MS)
+}
+
+const schedulePush = () => {
+  if (!syncing && Date.now() - lastPushedAt >= PUSH_LEADING_GAP_MS) {
+    void push().then(ok => {
+      if (!ok) scheduleTrailingPush()
+    })
+    return
+  }
+  scheduleTrailingPush()
 }
 
 // ===== 拉取与合并 =====
@@ -450,7 +481,7 @@ export function startSync(): void {
       themeStore.isDark,
       uiStore.todoVisible
     ],
-    scheduleDebouncedPush,
+    schedulePush,
     { deep: true }
   )
   intervalTimer = window.setInterval(() => {
@@ -474,8 +505,9 @@ export function stopSync(): void {
   stopWatch = null
   if (intervalTimer) clearInterval(intervalTimer)
   intervalTimer = null
-  if (debounceTimer) clearTimeout(debounceTimer)
-  debounceTimer = null
+  if (trailingTimer) clearTimeout(trailingTimer)
+  trailingTimer = null
+  lastPushedAt = 0
   document.removeEventListener('visibilitychange', onVisibility)
   document.removeEventListener('pagehide', onPageHide)
   stopSSE()
