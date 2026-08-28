@@ -51,6 +51,7 @@ const mkSchedule = (over: Partial<Schedule> = {}): Schedule => ({
   startTime: '09:00',
   endTime: '10:00',
   color: 'blue',
+  remindMinutes: 0,
   ...over
 })
 const mkBundle = (over: Partial<ExportBundle> = {}): ExportBundle => ({

@@ -109,7 +109,7 @@ export function useScheduleCalendar() {
   const newScheduleDialogVisible = ref(false)
   // 弹窗打开时的表单初始值（组件在 visible 翻真时拷贝为本地可编辑副本）
   const scheduleDialogInitial = ref<ScheduleFormValue>({
-    title: '', description: '', date: '', startTime: DEFAULT_SCHEDULE_START, endTime: DEFAULT_SCHEDULE_END, color: DEFAULT_SCHEDULE_COLOR
+    title: '', description: '', date: '', startTime: DEFAULT_SCHEDULE_START, endTime: DEFAULT_SCHEDULE_END, color: DEFAULT_SCHEDULE_COLOR, remindMinutes: 0
   })
   // 非空 = 编辑模式（更新/删除），空 = 新增模式
   const editingScheduleId = ref<string | null>(null)
@@ -119,7 +119,7 @@ export function useScheduleCalendar() {
   const fmtTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`
   const openNewScheduleDialog = (dateStr: string, startTimeStr: string, endTimeStr: string) => {
     editingScheduleId.value = null
-    scheduleDialogInitial.value = { title: '', description: '', date: dateStr, startTime: startTimeStr, endTime: endTimeStr, color: DEFAULT_SCHEDULE_COLOR }
+    scheduleDialogInitial.value = { title: '', description: '', date: dateStr, startTime: startTimeStr, endTime: endTimeStr, color: DEFAULT_SCHEDULE_COLOR, remindMinutes: 0 }
     newScheduleDialogVisible.value = true
   }
 
@@ -128,7 +128,7 @@ export function useScheduleCalendar() {
     const s = activeSchedules.value.find(x => x.id === eventId)
     if (!s) return
     editingScheduleId.value = s.id
-    scheduleDialogInitial.value = { title: s.title, description: s.description ?? '', date: s.date, startTime: s.startTime, endTime: s.endTime, color: s.color }
+    scheduleDialogInitial.value = { title: s.title, description: s.description ?? '', date: s.date, startTime: s.startTime, endTime: s.endTime, color: s.color, remindMinutes: s.remindMinutes }
     newScheduleDialogVisible.value = true
   }
 
@@ -172,12 +172,12 @@ export function useScheduleCalendar() {
 
   // 落库与提示（校验已由 ScheduleDialog 完成，save 携带合法表单值）
   const confirmNewSchedule = (form: ScheduleFormValue) => {
-    const { title, description, date, startTime, endTime, color } = form
+    const { title, description, date, startTime, endTime, color, remindMinutes } = form
     if (editingScheduleId.value) {
-      updateSchedule(editingScheduleId.value, { title: title.trim(), description: description.trim(), date, startTime, endTime, color })
+      updateSchedule(editingScheduleId.value, { title: title.trim(), description: description.trim(), date, startTime, endTime, color, remindMinutes })
       ElMessage.success('已更新')
     } else {
-      addSchedule({ title: title.trim(), description: description.trim(), date, startTime, endTime, color })
+      addSchedule({ title: title.trim(), description: description.trim(), date, startTime, endTime, color, remindMinutes })
       ElMessage.success('已新增日程')
     }
   }

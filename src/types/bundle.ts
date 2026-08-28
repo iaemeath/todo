@@ -44,6 +44,11 @@ export interface Schedule {
   startTime: string // HH:MM
   endTime: string // HH:MM
   color: string // violet, blue, emerald, amber, rose, cyan
+  /**
+   * 提前提醒分钟数（每条日程各自提醒时间）：0=准时（开始时刻）；
+   * -1=本条不提醒；N>0=提前 N 分钟。域校验/预设档见 constants/schedule.ts
+   */
+  remindMinutes: number
   /** 记录级同步字段（语义同 Task） */
   revTime?: number
   deletedAt?: number
@@ -76,7 +81,7 @@ export interface Settings {
   mobileMaxRangeDays: number
   /** 手机端是否显示「月」视图按钮（网页端常驻） */
   showMonthButton: boolean
-  /** 日程开始时提醒（全局开关，桌面客户端到点弹系统通知；仅 Electron 生效） */
+  /** 日程提醒总开关：关闭则所有日程到点都不提醒；各日程经 remindMinutes 自定义提醒时间。桌面/安卓生效 */
   remindEnabled: boolean
   /** 桌面客户端关闭按钮驻留托盘（默认收进托盘，托盘菜单才真退出；仅 Electron 生效） */
   closeToTray: boolean
@@ -203,9 +208,14 @@ export const sanitizeSchedules = (list: Schedule[]): Schedule[] => {
     const [h, m] = String(s).split(':')
     return `${String(h).padStart(2, '0')}:${String(m ?? '0').padStart(2, '0')}`
   }
+  // 提醒量归一：缺失/非整数/越界一律回退 0（准时）。域与 constants/schedule.ts 的
+  // REMIND_NEVER/REMIND_MAX 一致——此处字面量内联以守「bundle.ts 零 import」铁律
+  const normRemind = (v: unknown) =>
+    typeof v === 'number' && Number.isInteger(v) && v >= -1 && v <= 10_080 ? v : 0
   return valid.map((s) => ({
     ...s,
     startTime: normTime(s.startTime),
-    endTime: normTime(s.endTime)
+    endTime: normTime(s.endTime),
+    remindMinutes: normRemind(s.remindMinutes)
   }))
 }

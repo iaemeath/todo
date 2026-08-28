@@ -12,7 +12,8 @@
       <el-form-item v-if="showTitle" label="标题">
         <el-input v-model="form.title" placeholder="请输入日程标题" />
       </el-form-item>
-      <el-form-item label="描述">
+      <el-form-item v-if="showTitle" label="描述">
+        <!-- 排期场景（showTitle=false）不显示：描述继承任务描述，无需手填（数据仍随表单流转载入） -->
         <el-input
           v-model="form.description"
           type="textarea"
@@ -21,21 +22,27 @@
           placeholder="日程描述（可选，屏保任务卡与日历悬浮展示）"
         />
       </el-form-item>
+      <!-- 日期单日 + 起止时间合并为一个 is-range 时间段选择器：表单契约仍是 date/startTime/endTime 三字段 -->
       <el-form-item label="日期">
         <el-date-picker v-model="form.date" type="date" value-format="YYYY-MM-DD" placeholder="选择日期" style="width: 100%;" />
       </el-form-item>
-      <el-row :gutter="16">
-        <el-col :span="12">
-          <el-form-item label="开始时间">
-            <el-time-picker v-model="form.startTime" value-format="HH:mm" format="HH:mm" placeholder="开始" style="width: 100%;" />
-          </el-form-item>
-        </el-col>
-        <el-col :span="12">
-          <el-form-item label="结束时间">
-            <el-time-picker v-model="form.endTime" value-format="HH:mm" format="HH:mm" placeholder="结束" style="width: 100%;" />
-          </el-form-item>
-        </el-col>
-      </el-row>
+      <el-form-item label="时间段">
+        <el-time-picker
+          v-model="timeRange"
+          is-range
+          value-format="HH:mm"
+          format="HH:mm"
+          start-placeholder="开始时间"
+          end-placeholder="结束时间"
+          style="width: 100%;"
+        />
+      </el-form-item>
+      <el-form-item label="提醒">
+        <!-- 预设档 + 自定义：filterable + allow-create，直接键入分钟数回车即自定义档 -->
+        <el-select v-model="remindStr" filterable allow-create style="width: 100%;">
+          <el-option v-for="p in remindOptions" :key="p.value" :label="p.label" :value="p.value" />
+        </el-select>
+      </el-form-item>
       <el-form-item label="颜色">
         <el-select v-model="form.color" style="width: 100%;">
           <el-option v-for="c in colorOptions" :key="c.value" :label="c.label" :value="c.value">
@@ -54,10 +61,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { ElMessage } from 'element-plus'
 import { colorOptions } from '../constants/colors'
+import { REMIND_MAX, REMIND_PRESETS, formatRemindLabel, parseRemindInput } from '../constants/schedule'
 import { useUIStore } from '../stores'
 
 /**
@@ -72,6 +80,8 @@ export interface ScheduleFormValue {
   startTime: string
   endTime: string
   color: string
+  /** 提前提醒分钟数（0=准时 / -1=不提醒 / N>0=提前 N 分钟），确认时经 parseRemindInput 校验 */
+  remindMinutes: number
 }
 
 const props = withDefaults(
@@ -101,10 +111,35 @@ const { isMobile } = storeToRefs(useUIStore())
 
 // 打开时从 initial 拷贝出本地可编辑副本（编辑过程中不回写调用方）
 const form = ref<ScheduleFormValue>({ ...props.initial })
+
+// 起止时间合并选择器（is-range 时间段）与表单两字段（startTime/endTime）的双向桥接：
+// value-format 下 el-time-picker 直接产出 [start, end] 字符串元组，无需 Date 中转。
+// 结束早于开始的非法区间仍由 confirm 校验拦下
+const timeRange = computed({
+  get: (): [string, string] => [form.value.startTime, form.value.endTime],
+  set: (range: [string, string]) => {
+    if (!range?.[0] || !range?.[1]) return
+    form.value.startTime = range[0]
+    form.value.endTime = range[1]
+  }
+})
+// 提醒量下拉的字符串模型：allow-create 键入产出字符串，确认时统一解析校验（预设值亦转字符串对齐）
+const remindStr = ref('0')
+const asPresetOptions = () => REMIND_PRESETS.map((p) => ({ label: p.label, value: String(p.value) }))
+/** 预设档在前；当前值非预设（自定义分钟数）时动态补一条格式化选项供回显 */
+const remindOptions = computed(() => {
+  if (REMIND_PRESETS.some((p) => String(p.value) === remindStr.value)) return asPresetOptions()
+  const custom = parseRemindInput(remindStr.value)
+  if (custom === null) return asPresetOptions()
+  return [{ label: formatRemindLabel(custom), value: remindStr.value }, ...asPresetOptions()]
+})
 watch(
   () => props.visible,
   (v) => {
-    if (v) form.value = { ...props.initial }
+    if (v) {
+      form.value = { ...props.initial }
+      remindStr.value = String(props.initial.remindMinutes ?? 0)
+    }
   }
 )
 
@@ -113,7 +148,9 @@ const confirm = () => {
   if (props.showTitle && !title.trim()) { ElMessage.warning('标题不能为空'); return }
   if (!date || !startTime || !endTime) { ElMessage.warning('请填写完整的日期和时间'); return }
   if (startTime >= endTime) { ElMessage.warning('结束时间必须晚于开始时间'); return }
-  emit('save', form.value)
+  const remindMinutes = parseRemindInput(remindStr.value)
+  if (remindMinutes === null) { ElMessage.warning(`提醒量需为 0~${REMIND_MAX} 的整数分钟`); return }
+  emit('save', { ...form.value, remindMinutes })
   emit('update:visible', false)
 }
 </script>

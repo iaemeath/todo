@@ -35,9 +35,9 @@ function seedTree(store: ReturnType<typeof useTaskStore>) {
     mkTask({ id: 'other', title: '无关任务' })
   ]
   store.schedules = [
-    { id: 's-child', taskId: 'child', title: '子的日程', date: '2026-08-28', startTime: '09:00', endTime: '10:00', color: 'blue' },
-    { id: 's-other', taskId: 'other', title: '无关日程', date: '2026-08-28', startTime: '11:00', endTime: '12:00', color: 'rose' },
-    { id: 's-orphan', title: '独立日程', date: '2026-08-28', startTime: '13:00', endTime: '14:00', color: 'emerald' }
+    { id: 's-child', taskId: 'child', title: '子的日程', date: '2026-08-28', startTime: '09:00', endTime: '10:00', color: 'blue', remindMinutes: 0 },
+    { id: 's-other', taskId: 'other', title: '无关日程', date: '2026-08-28', startTime: '11:00', endTime: '12:00', color: 'rose', remindMinutes: 0 },
+    { id: 's-orphan', title: '独立日程', date: '2026-08-28', startTime: '13:00', endTime: '14:00', color: 'emerald', remindMinutes: 0 }
   ]
 }
 

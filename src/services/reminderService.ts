@@ -1,5 +1,5 @@
 /**
- * 日程提醒调度器（模块级单例）：到点精确提醒。
+ * 日程提醒调度器（模块级单例）：按每条日程的提醒时刻（开始时刻 - remindMinutes 提前量）精确提醒。
  *
  * 调度模型（事件驱动，无轮询）：四个配套机制，桌面/安卓共用——
  * ① 变更驱动重算：schedules 深度 watch（新增/拖拽/编辑/删除/同步落地）防抖重挂；
@@ -11,7 +11,7 @@
  * ④ 已触发去重：localStorage FIRED 表留 7 天，防到点窗口内多轮扫描/刷新重复弹
  *
  * 双后端（编排层共用，触发器分平台）：
- * - timer（桌面壳，window.shiguang 桥）：单定时器指向最近的未来开始时刻，触发走桥
+ * - timer（桌面壳，window.shiguang 桥）：单定时器指向最近的未来提醒时刻，触发走桥
  *   notify（closeToTray 驻留托盘保活 JS）；漂移自校：onDue 时目标未到则 arm 重定向
  * - alarms（安卓壳，isNativeShell）：JS 只编排——syncAlarms 把「未来 14 天」候选差集
  *   同步成系统闹钟（AlarmManager 持有，应用被杀照发；force-stop 会清闹钟是系统语义，
@@ -23,6 +23,7 @@ import { watch, type WatchStopHandle } from 'vue'
 import type { PluginListenerHandle } from '@capacitor/core'
 import { LocalNotifications, type LocalNotificationSchema } from '@capacitor/local-notifications'
 import { useSettingsStore, useTaskStore, useUIStore } from '../stores'
+import { REMIND_NEVER } from '../constants/schedule'
 import { hasDesktopBridge, isNativeShell } from './apiClient'
 import type { Schedule } from '../types/bundle'
 
@@ -88,18 +89,29 @@ const markFired = (key: string) => {
 
 const startMs = (s: Schedule) => new Date(`${s.date}T${s.startTime}:00`).getTime()
 const endMs = (s: Schedule) => new Date(`${s.date}T${s.endTime}:00`).getTime()
-const fireKey = (s: Schedule) => `${s.id}@${startMs(s)}`
+/** 提醒时刻 = 开始时刻 - 提前量。remindMinutes 为负（不提醒）已被 candidates 过滤，此处钳 0 兜底 */
+const remindAtMs = (s: Schedule) => startMs(s) - Math.max(s.remindMinutes, 0) * 60_000
+/** 去重/闹钟 id 的 key 绑提醒时刻而非开始时刻：改提醒设置即换 key（安卓换 id → 差集同步自动重挂） */
+const fireKey = (s: Schedule) => `${s.id}@${remindAtMs(s)}`
 
-/** 合法候选：时段有效（开始<结束）且尚未触发过 */
+/** 合法候选：时段有效（开始<结束）、非「不提醒」且尚未触发过 */
 const candidates = (): Schedule[] => {
   const { activeSchedules } = useTaskStore()
   return activeSchedules.filter((s) => {
     const st = startMs(s)
-    return Number.isFinite(st) && st < endMs(s) && !fired[fireKey(s)]
+    return Number.isFinite(st) && st < endMs(s) && s.remindMinutes !== REMIND_NEVER && !fired[fireKey(s)]
   })
 }
 
 // ===== 触发 =====
+
+/** 通知正文：有提前量时带「还有 X」；60 分钟展示为 1 小时，其余按分钟 */
+const remindBody = (s: Schedule): string => {
+  const lead = Math.max(s.remindMinutes, 0)
+  if (lead === 0) return `《${s.title}》 ${s.startTime} 开始`
+  const when = lead === 60 ? '还有 1 小时' : `还有 ${lead} 分钟`
+  return `《${s.title}》 ${when}开始（${s.startTime}）`
+}
 
 const fire = (s: Schedule) => {
   markFired(fireKey(s))
@@ -111,8 +123,8 @@ const fire = (s: Schedule) => {
     }).catch(() => undefined) // 通知权限被拒时静默（设置页有引导态）
   } else {
     window.shiguang?.notify({
-      title: '日程开始',
-      body: `《${s.title}》 ${s.startTime} 开始`,
+      title: '日程提醒',
+      body: remindBody(s),
       scheduleId: s.id,
       date: s.date
     })
@@ -127,14 +139,14 @@ const fire = (s: Schedule) => {
 const scanDue = () => {
   const now = Date.now()
   for (const s of candidates()) {
-    const st = startMs(s)
-    if (st <= now && now - st <= ON_TIME_WINDOW_MS && now < endMs(s)) fire(s)
+    const at = remindAtMs(s)
+    if (at <= now && now - at <= ON_TIME_WINDOW_MS && now < endMs(s)) fire(s)
   }
 }
 
 // ===== timer 后端（桌面壳，现状不变） =====
 
-/** 挂定时器到「最近的未来开始时刻」。开关关闭/无候选时清空定时器。 */
+/** 挂定时器到「最近的未来提醒时刻」。开关关闭/无候选时清空定时器。 */
 const arm = () => {
   if (timer !== null) {
     clearTimeout(timer)
@@ -144,8 +156,8 @@ const arm = () => {
   const now = Date.now()
   let next = Infinity
   for (const s of candidates()) {
-    const st = startMs(s)
-    if (st > now && st < next) next = st
+    const at = remindAtMs(s)
+    if (at > now && at < next) next = at
   }
   if (next === Infinity) return
   timer = window.setTimeout(onDue, Math.min(next - now, MAX_TIMEOUT_MS))
@@ -169,19 +181,20 @@ const alarmId = (s: Schedule): number => {
   return h >>> 1
 }
 
-/** 通知请求体：extra 带定位三元组，前台接收/点击事件据此回主页跳日期。
+/** 通知请求体：extra 带「定位日期 + 提醒时刻」，前台接收/点击事件据此记账与回主页跳日期
+ *  （extra.remind 与 fireKey 的时刻段必须同源成对，改一处必改另一处，否则原生送达不记账 → 重复弹）。
  *  exact 仅常规挂载用；JS 侧短窗补发（1 秒后）走非精确——避免 API 31/32 无精确闹钟权限时
  *  schedule() 触发插件拉起系统设置页打断用户 */
 const alarmRequest = (s: Schedule, at: Date, exact = true): LocalNotificationSchema => ({
   id: alarmId(s),
-  title: '日程开始',
-  body: `《${s.title}》 ${s.startTime} 开始`,
+  title: '日程提醒',
+  body: remindBody(s),
   channelId: ALARM_CHANNEL_ID,
   // 安卓：foreground 抬优先级 → 前台也走横幅；exact + allowWhileIdle 双保险穿透 Doze
   foreground: true,
   isExactNotification: exact,
   schedule: { at, allowWhileIdle: true },
-  extra: { scheduleId: s.id, date: s.date, start: startMs(s) }
+  extra: { scheduleId: s.id, date: s.date, remind: remindAtMs(s) }
 })
 
 let alarmSyncing = false
@@ -204,7 +217,7 @@ const syncAlarms = async (): Promise<void> => {
     const desired = new Map<number, { s: Schedule; st: number }>()
     if (enabled) {
       for (const s of candidates()) {
-        const st = startMs(s)
+        const st = remindAtMs(s)
         if (st > now && st <= now + ALARM_HORIZON_MS) desired.set(alarmId(s), { s, st })
       }
     }
@@ -261,9 +274,9 @@ const initAlarmBackend = async () => {
     ...(await Promise.all([
       // 应用前台时原生照发（foreground 横幅），同时回传事件 → 记 FIRED
       LocalNotifications.addListener('localNotificationReceived', (n) => {
-        const extra = n.extra as { scheduleId?: string; start?: number } | undefined
-        if (extra && typeof extra.scheduleId === 'string' && typeof extra.start === 'number') {
-          markFired(`${extra.scheduleId}@${extra.start}`)
+        const extra = n.extra as { scheduleId?: string; remind?: number } | undefined
+        if (extra && typeof extra.scheduleId === 'string' && typeof extra.remind === 'number') {
+          markFired(`${extra.scheduleId}@${extra.remind}`)
         }
       }),
       // 点击通知 → 复刻桌面 onLocate：回主页并跳转该日程日期（extra 由挂载时写入）

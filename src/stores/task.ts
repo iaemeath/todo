@@ -55,9 +55,9 @@ export const useTaskStore = defineStore('task', () => {
     const todayStr = getTodayDateStr(0)
     const tomorrowStr = getTodayDateStr(1)
     const seedSchedules: Schedule[] = [
-      { id: 'task-1', taskId: 'todo-1', title: '探索玻璃拟态设计规范', date: todayStr, startTime: '08:30', endTime: '10:00', color: 'blue' },
-      { id: 'task-2', taskId: 'todo-2', title: '日程系统测试', date: todayStr, startTime: '11:00', endTime: '12:15', color: 'rose' },
-      { id: 'task-3', taskId: 'todo-3', title: '傍晚去健身房锻炼', date: tomorrowStr, startTime: '18:00', endTime: '19:30', color: 'emerald' }
+      { id: 'task-1', taskId: 'todo-1', title: '探索玻璃拟态设计规范', date: todayStr, startTime: '08:30', endTime: '10:00', color: 'blue', remindMinutes: 10 },
+      { id: 'task-2', taskId: 'todo-2', title: '日程系统测试', date: todayStr, startTime: '11:00', endTime: '12:15', color: 'rose', remindMinutes: 0 },
+      { id: 'task-3', taskId: 'todo-3', title: '傍晚去健身房锻炼', date: tomorrowStr, startTime: '18:00', endTime: '19:30', color: 'emerald', remindMinutes: 0 }
     ]
 
     localStorage.setItem(LS_TASKS, JSON.stringify(seedTasks))
@@ -300,10 +300,10 @@ export const useTaskStore = defineStore('task', () => {
 
   // 从叶子任务创建日程（排期）——活跃集：墓碑任务不可再排期。
   // description 缺省继承任务描述（日程描述字段本就源自任务场景，屏保任务卡/日历悬浮展示用）
-  const addScheduleFromTask = (taskId: string, date: string, startTime: string, endTime: string, color: string = DEFAULT_SCHEDULE_COLOR, description?: string) => {
+  const addScheduleFromTask = (taskId: string, date: string, startTime: string, endTime: string, color: string = DEFAULT_SCHEDULE_COLOR, description?: string, remindMinutes: number = 0) => {
     const task = activeTasks.value.find((t) => t.id === taskId)
     if (!task) return null
-    return addSchedule({ taskId, title: task.title, description: description ?? task.description, date, startTime, endTime, color })
+    return addSchedule({ taskId, title: task.title, description: description ?? task.description, date, startTime, endTime, color, remindMinutes })
   }
 
   return {

@@ -197,8 +197,8 @@ const onBatteryExempt = async () => {
       <template #header><span class="card-title">提醒与桌面</span></template>
       <div class="setting-row">
         <div class="setting-info">
-          <span class="setting-name">日程开始时提醒</span>
-          <span class="setting-desc">日程开始的瞬间弹系统通知并定位到该日程：桌面客户端闪烁任务栏，安卓客户端横幅加提示音（应用被划掉也照常提醒）；网页端不提醒</span>
+          <span class="setting-name">日程提醒</span>
+          <span class="setting-desc">总开关：关闭后所有日程到点都不提醒。各日程可在新建/编辑时自定义提醒时间（不提醒/准时/提前量，默认准时）：桌面客户端到点弹系统通知，安卓客户端横幅加提示音（应用被划掉也照常提醒）；网页端不提醒</span>
         </div>
         <el-switch v-model="form.remindEnabled" />
       </div>

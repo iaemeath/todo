@@ -41,6 +41,9 @@ Android APK 手动分发。
 ## 提醒域
 
 - 全局日程提醒：15s 到点窗口、**错过静默跳过不补发**（用户裁决：过期提醒是噪音）
+- **每日程提醒时间**（remindMinutes：0=准时 / -1=不提醒 / N=提前 N 分钟）：提醒时刻 =
+  开始时刻 - 提前量，fireKey/安卓闹钟 id 绑提醒时刻（改设置即换 id，差集同步自动重挂）；
+  双表单预设档（不提醒/准时/5/10 分钟/1 小时）+ allow-create 自定义任意分钟；全局开关为总闸
 - 三通道分发：Web Notification / Electron 托盘系统通知+图标闪烁 / **Android AlarmManager**
   （差集同步，应用被杀/重启照发）
 - 屏保全屏 Wake Lock（防息屏，退屏释放/切后台回收三路降级）
@@ -96,7 +99,7 @@ Android APK 手动分发。
 | 架构文档体系 docs/ | ✅ 2026-08-28 |
 | 巨型组件拆分（CalendarArea/TaskManagePage/AppSidebar） | ✅ 2026-08-28（三组件均 <450 行，职责化抽取，行为零变化） |
 | 重复日程（RRULE/简化枚举，三处联动） | ⏳ 排期 |
-| 提前提醒（全局 remindOffset + fireKey 细化） | ⏳ 排期（方案已探讨，见对话记录/ADR 待补） |
+| 提前提醒（全局 remindOffset + fireKey 细化） | ✅ 2026-08-28（升级为**每日程** remindMinutes 方案，预设+自定义，全局开关降为总闸；web 端提醒另行搁置等 HTTPS） |
 | usage 流水保留窗口 + localStorage 占用指示 | ⏳ 待排 |
 | 同设备多标签共享 SSE 连接（BroadcastChannel） | ⏳ 低优 |
 | iOS 壳 / PWA（manifest + SW） | ⏳ 远期 |

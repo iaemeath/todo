@@ -101,7 +101,8 @@ const addEventIntent = (intent: VoiceIntent): string => {
     date: payload.date || todayLocal(),
     startTime: payload.startTime || DEFAULT_SCHEDULE_START,
     endTime: payload.endTime || DEFAULT_SCHEDULE_END,
-    color: payload.color || DEFAULT_SCHEDULE_COLOR
+    color: payload.color || DEFAULT_SCHEDULE_COLOR,
+    remindMinutes: 0 // 语音排期的提醒量解析不在本期范围，默认准时
   })
   return '已成功添加日程：' + title
 }
