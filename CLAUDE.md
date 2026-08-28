@@ -35,6 +35,8 @@
 - `src/types/bundle.ts` 前后端共享数据契约——铁律：禁 import vue/pinia 等运行时依赖，后端直接引用做校验
 - `server/`：index 入口 / auth 认证+滑块 / sync 记录同步 / admin 用户管理 / db / jwt / sliderCaptcha / mailCode / mailer / roles
 - `server/data/` 运行数据（gitignored）
+- `tests/` 前端单测（node:test + tsx，fetch stub 驱动真实同步链路；`npm test`）
+- `docs/` 架构文档：组织约定见 docs/README.md；`docs/sync/` 同步域——current.md 当前态（无状态）/ evolution.md 演进史 / adr/ 决策记录（不可变只增）/ archive/ 冻结旧档。**动手改同步前除 §4/§5 外必读 current.md 的不变量清单**
 
 ## 4. 同步与数据语义不变量
 
