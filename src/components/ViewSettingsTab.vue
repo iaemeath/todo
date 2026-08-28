@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Moon, Sunny } from '@element-plus/icons-vue'
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import type { PermissionState } from '@capacitor/core'
+import type { PluginListenerHandle, PermissionState } from '@capacitor/core'
+import { App } from '@capacitor/app'
 import { LocalNotifications } from '@capacitor/local-notifications'
 import { useThemeStore, type Settings } from '../stores'
 import { hasDesktopBridge, isNativeShell } from '../services/apiClient'
@@ -29,14 +30,28 @@ const permState = ref<PermissionState>('granted')
 // ===== 电池优化豁免引导（仅原生壳）：ROM 把「划掉」当强停清闹钟，豁免是唯一标准干预点 =====
 // null = 桥不可用/未判定前的隐藏态；已豁免也隐藏（自证修复，保持设置页干净）
 const batteryExempt = ref<boolean | null>(null)
-onMounted(async () => {
-  if (!isNativeShell) return
+const refreshNativeGuides = async () => {
   try {
     permState.value = (await LocalNotifications.checkPermissions()).display
   } catch {
     permState.value = 'prompt'
   }
   batteryExempt.value = await batteryIgnoring()
+}
+let appStateHandle: PluginListenerHandle | null = null
+onMounted(async () => {
+  if (!isNativeShell) return
+  void refreshNativeGuides()
+  // 壳内 visibilitychange 永不触发（WebView 不随 Activity 暂停，HOME 往返恒 visible）。
+  // 豁免确认弹窗/权限弹窗关闭、后台返回等「回前台」时机由官方 App 插件的
+  // appStateChange 覆盖——在此重查两项状态，引导行随授权结果出现/消失
+  appStateHandle = await App.addListener('appStateChange', ({ isActive }) => {
+    if (isActive) void refreshNativeGuides()
+  })
+})
+onUnmounted(() => {
+  void appStateHandle?.remove()
+  appStateHandle = null
 })
 const requestPerm = async () => {
   try {
@@ -50,18 +65,8 @@ const onBatteryExempt = async () => {
     await requestBatteryIgnore()
   } catch {
     /* 极少数 ROM 裁剪了该入口：文案已引导手动设置 */
-    return
   }
-  // 壳内 visibilitychange 不触发（WebView 不随 Activity 暂停，实测恒 visible），
-  // 弹窗返回后轮询对账，豁免生效即隐藏引导行；10 轮后仍 false（用户点了拒绝）保持引导
-  for (let i = 0; i < 10; i++) {
-    await new Promise((r) => setTimeout(r, 1500))
-    const ignoring = await batteryIgnoring()
-    if (ignoring) {
-      batteryExempt.value = ignoring
-      break
-    }
-  }
+  // 弹窗关闭回前台后 appStateChange 触发 refreshNativeGuides，无需在此处理结果
 }
 </script>
 
