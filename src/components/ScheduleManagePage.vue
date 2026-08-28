@@ -28,6 +28,7 @@
     <!-- Table -->
     <el-table :data="filteredSchedules" stripe border style="width: 100%;" :empty-text="emptyText">
       <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
+      <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
       <el-table-column label="日期" width="130">
         <template #default="{ row }">
           {{ formatDate(row.date) }}
