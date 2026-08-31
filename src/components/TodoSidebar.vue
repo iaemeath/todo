@@ -233,7 +233,8 @@ html.platform-mobile .todo-sidebar {
   border: 1px solid var(--el-border-color);
   background: var(--el-bg-color-page);
   color: var(--el-text-color-primary);
-  font-size: var(--font-sm);
+  /* iOS 聚焦 computed <16px 的输入框会整页放大——16px 硬底线（font-sm 在 17px 根下 14.45px 不够） */
+  font-size: max(var(--font-sm), 16px);
   outline: none;
   transition: all var(--duration-fast);
 }

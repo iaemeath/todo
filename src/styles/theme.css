@@ -99,6 +99,11 @@
    由 ui store 的 detect() 与 isMobile 同源挂/摘（html.platform-mobile），
    组件只消费令牌即自动获得双平台值，无需写平台媒体查询。 */
 html.platform-mobile {
+  /* 根字号 17px（桌面 18px）：rem 刻度全局再收一档（正文 15.3px / 次要 14.4px），
+     更贴移动密度；不取 16px——那会把正文压到 14.4px 且 font-sm 系跌破中文舒适区。
+     只覆盖 font-size，font-family/line-height 仍继承 :root 的 font 简写 */
+  font-size: 17px;
+
   --space-md: 8px;
   --space-lg: 12px;
   --space-xl: 16px;
