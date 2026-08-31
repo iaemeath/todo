@@ -25,7 +25,7 @@ Android APK 手动分发。
 
 - FullCalendar 日/周/月视图；中央时间选择器导航
 - 拖拽调度：eventDrop / eventResize / eventReceive 三处跨零点校验（endTime ≤ startTime 拒绝并回滚）
-- 共享 ScheduleDialog（CalendarArea / TaskManagePage 双入口）
+- 共享 ScheduleDialog（日历新建/编辑、任务排期、从任务新增 三入口；调用方自有字段走 hint 插槽 + preValidate 扩展校验）
 - 状态二段切换（未进行/已进行，按结束时刻划分）；搜索与状态/颜色筛选相交过滤
 - 日程可关联叶子任务（addScheduleFromTask，墓碑任务拒绝排期）
 

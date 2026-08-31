@@ -75,77 +75,55 @@
       @delete="handleDeleteFromDialog"
     />
 
-    <!-- From-task dialog (从任务新增) -->
-    <el-dialog v-model="fromTodoDialogVisible" title="从任务新增日程" :width="isMobile ? '92vw' : '480px'" destroy-on-close>
-      <el-form label-position="top">
-        <el-form-item label="选择任务">
-          <!-- 选择器与预览卡合一：卡片本身即下拉触发器（未选=虚线占位，选中=预览卡本体） -->
-          <el-popover
-            ref="taskPopRef"
-            trigger="click"
-            placement="bottom-start"
-            :width="isMobile ? 300 : 420"
-            popper-class="from-todo-pop"
-          >
-            <template #reference>
-              <button type="button" class="task-select-card" :class="{ 'is-empty': !fromTodoForm.taskId }">
-                <!-- 选中/未选两态快速淡切（out-in），遮住 v-if 硬交换的生硬感 -->
-                <Transition name="tpc-swap" mode="out-in">
-                  <TaskPreviewCard v-if="fromTodoForm.taskId" :title="fromTodoForm.taskTitle" :description="fromTodoForm.description" />
-                  <span v-else class="task-select-card__placeholder">搜索并选择任务...</span>
-                </Transition>
-              </button>
-            </template>
-            <el-input v-model="taskQuery" :prefix-icon="Search" placeholder="搜索任务标题..." clearable />
-            <div class="from-todo-pop__list">
-              <button
-                v-for="t in filteredLeafTasks"
-                :key="t.id"
-                type="button"
-                class="from-todo-pop__item"
-                @click="selectTask(t.id)"
-              >
-                {{ t.title }}
-              </button>
-              <div v-if="!filteredLeafTasks.length" class="from-todo-pop__empty">无匹配任务</div>
-            </div>
-          </el-popover>
-        </el-form-item>
-        <el-form-item label="日期">
-          <el-date-picker v-model="fromTodoForm.date" type="date" value-format="YYYY-MM-DD" placeholder="选择日期" style="width: 100%;" />
-        </el-form-item>
-        <!-- 起止时间合并为一个 is-range 时间段选择器（与 ScheduleDialog 同款），日期保持单日 -->
-        <el-form-item label="时间段">
-          <el-time-picker
-            v-model="fromTodoTimeRange"
-            is-range
-            value-format="HH:mm"
-            format="HH:mm"
-            start-placeholder="开始时间"
-            end-placeholder="结束时间"
-            style="width: 100%;"
-          />
-        </el-form-item>
-        <!-- 提醒与 ScheduleDialog 同语义：预设档 + 键入自定义分钟，确认时统一解析校验 -->
-        <el-form-item label="提醒">
-          <el-select v-model="fromTodoRemindStr" filterable allow-create style="width: 100%;">
-            <el-option v-for="p in fromTodoRemindOptions" :key="p.value" :label="p.label" :value="p.value" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="颜色">
-          <el-select v-model="fromTodoForm.color" style="width: 100%;">
-            <el-option v-for="c in colorOptions" :key="c.value" :label="c.label" :value="c.value">
-              <span class="color-dot" :style="{ background: c.hex }"></span>
-              <span style="margin-left: 8px;">{{ c.label }}</span>
-            </el-option>
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="fromTodoDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmFromTodo">创建日程</el-button>
+    <!-- From-task create (从任务新增)：表单/校验复用 ScheduleDialog，本页只留任务选择器（hint 插槽）与落库 -->
+    <ScheduleDialog
+      v-model:visible="fromTodoDialogVisible"
+      header="从任务新增日程"
+      :initial="fromTodoInitial"
+      :show-title="false"
+      :pre-validate="validateFromTodo"
+      confirm-text="创建日程"
+      @save="confirmFromTodo"
+    >
+      <template #hint>
+        <!-- hint 位于组件 el-form 之外，自持同款 label-position 的 form 承载选择器 -->
+        <el-form label-position="top">
+          <el-form-item label="选择任务">
+            <!-- 选择器与预览卡合一：卡片本身即下拉触发器（未选=虚线占位，选中=预览卡本体） -->
+            <el-popover
+              ref="taskPopRef"
+              trigger="click"
+              placement="bottom-start"
+              :width="isMobile ? 300 : 420"
+              popper-class="from-todo-pop"
+            >
+              <template #reference>
+                <button type="button" class="task-select-card" :class="{ 'is-empty': !fromTodoTaskId }">
+                  <!-- 选中/未选两态快速淡切（out-in），遮住 v-if 硬交换的生硬感 -->
+                  <Transition name="tpc-swap" mode="out-in">
+                    <TaskPreviewCard v-if="fromTodoTaskId" :title="selectedTask?.title ?? ''" :description="selectedTask?.description ?? ''" />
+                    <span v-else class="task-select-card__placeholder">搜索并选择任务...</span>
+                  </Transition>
+                </button>
+              </template>
+              <el-input v-model="taskQuery" :prefix-icon="Search" placeholder="搜索任务标题..." clearable />
+              <div class="from-todo-pop__list">
+                <button
+                  v-for="t in filteredLeafTasks"
+                  :key="t.id"
+                  type="button"
+                  class="from-todo-pop__item"
+                  @click="selectTask(t.id)"
+                >
+                  {{ t.title }}
+                </button>
+                <div v-if="!filteredLeafTasks.length" class="from-todo-pop__empty">无匹配任务</div>
+              </div>
+            </el-popover>
+          </el-form-item>
+        </el-form>
       </template>
-    </el-dialog>
+    </ScheduleDialog>
   </div>
 </template>
 
@@ -155,8 +133,8 @@ import Fuse from 'fuse.js'
 import { Plus, Search, Delete, Edit, Link } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { confirmAction } from '../utils/confirm'
-import { colorOptions, colorHex, colorLabel, type EventColor } from '../constants/colors'
-import { REMIND_MAX, REMIND_PRESETS, formatRemindLabel, parseRemindInput } from '../constants/schedule'
+import { colorOptions, colorHex, colorLabel } from '../constants/colors'
+import { DEFAULT_SCHEDULE_COLOR, DEFAULT_SCHEDULE_END, DEFAULT_SCHEDULE_START } from '../constants/schedule'
 import { todayLocal } from '../utils/dates'
 import { storeToRefs } from 'pinia'
 import { useTaskStore, useUIStore, type Schedule } from '../stores'
@@ -267,29 +245,36 @@ const handleDelete = async (row: Schedule) => {
   })
 }
 
-// ---- From-task create (从任务/叶子任务新增日程) ----
+// ---- From-task create (从任务新增日程)——表单/校验在 ScheduleDialog，此处只留任务选择与落库 ----
 const fromTodoDialogVisible = ref(false)
-const fromTodoForm = ref({ taskId: '', taskTitle: '', description: '', date: todayLocal(), startTime: '09:00', endTime: '10:00', color: 'blue' as EventColor })
-// 提醒量下拉的字符串模型（语义同 ScheduleDialog 的 remindStr）：allow-create 键入产出字符串，确认时统一解析
-const fromTodoRemindStr = ref('0')
+const fromTodoTaskId = ref('')
+// 表单初值每次打开时重置（描述不在此流转：任务选择发生在弹窗内，save 时按 taskId 现查任务描述）
+const fromTodoInitial = ref<ScheduleFormValue>({
+  title: '',
+  description: '',
+  date: todayLocal(),
+  startTime: DEFAULT_SCHEDULE_START,
+  endTime: DEFAULT_SCHEDULE_END,
+  color: DEFAULT_SCHEDULE_COLOR,
+  remindMinutes: 0
+})
 
 const openFromTodoDialog = () => {
-  fromTodoForm.value = { taskId: '', taskTitle: '', description: '', date: todayLocal(), startTime: '09:00', endTime: '10:00', color: 'blue' }
-  fromTodoRemindStr.value = '0'
+  fromTodoTaskId.value = ''
   taskQuery.value = ''
+  fromTodoInitial.value = {
+    title: '',
+    description: '',
+    date: todayLocal(),
+    startTime: DEFAULT_SCHEDULE_START,
+    endTime: DEFAULT_SCHEDULE_END,
+    color: DEFAULT_SCHEDULE_COLOR,
+    remindMinutes: 0
+  }
   fromTodoDialogVisible.value = true
 }
 
-// 预设档在前；当前值非预设（自定义分钟数）时动态补一条格式化选项供回显（同 ScheduleDialog）
-const fromTodoRemindOptions = computed(() => {
-  const presets = REMIND_PRESETS.map((p) => ({ label: p.label, value: String(p.value) }))
-  if (REMIND_PRESETS.some((p) => String(p.value) === fromTodoRemindStr.value)) return presets
-  const custom = parseRemindInput(fromTodoRemindStr.value)
-  if (custom === null) return presets
-  return [{ label: formatRemindLabel(custom), value: fromTodoRemindStr.value }, ...presets]
-})
-
-// 选择器与预览卡合一：卡片触发器 + 弹层搜索列表。选中即回填标题/描述并收起弹层
+// 选择器与预览卡合一：卡片触发器 + 弹层搜索列表。选中即记 id 并收起弹层
 const taskQuery = ref('')
 const taskPopRef = ref<{ hide: () => void } | null>(null)
 // 已完成任务不参与转日程（隐藏而非标注）：列表与搜索共用这一基础集
@@ -301,49 +286,32 @@ const filteredLeafTasks = computed(() => {
   return taskFuse.value.search(q).map((r) => r.item)
 })
 
+// 选中任务的现查视图（预览卡展示与 save 取描述同一数据源，弹窗开着期间任务变动实时反映）
+const selectedTask = computed(() => leafTasks.value.find((t) => t.id === fromTodoTaskId.value))
+
 const selectTask = (taskId: string) => {
-  fromTodoForm.value.taskId = taskId
-  const task = leafTasks.value.find((t) => t.id === taskId)
-  fromTodoForm.value.taskTitle = task?.title ?? ''
-  fromTodoForm.value.description = task?.description ?? ''
+  fromTodoTaskId.value = taskId
   taskPopRef.value?.hide()
 }
 
-// 起止时间合并选择器（is-range 时间段）与表单两字段的桥接，语义同 ScheduleDialog
-const fromTodoTimeRange = computed({
-  get: (): [string, string] => [fromTodoForm.value.startTime, fromTodoForm.value.endTime],
-  set: (range: [string, string]) => {
-    if (!range?.[0] || !range?.[1]) return
-    fromTodoForm.value.startTime = range[0]
-    fromTodoForm.value.endTime = range[1]
-  }
-})
+// 扩展校验（ScheduleDialog preValidate）：任务必选，日期/时段/提醒由组件统一校验
+const validateFromTodo = () => (fromTodoTaskId.value ? null : '请选择一个任务')
 
-const confirmFromTodo = () => {
-  if (!fromTodoForm.value.taskId) {
-    ElMessage.warning('请选择一个任务')
+const confirmFromTodo = (form: ScheduleFormValue) => {
+  const task = selectedTask.value
+  if (!task) {
+    // 竞态兜底：任务在弹窗打开期间被删——报错并重开弹窗让用户重选
+    ElMessage.error('创建失败，任务可能已被删除')
+    fromTodoDialogVisible.value = true
     return
   }
-  const { taskId, description, date, startTime, endTime, color } = fromTodoForm.value
-  if (!date || !startTime || !endTime) {
-    ElMessage.warning('请填写完整的日期和时间')
-    return
-  }
-  if (startTime >= endTime) {
-    ElMessage.warning('结束时间必须晚于开始时间')
-    return
-  }
-  const remindMinutes = parseRemindInput(fromTodoRemindStr.value)
-  if (remindMinutes === null) {
-    ElMessage.warning(`提醒量需为 0~${REMIND_MAX} 的整数分钟`)
-    return
-  }
-  const result = addScheduleFromTask(taskId, date, startTime, endTime, color, description.trim(), remindMinutes)
+  const { date, startTime, endTime, color, remindMinutes } = form
+  const result = addScheduleFromTask(task.id, date, startTime, endTime, color, (task.description ?? '').trim(), remindMinutes)
   if (result) {
     ElMessage.success('已从任务创建日程')
-    fromTodoDialogVisible.value = false
   } else {
     ElMessage.error('创建失败，任务可能已被删除')
+    fromTodoDialogVisible.value = true // 落库被拒（墓碑任务）：重开弹窗让用户重选
   }
 }
 </script>

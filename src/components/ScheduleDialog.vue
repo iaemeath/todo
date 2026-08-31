@@ -69,9 +69,10 @@ import { REMIND_MAX, REMIND_PRESETS, formatRemindLabel, parseRemindInput } from 
 import { useUIStore } from '../stores'
 
 /**
- * 日程弹窗（单一数据源）：CalendarArea 新建/编辑日程与 TaskManagePage 排期共用，
- * 历史 双份手写表单（字段/校验/颜色选择器逐字重复）收敛于此。
+ * 日程弹窗（单一数据源）：CalendarArea 新建/编辑日程、TaskManagePage 排期、
+ * ScheduleManagePage 从任务新增共用，历史 双份手写表单（字段/校验/颜色选择器逐字重复）收敛于此。
  * 表单态与校验归组件；落库与成功提示归调用方（save 事件携带表单值）。
+ * 调用方自有字段（如任务选择）经 hint 插槽注入、preValidate 校验。
  */
 export interface ScheduleFormValue {
   title: string
@@ -87,7 +88,7 @@ export interface ScheduleFormValue {
 const props = withDefaults(
   defineProps<{
     visible: boolean
-    /** 弹窗标题（新增日程/编辑日程/排期到日历） */
+    /** 弹窗标题（新增日程/编辑日程/排期到日历/从任务新增日程） */
     header: string
     /** 打开时的表单初始值（调用方每次打开前构造） */
     initial: ScheduleFormValue
@@ -97,6 +98,8 @@ const props = withDefaults(
     showTitle?: boolean
     /** 编辑模式显示删除按钮 */
     showDelete?: boolean
+    /** 调用方扩展校验（如"请选择一个任务"）：confirm 最先调用，返回错误文案即中止不关窗 */
+    preValidate?: () => string | null
   }>(),
   { confirmText: '创建', showTitle: true, showDelete: false }
 )
@@ -144,6 +147,8 @@ watch(
 )
 
 const confirm = () => {
+  const externalError = props.preValidate?.()
+  if (externalError) { ElMessage.warning(externalError); return }
   const { title, date, startTime, endTime } = form.value
   if (props.showTitle && !title.trim()) { ElMessage.warning('标题不能为空'); return }
   if (!date || !startTime || !endTime) { ElMessage.warning('请填写完整的日期和时间'); return }
