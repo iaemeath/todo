@@ -158,7 +158,8 @@ const onMonthPick = (d: Date | null) => {
 /* ===== 移动端 daterange 面板收窄为单月（popper 传送至 body，需全局样式）=====
    EP 范围面板双月并排 ~646px 溢出手机屏；unlink-panels 使左面板自带前进箭头，
    隐藏右侧面板后仍是可完整导航的单月范围选择。
-   左面板定宽 322px（同 EP 单日期面板），单元格 ≈44px 触控友好；
+   左面板定宽 322px（同 EP 单日期面板）；日期单元格实测 41×30px
+   （EP 表格行高 30px，未达 44px 触控标准——已知取舍，改行高需动 EP 内部表格布局）；
    content 为 table-cell 布局，不定宽会自适应撑满 body */
 .mobile-range-panel .el-date-range-picker {
   width: fit-content;

@@ -60,6 +60,15 @@ const { isMobile, gotoDateRequest } = storeToRefs(uiStore)
 
 const fullCalendar = ref<InstanceType<typeof FullCalendar> | null>(null)
 
+// 初始滚动定位：FC 默认 scrollTime 06:00——下午/晚间打开首屏停在上午、当前时刻线在屏外。
+// 定位到 now-2h 并夹取显示时段（末段预留 4h 可视；显示时段本身不足 4h 则顶格）
+const initialScrollHour = (() => {
+  const start = settings.value.startHour
+  const end = settings.value.endHour
+  const nowH = new Date().getHours() - 2
+  return Math.min(Math.max(nowH, start), Math.max(start, end - 4))
+})()
+
 // 提醒通知点击定位：消费 ui store 的跳转请求（gotoDate 保持当前视图类型平移），
 // 消费即清空；连续两次同日期请求由 ts 保证触发
 watch(gotoDateRequest, (req) => {
@@ -156,6 +165,9 @@ const calendarOptions = computed(() => ({
   height: '100%',
   allDaySlot: false,
   nowIndicator: true,
+  // 初始定位到当前时段（now-2h）；翻页不重置滚动（保持用户浏览位置）
+  scrollTime: `${String(initialScrollHour).padStart(2, '0')}:00:00`,
+  scrollTimeReset: false,
   eventDrop: applyEventMove, // 日程拖动落库（跨零点校验失败 revert）
   eventResize: applyEventMove, // 日程拉伸落库（跨零点校验失败 revert）
   eventReceive: handleEventReceive, // When external event is dropped
