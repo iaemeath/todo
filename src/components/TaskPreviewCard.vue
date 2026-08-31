@@ -7,8 +7,8 @@
 
 <script setup lang="ts">
 /**
- * 待办预览小卡片（只读）：上方标题、下方描述。
- * 任务转日程两类入口的选中态展示——排期到日历（TaskManagePage）与从待办新增
+ * 任务预览小卡片（只读）：上方标题、下方描述。
+ * 任务转日程两类入口的选中态展示——排期到日历（TaskManagePage）与从任务新增
  * （ScheduleManagePage）共用；纯展示组件，不持任何状态。
  */
 withDefaults(defineProps<{ title: string; description?: string }>(), { description: '' })
@@ -25,7 +25,7 @@ withDefaults(defineProps<{ title: string; description?: string }>(), { descripti
 
 .task-preview-card__title {
   font-size: var(--font-base);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-regular); /* 常规字重：卡片与选项列表统一不加粗 */
   line-height: 1.3;
   color: var(--el-text-color-primary);
 }

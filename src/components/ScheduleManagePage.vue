@@ -21,7 +21,7 @@
           <span class="view-tab-label">{{ opt.label }}</span>
         </button>
       </div>
-      <el-button type="primary" :icon="Link" @click="openFromTodoDialog"><span v-if="!isMobile">从待办新增</span></el-button>
+      <el-button type="primary" :icon="Link" @click="openFromTodoDialog"><span v-if="!isMobile">从任务新增</span></el-button>
       <el-button type="primary" :icon="Plus" @click="openCreateDialog"><span v-if="!isMobile">新增日程</span></el-button>
     </div>
 
@@ -75,10 +75,10 @@
       @delete="handleDeleteFromDialog"
     />
 
-    <!-- From-todo dialog (从待办新增) -->
-    <el-dialog v-model="fromTodoDialogVisible" title="从待办新增日程" :width="isMobile ? '92vw' : '480px'" destroy-on-close>
+    <!-- From-task dialog (从任务新增) -->
+    <el-dialog v-model="fromTodoDialogVisible" title="从任务新增日程" :width="isMobile ? '92vw' : '480px'" destroy-on-close>
       <el-form label-position="top">
-        <el-form-item label="选择待办">
+        <el-form-item label="选择任务">
           <!-- 选择器与预览卡合一：卡片本身即下拉触发器（未选=虚线占位，选中=预览卡本体） -->
           <el-popover
             ref="taskPopRef"
@@ -89,11 +89,14 @@
           >
             <template #reference>
               <button type="button" class="task-select-card" :class="{ 'is-empty': !fromTodoForm.taskId }">
-                <TaskPreviewCard v-if="fromTodoForm.taskId" :title="fromTodoForm.taskTitle" :description="fromTodoForm.description" />
-                <span v-else class="task-select-card__placeholder">搜索并选择待办...</span>
+                <!-- 选中/未选两态快速淡切（out-in），遮住 v-if 硬交换的生硬感 -->
+                <Transition name="tpc-swap" mode="out-in">
+                  <TaskPreviewCard v-if="fromTodoForm.taskId" :title="fromTodoForm.taskTitle" :description="fromTodoForm.description" />
+                  <span v-else class="task-select-card__placeholder">搜索并选择任务...</span>
+                </Transition>
               </button>
             </template>
-            <el-input v-model="taskQuery" :prefix-icon="Search" placeholder="搜索待办标题..." clearable />
+            <el-input v-model="taskQuery" :prefix-icon="Search" placeholder="搜索任务标题..." clearable />
             <div class="from-todo-pop__list">
               <button
                 v-for="t in filteredLeafTasks"
@@ -102,9 +105,9 @@
                 class="from-todo-pop__item"
                 @click="selectTask(t.id)"
               >
-                {{ t.title }}<span v-if="t.completed" class="from-todo-pop__done">(已完成)</span>
+                {{ t.title }}
               </button>
-              <div v-if="!filteredLeafTasks.length" class="from-todo-pop__empty">无匹配待办</div>
+              <div v-if="!filteredLeafTasks.length" class="from-todo-pop__empty">无匹配任务</div>
             </div>
           </el-popover>
         </el-form-item>
@@ -264,7 +267,7 @@ const handleDelete = async (row: Schedule) => {
   })
 }
 
-// ---- From-task create (从待办/叶子任务新增日程) ----
+// ---- From-task create (从任务/叶子任务新增日程) ----
 const fromTodoDialogVisible = ref(false)
 const fromTodoForm = ref({ taskId: '', taskTitle: '', description: '', date: todayLocal(), startTime: '09:00', endTime: '10:00', color: 'blue' as EventColor })
 // 提醒量下拉的字符串模型（语义同 ScheduleDialog 的 remindStr）：allow-create 键入产出字符串，确认时统一解析
@@ -289,10 +292,12 @@ const fromTodoRemindOptions = computed(() => {
 // 选择器与预览卡合一：卡片触发器 + 弹层搜索列表。选中即回填标题/描述并收起弹层
 const taskQuery = ref('')
 const taskPopRef = ref<{ hide: () => void } | null>(null)
-const taskFuse = computed(() => new Fuse(leafTasks.value, { keys: ['title'], threshold: 0.4 }))
+// 已完成任务不参与转日程（隐藏而非标注）：列表与搜索共用这一基础集
+const undoneLeafTasks = computed(() => leafTasks.value.filter((t) => !t.completed))
+const taskFuse = computed(() => new Fuse(undoneLeafTasks.value, { keys: ['title'], threshold: 0.4 }))
 const filteredLeafTasks = computed(() => {
   const q = taskQuery.value.trim()
-  if (!q) return leafTasks.value
+  if (!q) return undoneLeafTasks.value
   return taskFuse.value.search(q).map((r) => r.item)
 })
 
@@ -316,7 +321,7 @@ const fromTodoTimeRange = computed({
 
 const confirmFromTodo = () => {
   if (!fromTodoForm.value.taskId) {
-    ElMessage.warning('请选择一个待办')
+    ElMessage.warning('请选择一个任务')
     return
   }
   const { taskId, description, date, startTime, endTime, color } = fromTodoForm.value
@@ -335,10 +340,10 @@ const confirmFromTodo = () => {
   }
   const result = addScheduleFromTask(taskId, date, startTime, endTime, color, description.trim(), remindMinutes)
   if (result) {
-    ElMessage.success('已从待办创建日程')
+    ElMessage.success('已从任务创建日程')
     fromTodoDialogVisible.value = false
   } else {
-    ElMessage.error('创建失败，待办可能已被删除')
+    ElMessage.error('创建失败，任务可能已被删除')
   }
 }
 </script>
@@ -483,6 +488,9 @@ html.platform-mobile .manage-page {
   background: transparent;
   cursor: pointer;
   text-align: center;
+
+  /* 压回全局 button:not(.el-button) 的 semibold：表单占位与预览描述应为常规字重（描述此前被连带加粗） */
+  font-weight: var(--weight-regular);
 }
 
 .task-select-card.is-empty {
@@ -507,17 +515,42 @@ html.platform-mobile .manage-page {
 .task-select-card:not(.is-empty):hover :deep(.task-preview-card) {
   border-color: var(--el-color-primary);
 }
+
+/* 两态淡切：入场轻微上浮，出场更快淡出——0.1~0.15s 比全局 0.2s 更跟手 */
+.tpc-swap-enter-active {
+  transition: opacity 0.15s var(--ease-standard), transform 0.15s var(--ease-standard); /* stylelint-disable-line declaration-property-value-disallowed-list -- 两态微淡切特意快于 --duration-fast(0.2s) 的跟手特例 */
+}
+
+.tpc-swap-leave-active {
+  transition: opacity 0.1s ease; /* stylelint-disable-line declaration-property-value-disallowed-list -- 出场更快淡出(0.1s)的跟手特例，理由同上 */
+}
+
+.tpc-swap-enter-from {
+  opacity: 0;
+  transform: translateY(3px);
+}
+
+.tpc-swap-leave-to {
+  opacity: 0;
+}
 </style>
 
 <style>
-/* 从待办弹层的搜索列表：el-popover 挂 body，需全局样式（popper-class 圈定作用域） */
+/* 从任务弹层的搜索列表：el-popover 挂 body，需全局样式（popper-class 圈定作用域） */
+
+/* 弹层淡入淡出提速：EP fade-in-linear 默认 0.2s，0.12s 让"点选→回填"链路更跟手 */
+.from-todo-pop {
+  --el-transition-duration-fast: 0.12s;
+}
+
 .from-todo-pop__list {
   max-height: 260px;
   margin-top: var(--space-sm);
   overflow-y: auto;
 }
 
-.from-todo-pop__item {
+/* 父级 .from-todo-pop 抬到 0-2-0：单类 0-1-0 压不过全局 button:not(.el-button) 的 0-1-1（本块非 scoped，无 data-v 可借） */
+.from-todo-pop .from-todo-pop__item {
   display: block;
   width: 100%;
   padding: var(--space-sm) 10px; /* stylelint-disable-line declaration-property-value-disallowed-list -- 列表项左右留白与 EP 输入框内边距对齐特例 */
@@ -526,6 +559,7 @@ html.platform-mobile .manage-page {
   background: transparent;
   color: var(--el-text-color-primary);
   font-size: var(--font-base);
+  font-weight: var(--weight-regular); /* 压回全局 button:not(.el-button) 的 semibold，选项列表不加粗 */
   text-align: left;
   cursor: pointer;
   overflow: hidden;
@@ -535,11 +569,6 @@ html.platform-mobile .manage-page {
 
 .from-todo-pop__item:hover {
   background: var(--el-fill-color-light);
-}
-
-.from-todo-pop__done {
-  margin-left: 4px; /* stylelint-disable-line declaration-property-value-disallowed-list -- 已完成角标与标题的贴合间距特例 */
-  color: var(--el-text-color-secondary);
 }
 
 .from-todo-pop__empty {
