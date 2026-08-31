@@ -58,17 +58,10 @@
     </div>
   </header>
 
-  <!-- 移动端二级页：返回条（左端汉堡开导航抽屉 + 逐级返回）；
-       主页无顶条（汉堡在日历工具条，日历多得 56px） -->
-  <header v-else-if="isMobile && currentView !== 'home'" class="app-navbar">
-    <button class="nav-burger" @click="setNavDrawerOpen(true)" title="导航菜单">
-      <el-icon><Menu /></el-icon>
-    </button>
-    <button class="nav-back" @click="handleBack">
-      <el-icon><ArrowLeft /></el-icon>
-      <span>{{ navTitle }}</span>
-    </button>
-  </header>
+  <!-- 移动端二级页：统一顶条 MobileAppBar（左端汉堡开导航抽屉 + 居中页面标题，
+       中/右插槽预留后续设计）；主页不渲染此条——同一 MobileAppBar 由
+       CalendarToolbar 渲染（中=时间选择器，右=月/待办开关），日历不多占一行 -->
+  <MobileAppBar v-else-if="isMobile && currentView !== 'home'" :title="navTitle" />
 
   <!-- 移动端导航抽屉（backdrop/滑入动画/账号区在组件内；改密/登出事件回传根级处理） -->
   <MobileNavDrawer v-if="isMobile" @logout="handleLogout" @password="pwdDialogVisible = true" />
@@ -79,13 +72,14 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Calendar, ArrowLeft, Menu, Lock, SwitchButton } from '@element-plus/icons-vue'
+import { Calendar, Lock, SwitchButton } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
 import { confirmAction } from '../utils/confirm'
 import { useUIStore, type AppView } from '../stores'
 import { useAuthStore } from '../stores/auth'
 import { useNavConfig } from '../composables/useNavConfig'
 import ChangePasswordDialog from './ChangePasswordDialog.vue'
+import MobileAppBar from './MobileAppBar.vue'
 import MobileNavDrawer from './MobileNavDrawer.vue'
 import SyncDot from './SyncDot.vue'
 
@@ -127,15 +121,6 @@ const handleCommand = (cmd: string) => {
   }
 }
 
-// 移动端逐级返回：登录页 → 来源页；其余（任务/日程/设置子页）单级，直接回主页
-const handleBack = () => {
-  if (currentView.value === 'auth') {
-    uiStore.closeAuth()
-  } else {
-    switchView('home')
-  }
-}
-
 // toggle 导航：再点一次当前页 → 回主页（点「时间管理」在主页时停留，无副作用）
 const toggleView = (view: AppView) => {
   switchView(currentView.value === view ? 'home' : view)
@@ -143,41 +128,12 @@ const toggleView = (view: AppView) => {
 </script>
 
 <style scoped>
-/* 移动优先：基础样式 = 移动端二级页返回条（横条），桌面 rail 形态在 min-width 断点增强 */
+/* 侧栏基座（本类现仅桌面 rail 形态使用——移动端二级页顶条已由统一 MobileAppBar 承担，
+   横条形态样式随之移除；此处只保留桌面块未覆盖的公共属性） */
 .app-navbar {
   display: flex;
-  align-items: center;
-  height: 56px;
-  padding: 0 var(--space-md) 0 var(--space-sm);
-  gap: var(--space-sm);
-  background: var(--el-bg-color);
-  border-bottom: 1px solid var(--el-border-color-light);
   flex-shrink: 0;
-}
-
-/* 返回条左端汉堡（与右侧待办浮层入口同语义：拉出导航抽屉），触控目标达标 */
-.nav-burger {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: var(--touch-target);
-  min-height: var(--touch-target);
-  font-size: 1.25rem;
-  color: var(--el-text-color-regular);
-}
-
-.nav-back {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  background: transparent;
-  border: none;
-  color: var(--el-text-color-primary);
-  font-size: var(--font-base);
-  font-weight: var(--weight-medium);
-  cursor: pointer;
-  padding: var(--space-sm) 0;
-  min-height: var(--touch-target);
+  background: var(--el-bg-color);
 }
 
 .logo-icon {

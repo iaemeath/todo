@@ -1,19 +1,66 @@
 <template>
-  <!-- 顶部工具条统一四段式（双端同构）：
-       左 导航开关 | 中 时间选择器（选范围按跨度智能切视图）| 右 月视图 + 待办开关 -->
-  <div class="calendar-toolbar">
-    <div class="calendar-toolbar__side">
-      <!-- 左端导航开关：桌面 toggle rail 显隐 / 移动端拉出导航抽屉 -->
-      <button
-        v-if="isMobile"
-        class="toolbar-burger"
-        title="导航菜单"
-        @click="setNavDrawerOpen(true)"
-      >
-        <Menu :size="20" />
-      </button>
-      <button
+  <!-- 移动端：全应用统一顶条 MobileAppBar（汉堡在组件内）——
+       中 时间选择器（选范围按跨度智能切视图）| 右 月视图 + 待办开关 -->
+  <MobileAppBar v-if="isMobile">
+    <template #center>
+      <!-- 区间模式：两端共用 EP daterange（所见=所选）。移动端面板收窄为单月：
+           unlink-panels 使左面板自带前进箭头，CSS 隐藏右面板（EP 双月 646px 溢出手机屏） -->
+      <el-date-picker
+        v-if="pickerMode !== 'month'"
+        ref="pickerRef"
+        v-model="selectedRange"
+        class="calendar-title-picker"
+        type="daterange"
+        unlink-panels
+        popper-class="mobile-range-panel"
+        range-separator="–"
+        start-placeholder="开始日期"
+        end-placeholder="结束日期"
+        format="M月D日"
+        :clearable="false"
+        @change="onRangeChange"
+      />
+      <!-- 月模式（两端共用）：月选择器 + 月视图 -->
+      <el-date-picker
         v-else
+        ref="pickerRef"
+        v-model="selectedMonth"
+        class="calendar-title-picker calendar-month-picker"
+        type="month"
+        :clearable="false"
+        format="YYYY年M月"
+        @change="onMonthPick"
+      />
+    </template>
+    <template #right>
+      <!-- 月视图 toggle：激活时选择器切换为月选择器。
+           移动端由「设置-视觉与外观」控制（默认隐藏） -->
+      <button
+        v-if="settings.showMonthButton"
+        class="month-toggle"
+        :class="{ active: pickerMode === 'month' }"
+        @click="emit('toggleMonth')"
+        title="月视图"
+      >
+        月
+      </button>
+      <!-- 待办面板开关：移动端收/开浮层（桌面分支同按钮收/展侧栏） -->
+      <button
+        class="todo-toggle"
+        :title="todoVisible ? '收起待办栏' : '展开待办栏'"
+        @click="setTodoVisible(!todoVisible)"
+      >
+        <PanelRightClose v-if="todoVisible" :size="20" />
+        <PanelRight v-else :size="20" />
+      </button>
+    </template>
+  </MobileAppBar>
+
+  <!-- 桌面：顶部工具条三段式——
+       左 导航开关（toggle rail 显隐）| 中 ‹ 时间选择器 › | 右 月视图 + 待办开关 -->
+  <div v-else class="calendar-toolbar">
+    <div class="calendar-toolbar__side">
+      <button
         class="toolbar-nav-toggle"
         :title="navRailCollapsed ? '显示导航栏' : '隐藏导航栏'"
         @click="setNavRailCollapsed(!navRailCollapsed)"
@@ -26,16 +73,12 @@
       <button class="period-nav" title="上一时段" @click="emit('shift', -1)">
         <ChevronLeft :size="20" />
       </button>
-      <!-- 区间模式：两端共用 EP daterange（所见=所选）。移动端面板收窄为单月：
-           unlink-panels 使左面板自带前进箭头，CSS 隐藏右面板（EP 双月 646px 溢出手机屏） -->
       <el-date-picker
         v-if="pickerMode !== 'month'"
         ref="pickerRef"
         v-model="selectedRange"
         class="calendar-title-picker"
         type="daterange"
-        :unlink-panels="isMobile"
-        :popper-class="isMobile ? 'mobile-range-panel' : undefined"
         range-separator="–"
         start-placeholder="开始日期"
         end-placeholder="结束日期"
@@ -59,13 +102,11 @@
       </button>
     </div>
     <div class="calendar-toolbar__side calendar-toolbar__side--right">
-      <!-- 月视图 toggle：激活时选择器切换为月选择器。
-           网页端常驻；移动端由「设置-视觉与外观」控制（默认隐藏） -->
-      <button v-if="!isMobile || settings.showMonthButton" class="month-toggle" :class="{ active: pickerMode === 'month' }" @click="emit('toggleMonth')" title="月视图">
+      <!-- 月视图 toggle：激活时选择器切换为月选择器（网页端常驻） -->
+      <button class="month-toggle" :class="{ active: pickerMode === 'month' }" @click="emit('toggleMonth')" title="月视图">
         月
       </button>
-      <!-- 待办面板开关（原待办头部"收起待办栏"按钮移此，双端统一）：
-           web 收/展侧栏，移动端收/开浮层 -->
+      <!-- 待办面板开关（原待办头部"收起待办栏"按钮移此，双端统一）：web 收/展侧栏 -->
       <button
         class="todo-toggle"
         :title="todoVisible ? '收起待办栏' : '展开待办栏'"
@@ -82,7 +123,8 @@
 import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSettingsStore, useUIStore } from '../stores'
-import { PanelRight, PanelRightClose, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight, Menu } from 'lucide-vue-next'
+import MobileAppBar from './MobileAppBar.vue'
+import { PanelRight, PanelRightClose, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 
 defineProps<{ pickerMode: 'range' | 'month' }>()
 const selectedRange = defineModel<[Date, Date]>('selectedRange', { required: true })
@@ -97,7 +139,7 @@ const emit = defineEmits<{
 const { settings } = storeToRefs(useSettingsStore())
 const uiStore = useUIStore()
 const { isMobile, todoVisible, navRailCollapsed } = storeToRefs(uiStore)
-const { setTodoVisible, setNavDrawerOpen, setNavRailCollapsed } = uiStore
+const { setTodoVisible, setNavRailCollapsed } = uiStore
 
 const pickerRef = ref<{ handleClose?: () => void } | null>(null)
 const closePicker = () => pickerRef.value?.handleClose?.()
@@ -140,16 +182,17 @@ const onMonthPick = (d: Date | null) => {
   display: none;
 }
 
-/* ===== 顶部工具条（文档流三段式，替代已移除的 FC 工具栏）===== */
+/* ===== 顶部工具条（桌面分支；移动端由 MobileAppBar 渲染同构灰带）===== */
 
 /* 左右等宽占位 + 中央选择器，保证 picker 始终水平居中；右侧承载待办开关。
-   与待办头部（TodoSidebar .sidebar-header）同构的灰带：12px 灰顶边 + 44 内容 + 1px 底边，
-   两带用同一 calc 定高（子元素不撑高）几何严格相等；底边直接贴 FC 网格（无间距） */
+   与待办头部（TodoSidebar .sidebar-header）/移动端顶条（MobileAppBar）同构的灰带：
+   12px 灰顶边 + 44 内容 + 1px 底边，三处用同一 calc 定高（子元素不撑高）几何严格相等；
+   底边直接贴 FC 网格（无间距） */
 .calendar-toolbar {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  height: calc(44px + var(--space-md) + 1px); /* 桌面 57 / 移动 53（顶边随令牌） */
+  height: calc(44px + var(--space-md) + 1px); /* 桌面恒 57（本类桌面分支专用） */
 
   /* 上下边框不对称（12px 顶 / 1px 底），flex 只在内容盒居中会整体偏下 (12-1)/2=5.5px；
      补「边框差」等量 padding-bottom，把按钮/选择器抬回整条灰带的视觉中心 */
@@ -178,28 +221,16 @@ const onMonthPick = (d: Date | null) => {
   gap: var(--space-xs);
 }
 
-/* ‹ › 按钮：移动优先默认隐藏（移动端翻时段由左右滑动手势承担），桌面恢复显示。
-   「月」按钮不再由 CSS 控制——显示与否走 settings.showMonthButton（v-if）。
-   .calendar-toolbar 祖先提权：全局 button:not(.el-button)（theme.css）特异性更高，
-   单类 .period-nav 会被其 display:flex 压过导致隐藏失效 */
-.calendar-toolbar .period-nav {
-  display: none;
-}
-
-@media (width >= 769px) {
-  .calendar-toolbar .period-nav {
-    display: inline-flex;
-  }
-}
-
 /* 工具条按钮统一形态：32×32 透明底、无边框、hover 灰底 + 主题色。
-   period-nav / month / nav 开关 / todo 开关 / burger 五者共用一组规则（display 与居中
-   由全局 button 规则和上方恢复块管理，这里不再声明）；month-toggle 仅追加文字排版 */
+   period-nav / month / nav 开关 / todo 开关四者共用一组规则；
+   month / todo 两按钮在移动端经 MobileAppBar 插槽渲染，需并列 .mobile-app-bar
+   上下文（本块非 scoped 全局样式，插槽内容可命中） */
 .calendar-toolbar .period-nav,
 .calendar-toolbar .month-toggle,
 .calendar-toolbar .toolbar-nav-toggle,
 .calendar-toolbar .todo-toggle,
-.calendar-toolbar .toolbar-burger {
+.mobile-app-bar .month-toggle,
+.mobile-app-bar .todo-toggle {
   width: 32px;
   height: 32px;
   border: none;
@@ -211,7 +242,8 @@ const onMonthPick = (d: Date | null) => {
 }
 
 /* 月按钮：统一形态内的文字排版（字号与 20px 图标视觉等重） */
-.calendar-toolbar .month-toggle {
+.calendar-toolbar .month-toggle,
+.mobile-app-bar .month-toggle {
   font-size: var(--font-sm);
   font-weight: var(--weight-semibold);
   line-height: 1;
@@ -221,12 +253,14 @@ const onMonthPick = (d: Date | null) => {
 .calendar-toolbar .month-toggle:hover,
 .calendar-toolbar .toolbar-nav-toggle:hover,
 .calendar-toolbar .todo-toggle:hover,
-.calendar-toolbar .toolbar-burger:hover {
+.mobile-app-bar .month-toggle:hover,
+.mobile-app-bar .todo-toggle:hover {
   background: var(--el-fill-color); /* 工具条灰带上 hover 需更深一档可见 */
   color: var(--el-color-primary);
 }
 
-.calendar-toolbar .month-toggle.active {
+.calendar-toolbar .month-toggle.active,
+.mobile-app-bar .month-toggle.active {
   background: var(--color-primary);
   color: #fff;
 }
