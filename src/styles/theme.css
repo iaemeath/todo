@@ -104,6 +104,19 @@ html.platform-mobile {
   --space-xl: 16px;
   --font-base: 0.9rem;
   --touch-target: 44px;
+
+  /* EP base 字号 14px→16px：iOS Safari 聚焦 font-size<16px 的输入框会自动放大页面，
+     根字号 18px 防护覆盖不到 EP（其内部 input 是 font-size:inherit，
+     字号取自 .el-input 上的 --el-font-size-base）。el-button/表格等 base 字号随之 +2px，
+     移动端可读性正向受益 */
+  --el-font-size-base: 16px;
+}
+
+/* EP select 触发器写死 font-size:14px（.el-select__wrapper），截断了 --el-font-size-base
+   → inherit 的传导链，上面的 16px 覆盖传不到其内部筛选 input（.el-select__input 为
+   font-size:inherit），iOS 聚焦仍会放大页面。这里接回令牌 */
+html.platform-mobile .el-select__wrapper {
+  font-size: var(--el-font-size-base);
 }
 
 [data-theme="dark"] {

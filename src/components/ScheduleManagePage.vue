@@ -358,6 +358,7 @@ html.platform-mobile .manage-page {
   display: flex;
   align-items: center;
   gap: var(--space-lg);
+  flex-wrap: wrap; /* 移动端控件多（搜索/颜色/胶囊/双按钮），放不下时折行而非溢出（对齐任务页） */
   flex-shrink: 0;
 }
 
