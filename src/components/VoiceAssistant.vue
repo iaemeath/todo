@@ -1,5 +1,5 @@
 <template>
-  <div class="voice-assistant-fab" :style="fabStyle">
+  <div class="voice-assistant-fab" :class="{ 'is-minimized': isMinimized }" :style="fabStyle">
     <Transition name="toast-slide">
       <div v-if="toastMessage" class="voice-toast glass-panel" :class="toastType">
         {{ toastMessage }}
@@ -161,6 +161,7 @@ const executeIntent = async (intent: VoiceIntent): Promise<string> => {
 const positionX = ref<number | null>(null)
 const positionY = ref<number | null>(null)
 const isDraggingState = ref(false)
+const isMinimized = ref(false)
 
 const fabStyle = computed(() => {
   if (positionX.value === null || positionY.value === null) {
@@ -230,12 +231,28 @@ const stopDrag = () => {
     isDragging = false
     isDraggingState.value = false
   }, 50)
+  // 吸边收起：拖到左/右边缘 28px 内松手 → 半透明迷你态贴边（消除常驻遮挡），
+  // 点击恢复完整球（不触发语音）
+  if (positionX.value !== null) {
+    const w = 64
+    const nearLeft = positionX.value <= 28
+    const nearRight = positionX.value >= window.innerWidth - w - 28
+    if (nearLeft || nearRight) {
+      positionX.value = nearLeft ? 4 : window.innerWidth - w - 4
+      isMinimized.value = true
+    }
+  }
 }
 
 const handleFabClick = (e: Event) => {
   if (isDragging) {
     e.preventDefault()
     e.stopPropagation()
+    return
+  }
+  // 迷你态点击 = 先恢复完整球，不触发语音
+  if (isMinimized.value) {
+    isMinimized.value = false
     return
   }
   toggleVoice()
@@ -268,6 +285,81 @@ watch(() => settings.value.webLlmProgress, (newProgress) => {
   }
 })
 
+const processVoice = async (text: string) => {
+  recognition?.stop()
+  state.value = 'processing'
+  showToast(`正在解析: "${text}"`, 'info', 5000)
+  
+  // Optimize context tokens using Fuse.js locally first
+  const fuseEvents = new Fuse(schedules.value as any[], { keys: ['title'], threshold: 0.8 })
+  const matchedEvents = fuseEvents.search(text).slice(0, 3).map(r => r.item)
+
+  const fuseTodos = new Fuse(tasks.value as any[], { keys: ['title', 'description'], threshold: 0.8 })
+  const matchedTodos = fuseTodos.search(text).slice(0, 3).map(r => r.item)
+
+  const contextData = {
+    events: matchedEvents.map(t => ({ id: String(t.id), title: t.title, date: t.date })),
+    todos: matchedTodos.map(t => ({ id: String(t.id), text: t.title }))
+  }
+  
+  try {
+    const intent = await parseVoiceCommand(text, false, contextData)
+    const successMsg = await executeIntent(intent)
+    state.value = 'success'
+    showToast(successMsg, 'success')
+
+    setTimeout(() => {
+      state.value = 'idle'
+    }, 2000)
+  } catch (e: any) {
+    // 用户在删除确认弹窗点了取消：静默复位，不算错误
+    if (e?.message === CANCELLED) {
+      state.value = 'idle'
+      toastMessage.value = ''
+      return
+    }
+    if (settings.value.aiMode === 'local') {
+      // 选本地模式可能就是不想联网，改用云端前先征求同意
+      const useCloud = await confirmDialog(
+        '本地模型解析失败，是否改用云端 API 解析本次指令？',
+        '切换云端解析',
+        { type: 'info', confirmText: '用云端解析' }
+      )
+      if (!useCloud) {
+        state.value = 'idle'
+        toastMessage.value = ''
+        return
+      }
+      try {
+        const cloudIntent = await parseVoiceCommand(text, true, contextData)
+        const cloudSuccessMsg = await executeIntent(cloudIntent)
+        state.value = 'success'
+        showToast(cloudSuccessMsg, 'success')
+
+        setTimeout(() => {
+          state.value = 'idle'
+        }, 2000)
+      } catch (cloudErr: any) {
+        if (cloudErr?.message === CANCELLED) {
+          state.value = 'idle'
+          toastMessage.value = ''
+          return
+        }
+        state.value = 'error'
+        showToast(cloudErr.message || '云端 AI 解析失败', 'error')
+        setTimeout(() => { state.value = 'idle' }, 3000)
+      }
+    } else {
+      state.value = 'error'
+      showToast(e.message || 'AI 解析失败', 'error')
+
+      setTimeout(() => {
+        state.value = 'idle'
+      }, 3000)
+    }
+  }
+}
+
 const initSpeechRecognition = () => {
   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
   
@@ -282,80 +374,6 @@ const initSpeechRecognition = () => {
   recognition.interimResults = true
   recognition.maxAlternatives = 1
 
-  const processVoice = async (text: string) => {
-    recognition?.stop()
-    state.value = 'processing'
-    showToast(`正在解析: "${text}"`, 'info', 5000)
-    
-    // Optimize context tokens using Fuse.js locally first
-    const fuseEvents = new Fuse(schedules.value as any[], { keys: ['title'], threshold: 0.8 })
-    const matchedEvents = fuseEvents.search(text).slice(0, 3).map(r => r.item)
-
-    const fuseTodos = new Fuse(tasks.value as any[], { keys: ['title', 'description'], threshold: 0.8 })
-    const matchedTodos = fuseTodos.search(text).slice(0, 3).map(r => r.item)
-
-    const contextData = {
-      events: matchedEvents.map(t => ({ id: String(t.id), title: t.title, date: t.date })),
-      todos: matchedTodos.map(t => ({ id: String(t.id), text: t.title }))
-    }
-    
-    try {
-      const intent = await parseVoiceCommand(text, false, contextData)
-      const successMsg = await executeIntent(intent)
-      state.value = 'success'
-      showToast(successMsg, 'success')
-
-      setTimeout(() => {
-        state.value = 'idle'
-      }, 2000)
-    } catch (e: any) {
-      // 用户在删除确认弹窗点了取消：静默复位，不算错误
-      if (e?.message === CANCELLED) {
-        state.value = 'idle'
-        toastMessage.value = ''
-        return
-      }
-      if (settings.value.aiMode === 'local') {
-        // 选本地模式可能就是不想联网，改用云端前先征求同意
-        const useCloud = await confirmDialog(
-          '本地模型解析失败，是否改用云端 API 解析本次指令？',
-          '切换云端解析',
-          { type: 'info', confirmText: '用云端解析' }
-        )
-        if (!useCloud) {
-          state.value = 'idle'
-          toastMessage.value = ''
-          return
-        }
-        try {
-          const cloudIntent = await parseVoiceCommand(text, true, contextData)
-          const cloudSuccessMsg = await executeIntent(cloudIntent)
-          state.value = 'success'
-          showToast(cloudSuccessMsg, 'success')
-
-          setTimeout(() => {
-            state.value = 'idle'
-          }, 2000)
-        } catch (cloudErr: any) {
-          if (cloudErr?.message === CANCELLED) {
-            state.value = 'idle'
-            toastMessage.value = ''
-            return
-          }
-          state.value = 'error'
-          showToast(cloudErr.message || '云端 AI 解析失败', 'error')
-          setTimeout(() => { state.value = 'idle' }, 3000)
-        }
-      } else {
-        state.value = 'error'
-        showToast(e.message || 'AI 解析失败', 'error')
-
-        setTimeout(() => {
-          state.value = 'idle'
-        }, 3000)
-      }
-    }
-  }
 
   recognition.onstart = () => {
     accumulatedText.value = ''
@@ -423,10 +441,14 @@ const toggleVoice = () => {
   if (state.value === 'listening') {
     if (silenceTimer) clearTimeout(silenceTimer)
     recognition?.stop()
-    if (accumulatedText.value.trim()) {
-      // process if they click stop but have spoken
-      // but if we do this, it will call processVoice inside toggleVoice. We didn't expose processVoice.
-      // So we just cancel and let them try again, or we can just drop it. Let's drop it to match original behavior.
+    // 停止即解析：用户说完话点球停止是高频直觉，静默丢弃体验恶劣——
+    // 已有识别文本则直接进解析流（与静默自动提交同一链路），无文本才静默收场
+    const spoken = accumulatedText.value.trim()
+    accumulatedText.value = ''
+    if (spoken) {
+      state.value = 'processing'
+      void processVoice(spoken)
+      return
     }
     state.value = 'idle'
     toastMessage.value = ''
@@ -456,6 +478,17 @@ const toggleVoice = () => {
   z-index: var(--z-overlay);
   width: 64px;
   height: 64px;
+  transition: opacity var(--duration-base) ease, transform var(--duration-base) var(--ease-spring);
+}
+
+/* 贴边迷你态：半透明缩小（位置已由拖拽吸边写入内联 style） */
+.voice-assistant-fab.is-minimized {
+  opacity: 0.4;
+  transform: scale(0.72);
+}
+
+.voice-assistant-fab.is-minimized:hover {
+  opacity: 1;
 }
 
 .voice-toast {
