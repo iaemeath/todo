@@ -1,7 +1,7 @@
 <template>
   <!-- 移动端：导航抽屉（左滑入 + 底罩，与右侧待办浮层对称）。
-       z 分层：抽屉 1100 / 底罩 1099，高于待办浮层（20）与底罩（19），
-       低于 EP 弹窗（~2000+）与语音球（--z-overlay 10000） -->
+       z 分层：抽屉 --z-nav-drawer / 底罩 -1，高于待办浮层（--z-todo-overlay）
+       与日历伪全屏（--z-fake-fullscreen），低于 EP 弹窗（~2000+）与语音球（--z-overlay） -->
   <template v-if="isMobile && navDrawerOpen">
     <div class="nav-backdrop" @click="setNavDrawerOpen(false)"></div>
     <Transition name="nav-slide">
@@ -77,6 +77,7 @@ import { Calendar, List, Clock, Timer, AlarmClock, Lock, SwitchButton } from '@e
 import { useUIStore, type AppView, type SettingsSection } from '../stores'
 import { useAuthStore } from '../stores/auth'
 import { useNavConfig } from '../composables/useNavConfig'
+import { useSwipe } from '../composables/useSwipe'
 import SyncDot from './SyncDot.vue'
 
 const emit = defineEmits<{ logout: []; password: [] }>()
@@ -87,6 +88,16 @@ const { currentView, isMobile, settingsSection, navDrawerOpen } = storeToRefs(ui
 const { switchView, openSettingsSection, setNavDrawerOpen } = uiStore
 
 const { displayName, syncTitle, settingItems } = useNavConfig()
+
+// 左滑关闭抽屉（跟随抽屉滑出方向；避开导航项/账号行——点按前的微小滑动不误关）。
+// 容器挂 body 常驻、targetSel 运行时命中，规避抽屉 v-if 晚于 useSwipe 的挂载时机
+useSwipe('body', (dir) => {
+  if (dir === 1) setNavDrawerOpen(false)
+}, {
+  enabled: () => isMobile.value && navDrawerOpen.value,
+  targetSel: '.nav-drawer',
+  skipSel: '.nav-drawer__item, .nav-drawer__user, button, .el-dropdown'
+})
 
 const openLogin = () => {
   setNavDrawerOpen(false)
@@ -116,7 +127,7 @@ const onCommand = (cmd: string) => {
 .nav-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 1099; /* 高于日历伪全屏（999）与待办浮层（1001），低于 EP 弹窗 */
+  z-index: calc(var(--z-nav-drawer) - 1); /* 高于日历伪全屏（--z-fake-fullscreen）与待办浮层，低于 EP 弹窗 */
 }
 
 .nav-drawer {
@@ -127,7 +138,7 @@ const onCommand = (cmd: string) => {
   bottom: var(--safe-area-inset-bottom);
   left: var(--safe-area-inset-left);
   width: 200px;
-  z-index: 1100;
+  z-index: var(--z-nav-drawer);
   background: var(--el-bg-color);
   border-radius: 0 var(--radius-lg) var(--radius-lg) 0; /* 贴左缘：右缘圆角 + 大阴影的浮层感 */
   box-shadow: var(--shadow-lg);
@@ -160,6 +171,7 @@ const onCommand = (cmd: string) => {
   justify-content: flex-start; /* 覆盖全局 button:not(.el-button) 的居中，与桌面侧栏一致左对齐 */
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-sm);
+  min-height: var(--touch-target); /* 主导航项触控热区达标（44px） */
   border: none;
   border-radius: var(--radius-md);
   background: transparent;

@@ -13,6 +13,7 @@
         :key="item.key"
         class="nav-tab"
         :class="{ active: currentView === item.key }"
+        :title="currentView === item.key && item.key !== 'home' ? `${item.label}（再点一次返回主页）` : item.label"
         @click="toggleView(item.key)"
       >
         <el-icon class="tab-icon"><component :is="item.icon" /></el-icon>
@@ -63,6 +64,17 @@
        CalendarToolbar 渲染（中=时间选择器，右=月/待办开关），日历不多占一行 -->
   <MobileAppBar v-else-if="isMobile && currentView !== 'home'" :title="navTitle" />
 
+  <!-- 桌面侧栏收起 + 非主页：悬浮展开钮（修复困死陷阱——收起入口在全局侧栏 logo，
+       而原恢复入口只在主页工具条，非主页收起后无路可回；主页仍用工具条开关不重复放） -->
+  <button
+    v-else-if="!isMobile && currentView !== 'home'"
+    class="nav-restore-fab"
+    title="展开导航栏"
+    @click="setNavRailCollapsed(false)"
+  >
+    <el-icon><Expand /></el-icon>
+  </button>
+
   <!-- 移动端导航抽屉（backdrop/滑入动画/账号区在组件内；改密/登出事件回传根级处理） -->
   <MobileNavDrawer v-if="isMobile" @logout="handleLogout" @password="pwdDialogVisible = true" />
 
@@ -72,7 +84,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Calendar, Lock, SwitchButton } from '@element-plus/icons-vue'
+import { Calendar, Expand, Lock, SwitchButton } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
 import { confirmAction } from '../utils/confirm'
 import { useUIStore, type AppView } from '../stores'
@@ -136,8 +148,35 @@ const toggleView = (view: AppView) => {
   background: var(--el-bg-color);
 }
 
+/* 桌面侧栏收起后的悬浮展开钮（非主页；fixed 不吃 .app-layout 的 safe-area
+   padding 需自行让位）。层级低于伪全屏/抽屉/EP 弹窗，高于页面内容 */
+.nav-restore-fab {
+  position: fixed;
+  top: calc(var(--safe-area-inset-top) + var(--space-md));
+  left: calc(var(--safe-area-inset-left) + var(--space-md));
+  z-index: calc(var(--z-fake-fullscreen) - 100);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--touch-target);
+  min-height: var(--touch-target);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: var(--radius-md);
+  background: var(--el-bg-color);
+  color: var(--el-text-color-regular);
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--duration-fast) ease;
+}
+
+.nav-restore-fab:hover {
+  color: var(--el-color-primary);
+  border-color: var(--el-color-primary-light-5);
+}
+
 .logo-icon {
-  font-size: 1.3rem;
+  font-size: var(--font-lg);
   color: var(--el-color-primary);
 }
 

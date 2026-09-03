@@ -10,6 +10,7 @@ import { useAuthStore } from './stores/auth'
 import { startSync, stopSync } from './services/syncManager'
 import { startReminders, stopReminders } from './services/reminderService'
 import { startVersionCheck } from './services/versionCheck'
+import { useSwipe } from './composables/useSwipe'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 
 // 二级页面与语音助手异步加载，避免首屏 bundle 过大
@@ -48,6 +49,17 @@ watch(
   (v) => (v ? startSync() : stopSync()),
   { immediate: true }
 )
+
+// 移动端待办浮层右滑关闭（跟随浮层滑出方向；避开条目/输入——
+// 水平滑动起步于待办卡片时交给拖拽排期）。绑 body 常驻、targetSel 运行时命中，
+// 规避两重时机问题：浮层 v-if 晚于挂载、深链非主页时 .home-view 尚不存在
+useSwipe('body', (dir) => {
+  if (dir === -1) setTodoVisible(false)
+}, {
+  enabled: () => isMobile.value && todoVisible.value,
+  targetSel: '.mobile-todo-overlay',
+  skipSel: '.todo-item, .add-todo-form'
+})
 </script>
 
 <template>
@@ -173,11 +185,11 @@ html, body {
 }
 
 /* 移动端待办浮层底罩：捕获浮层外（日历区）点击 → 关闭浮层。
-   透明不改变视觉；位于浮层(20)之下、日历之上 */
+   透明不改变视觉；位于浮层之下、日历之上 */
 .mobile-todo-backdrop {
   position: absolute;
   inset: 0;
-  z-index: 19;
+  z-index: calc(var(--z-todo-overlay) - 1);
 }
 
 /* 拖拽待办到日历排期时穿透，避免拦截 FullCalendar 的拖放命中 */
@@ -194,7 +206,7 @@ html, body {
   bottom: 0;
   right: 0;
   width: 72%;
-  z-index: 20;
+  z-index: var(--z-todo-overlay);
   background: var(--el-bg-color);
   display: flex;
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);

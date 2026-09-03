@@ -30,13 +30,13 @@ export function useNavConfig() {
   const displayName = computed(() => authStore.user?.username || authStore.user?.email || '')
   const syncTitle = computed(() => SYNC_TEXT[syncState.value] || syncState.value)
 
-  // 导航分组（「时间管理」= 主页，默认入口放首位；「屏保」是时钟的闲置展示形态，紧随其后；
-  // logo 只负责隐藏导航不再返回主页）
+  // 导航分组（「时间管理」= 主页，默认入口放首位；核心管理工作区紧随其后，
+  // 「屏保」是时钟的闲置展示形态（低频）排管理组之后；logo 只负责隐藏导航不再返回主页）
   const mainItems: { key: AppView; label: string; icon: any }[] = [
     { key: 'home', label: '时间管理', icon: Timer },
-    { key: 'screensaver', label: '屏保', icon: AlarmClock },
     { key: 'task', label: '任务管理', icon: List },
-    { key: 'schedule', label: '日程管理', icon: Clock }
+    { key: 'schedule', label: '日程管理', icon: Clock },
+    { key: 'screensaver', label: '屏保', icon: AlarmClock }
   ]
 
   // 设置子项直达（桌面一级导航；移动端同样直达）；

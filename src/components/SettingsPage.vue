@@ -2,6 +2,20 @@
   <div class="settings-page" :class="{ 'is-mobile': isMobile }">
     <!-- 两端子页均由应用导航直达（桌面侧栏/移动抽屉），此处仅内容区 -->
 
+    <!-- 移动端分段切换器：设置子页间横向轻量切换（免开抽屉三步路径），
+         单行横滑、不折行；桌面由侧栏导航承担不渲染 -->
+    <div v-if="isMobile" class="settings-switcher">
+      <button
+        v-for="item in settingItems"
+        :key="item.key"
+        class="settings-switcher__item"
+        :class="{ active: settingsSection === item.key }"
+        @click="openSettingsSection(item.key)"
+      >
+        {{ item.label }}
+      </button>
+    </div>
+
     <!-- 内容区域（桌面 + 移动端共用） -->
     <div class="settings-content">
       <ViewSettingsTab v-show="currentTab === 'view'" :form="form" />
@@ -23,6 +37,7 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSettingsStore, useUIStore } from '../stores'
+import { useNavConfig } from '../composables/useNavConfig'
 import ViewSettingsTab from './ViewSettingsTab.vue'
 import AiSettingsTab from './AiSettingsTab.vue'
 import UsageTab from './UsageTab.vue'
@@ -33,6 +48,8 @@ import AboutPage from './AboutPage.vue'
 
 const uiStore = useUIStore()
 const { isMobile, settingsSection } = storeToRefs(uiStore) // state → storeToRefs
+const { settingItems } = useNavConfig()
+const { openSettingsSection } = uiStore // action 直接解构
 // 子页统一由 settingsSection 驱动：两端导航直达必带具体 section，
 // switchView('settings') 兜底重置为视觉与外观
 const currentTab = computed(() => settingsSection.value)
@@ -65,6 +82,40 @@ html.platform-mobile .settings-page {
 .settings-page.is-mobile {
   display: flex;
   flex-direction: column;
+}
+
+/* 移动端设置分段切换器：单行横滑胶囊（与 view-tabs 家族同语言） */
+.settings-switcher {
+  display: flex;
+  gap: var(--space-sm);
+  overflow-x: auto;
+  flex-shrink: 0;
+  padding: var(--space-xs) var(--space-lg) 0;
+  scrollbar-width: none;
+}
+
+.settings-switcher::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-switcher__item {
+  flex-shrink: 0;
+  padding: 0 var(--space-md);
+  min-height: var(--touch-target);
+  border: none;
+  border-radius: 9999px;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-regular);
+  font-size: var(--font-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.settings-switcher__item.active {
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: var(--weight-semibold);
 }
 
 /* 内容区域（桌面 + 移动端共用） */
@@ -254,7 +305,7 @@ html.platform-mobile .settings-page {
 }
 
 .stat-value {
-  font-size: 1.6rem;
+  font-size: var(--font-xl);
   font-weight: var(--weight-bold);
   color: var(--el-text-color-primary);
 }
