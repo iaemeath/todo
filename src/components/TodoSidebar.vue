@@ -14,6 +14,7 @@
       <!-- Add Todo Input -->
     <form @submit.prevent="handleCreateTodo" class="add-todo-form">
       <input
+        ref="quickAddInput"
         v-model="newTodoTitle"
         type="text"
         placeholder="添加新待办..."
@@ -32,6 +33,8 @@
         :key="todo.id"
         class="todo-item glass-card"
         :class="'todo-' + quadrantOf(todo)"
+        title="长按（或右击）删除"
+        @contextmenu.prevent="handleTodoContextmenu(todo)"
       >
         <!-- FullCalendar Draggable Target -->
         <div
@@ -53,22 +56,28 @@
         </button>
       </div>
 
-      <p v-if="activeTodos.length === 0" class="empty-state">目前没有待办事项</p>
+      <!-- 空态是"起点"不是"句号"：引导直达上方快速添加输入框 -->
+      <div v-if="activeTodos.length === 0" class="empty-state">
+        <p>目前没有待办事项</p>
+        <button class="empty-state__action" @click="focusQuickAdd">添加第一个待办</button>
+      </div>
     </div>
   </aside>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, h, computed, onMounted, onUnmounted } from 'vue'
 import { Plus, Check, X } from 'lucide-vue-next'
+import { ElMessage } from 'element-plus'
 import { storeToRefs } from 'pinia'
 import { useTaskStore, useUIStore, type Task } from '../stores'
 import { quadrantOf, QUADRANT_RANK } from '../constants/quadrant'
+import { confirmAction } from '../utils/confirm'
 import { Draggable } from '@fullcalendar/interaction'
 
 const taskStore = useTaskStore()
 const { leafTasks } = storeToRefs(taskStore) // getter → storeToRefs
-const { addTask, setTaskCompleted } = taskStore // action 直接解构
+const { addTask, setTaskCompleted, deleteTask } = taskStore // action 直接解构
 const uiStore = useUIStore()
 const { isMobile, mobileTodoDragging } = storeToRefs(uiStore) // state
 const { setTodoVisible, setMobileTodoDragging } = uiStore // action
@@ -85,10 +94,43 @@ const activeTodos = computed(() =>
   )
 )
 
+// 快速添加输入框引用（空态引导按钮聚焦用）
+const quickAddInput = ref<HTMLInputElement | null>(null)
+const focusQuickAdd = () => quickAddInput.value?.focus()
+
 // 完成待办：叶子任务打完成即从待办栏消失（完成联动/恢复入口在任务管理页）。
-// 叶子无子孙，setTaskCompleted 的下推/上推联动对此无副作用
+// 叶子无子孙，setTaskCompleted 的下推/上推联动对此无副作用。
+// 误触保险：5 秒撤销 toast（undo 优于确认弹窗——不打断高频操作）
 const handleComplete = (todo: Task) => {
   setTaskCompleted(todo.id, true)
+  ElMessage({
+    message: h('span', { class: 'undo-toast' }, [
+      `已完成「${todo.title.slice(0, 12)}${todo.title.length > 12 ? '…' : ''}」`,
+      h('button', {
+        class: 'undo-toast__btn',
+        onClick: () => {
+          setTaskCompleted(todo.id, false)
+          ElMessage.closeAll()
+        }
+      }, '撤销')
+    ]),
+    duration: 5000,
+    showClose: true
+  })
+}
+
+// 长按/右击待办卡片 → 删除确认（安卓 WebView 长按触发 contextmenu；桌面即右键）。
+// 待办是叶子任务，删除无级联；恢复入口只有事先导出的备份，确认文案给出提示
+const handleTodoContextmenu = (todo: Task) => {
+  confirmAction({
+    message: `删除待办「${todo.title}」？关联的日程不会删除。`,
+    title: '删除待办',
+    confirmText: '删除',
+    action: () => {
+      deleteTask(todo.id)
+      ElMessage.success('已删除')
+    }
+  })
 }
 
 const handleCreateTodo = () => {
@@ -251,8 +293,8 @@ html.platform-mobile .todo-sidebar {
 }
 
 /* 面板按钮统一形态（与 FC 工具条按钮同族）：透明底、无边框、
-   radius-md、hover 语义色底。触控热区两套：移动端紧凑 32px（WCAG 2.5.8 AA ≥24），
-   桌面 var(--touch-target)（36） */
+   radius-md、hover 语义色底。触控热区随平台令牌（移动 44 / 桌面 36）——
+   修正历史倒挂（曾移动 32 < 桌面 36） */
 .btn-add,
 .btn-done,
 .btn-close {
@@ -261,22 +303,13 @@ html.platform-mobile .todo-sidebar {
   color: var(--text-muted);
   cursor: pointer;
   padding: 0;
-  min-width: 32px;
-  min-height: 32px;
+  min-width: var(--touch-target);
+  min-height: var(--touch-target);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all var(--duration-fast);
-}
-
-@media (width >= 769px) {
-  .btn-add,
-  .btn-done,
-  .btn-close {
-    min-width: var(--touch-target);
-    min-height: var(--touch-target);
-  }
 }
 
 /* 新增是表单主操作：表单区非灰带背景，ghost 对比不足，恢复实色主按钮 */
@@ -317,6 +350,45 @@ html.platform-mobile .todo-sidebar {
   color: var(--text-muted);
   font-size: var(--font-sm);
   margin-top: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+/* 空态行动引导：文字按钮（primary 语义色），热区达标 */
+.empty-state__action {
+  background: transparent;
+  border: none;
+  color: var(--el-color-primary);
+  font-size: var(--font-base);
+  font-weight: var(--weight-medium);
+  padding: var(--space-xs) var(--space-md);
+  min-height: var(--touch-target);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.empty-state__action:hover {
+  background: var(--el-color-primary-light-9);
+}
+
+/* 撤销 toast 内的行动按钮（ElMessage VNode 渲染） */
+.undo-toast {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.undo-toast__btn {
+  background: transparent;
+  border: none;
+  color: var(--el-color-primary);
+  font-size: var(--font-base);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  padding: var(--space-xs) var(--space-xs);
 }
 
 /* 卡片行高两套：移动端紧凑（4px 纵向内边距 + 4px 间距，配合 32px 按钮热区压低行高；
