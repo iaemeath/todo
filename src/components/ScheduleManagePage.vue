@@ -25,8 +25,14 @@
       <el-button type="primary" :icon="Plus" @click="openCreateDialog"><span v-if="!isMobile">新增日程</span></el-button>
     </div>
 
-    <!-- Table -->
-    <el-table :data="filteredSchedules" stripe border style="width: 100%;" :empty-text="emptyText">
+    <!-- Table —— 桌面分支，移动端走下方卡片列表 -->
+    <el-table v-if="!isMobile" :data="filteredSchedules" stripe border style="width: 100%;">
+      <template #empty>
+        <div class="manage-empty">
+          <p class="manage-empty__text">{{ emptyText }}</p>
+          <el-button v-if="viewMode === 'upcoming'" text type="primary" @click="openCreateDialog">创建第一个日程</el-button>
+        </div>
+      </template>
       <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
       <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
       <el-table-column label="日期" width="130">
@@ -49,7 +55,7 @@
       <el-table-column label="来源" width="160" show-overflow-tooltip>
         <template #default="{ row }">
           <span v-if="row.taskId && taskTitle(row.taskId)" class="text-secondary">
-            📌 {{ taskTitle(row.taskId) }}
+            任务 · {{ taskTitle(row.taskId) }}
           </span>
           <span v-else class="text-muted">—</span>
         </template>
@@ -63,6 +69,27 @@
         </template>
       </el-table-column>
     </el-table>
+
+    <!-- 移动端卡片列表：表格信息架构平移——标题+色点、日期时段、来源、描述、图标操作 -->
+    <div v-else class="manage-card-list">
+      <div v-for="row in filteredSchedules" :key="row.id" class="manage-card">
+        <div class="manage-card-head">
+          <span class="manage-card-title">{{ row.title }}</span>
+          <span class="color-dot" :style="{ background: colorHex(row.color) }"></span>
+        </div>
+        <div class="manage-card-meta">{{ formatDate(row.date) }} · {{ row.startTime }} ~ {{ row.endTime }}</div>
+        <div v-if="row.taskId && taskTitle(row.taskId)" class="manage-card-meta">任务 · {{ taskTitle(row.taskId) }}</div>
+        <p v-if="row.description" class="manage-card-desc">{{ row.description }}</p>
+        <div class="row-actions manage-card-actions">
+          <el-button text size="small" type="primary" :icon="Edit" aria-label="编辑" @click="openEditDialog(row)" />
+          <el-button text size="small" type="danger" :icon="Delete" aria-label="删除" @click="handleDelete(row)" />
+        </div>
+      </div>
+      <div v-if="!filteredSchedules.length" class="manage-empty">
+        <p class="manage-empty__text">{{ emptyText }}</p>
+        <el-button v-if="viewMode === 'upcoming'" text type="primary" @click="openCreateDialog">创建第一个日程</el-button>
+      </div>
+    </div>
 
     <!-- Create / Edit dialog：共用 ScheduleDialog（字段/校验/提醒单一数据源），本页不再手写表单 -->
     <ScheduleDialog
@@ -354,6 +381,82 @@ html.platform-mobile .manage-page {
   min-height: var(--touch-target);
 }
 
+/* ---- 移动端卡片列表（P0）：表格 → 卡片，.matrix-card 家族语言 ---- */
+.manage-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  flex-shrink: 0; /* 长列表撑高 .manage-page 触发整页滚动，而非被 flex 压扁 */
+}
+
+.manage-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+
+.manage-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.manage-card-title {
+  flex: 1;
+  min-width: 0; /* flex 子项默认 min-width:auto 会顶开省略号 */
+  font-size: var(--font-base);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 日期时段 / 来源行 */
+.manage-card-meta {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.manage-card-desc {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 操作行右沉（拇指热区在右下角）；触控热区沿用 .row-actions 的 min-height */
+.manage-card-actions {
+  justify-content: flex-end;
+}
+
+/* ---- 空态行动引导（P1-8）：文案 + text 主色按钮直达创建 ---- */
+.manage-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-lg) 0;
+}
+
+.manage-empty__text {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+
+.manage-empty :deep(.el-button) {
+  min-height: var(--touch-target); /* 空态按钮同样保触控热区 */
+}
+
 .manage-toolbar {
   display: flex;
   align-items: center;
@@ -431,6 +534,34 @@ html.platform-mobile .manage-page {
   }
 }
 
+/* ---- 胶囊触控热区（P1-4）：移动端纵向 ≥ 44px；
+   指示块的 inset/height 本就是相对 .view-tabs 的百分比几何，随按钮增高自动跟随 ---- */
+html.platform-mobile .view-tab {
+  min-height: var(--touch-target);
+}
+
+/* ---- 移动端工具栏两段式（P2-9）：order 重排 + flex-basis 断行，模板不动、桌面单行不受影响 ----
+   第一行：双主操作（从任务新增/新增日程）+ 状态胶囊；第二行：搜索（撑满剩余宽）+ 颜色筛选 */
+html.platform-mobile .manage-toolbar .el-button {
+  order: -4; /* 两个主按钮同为 -4，DOM 序保持 从任务新增 → 新增日程 */
+}
+
+html.platform-mobile .manage-toolbar .view-tabs {
+  order: -3;
+}
+
+html.platform-mobile .manage-toolbar .el-input {
+  order: 1;
+
+  /* 140px = 颜色筛选的内联固定宽；basis 恰好留出它+gap 的位置，两者同排占满第二行并强制搜索断行 */
+  flex: 1 1 calc(100% - 140px - var(--space-lg));
+}
+
+html.platform-mobile .manage-toolbar .el-select {
+  order: 2;
+  flex: 0 0 auto;
+}
+
 .text-secondary {
   color: var(--el-text-color-secondary);
 }
@@ -445,6 +576,11 @@ html.platform-mobile .manage-page {
   height: 14px;
   border-radius: 50%;
   vertical-align: middle;
+}
+
+/* 移动端卡片标题行复用色点：标题超长省略时色点不被压缩 */
+.manage-card-head .color-dot {
+  flex-shrink: 0;
 }
 
 /* 选择器与预览卡合一的触发器：本身无外观，外观交给内部预览卡；未选时呈虚线占位 */

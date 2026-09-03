@@ -34,9 +34,9 @@
       <el-button type="primary" :icon="Plus" @click="openCreateDialog()"><span v-if="!isMobile">新增任务</span></el-button>
     </div>
 
-    <!-- Table (tree) -->
+    <!-- Table (tree) —— 桌面分支，移动端走下方卡片列表 -->
     <el-table
-      v-if="layoutMode === 'tree'"
+      v-if="layoutMode === 'tree' && !isMobile"
       :data="displayData"
       row-key="id"
       :tree-props="{ children: 'children' }"
@@ -44,8 +44,13 @@
       stripe
       border
       style="width: 100%;"
-      :empty-text="viewMode === 'active' ? '暂无未完成任务' : '暂无已完成任务'"
     >
+      <template #empty>
+        <div class="manage-empty">
+          <p class="manage-empty__text">{{ viewMode === 'active' ? '暂无未完成任务' : '暂无已完成任务' }}</p>
+          <el-button v-if="viewMode === 'active'" text type="primary" @click="openCreateDialog()">创建第一个任务</el-button>
+        </div>
+      </template>
       <el-table-column prop="title" label="标题" min-width="240" show-overflow-tooltip />
       <el-table-column label="完成" width="70" align="center">
         <template #default="{ row }">
@@ -84,8 +89,40 @@
       </el-table-column>
     </el-table>
 
-    <!-- Matrix view（四象限看板）：数据源与编辑事件见 QuadrantMatrix 组件 -->
-    <QuadrantMatrix v-if="layoutMode === 'matrix'" :tasks="matrixTasks" @edit="openEditDialog" />
+    <!-- 移动端卡片列表（树/过滤扁平共用）：表格信息架构平移——标题+完成、标签组、描述、图标操作；层级用缩进+L 徽标表达，不折叠 -->
+    <div v-else-if="layoutMode === 'tree'" class="manage-card-list">
+      <div
+        v-for="{ task, indent } in mobileTaskList"
+        :key="task.id"
+        class="manage-card"
+        :class="{ 'is-done': task.completed }"
+        :style="indent ? { marginLeft: `calc(${indent} * var(--space-lg))` } : undefined"
+      >
+        <div class="manage-card-head">
+          <span class="manage-card-title">{{ task.title }}</span>
+          <el-checkbox :model-value="task.completed" @change="toggleComplete(task, $event)" />
+        </div>
+        <div class="manage-card-tags">
+          <el-tag size="small" :type="quadrantMeta(quadrantOf(task)).tagType" effect="plain">{{ quadrantMeta(quadrantOf(task)).label }}</el-tag>
+          <el-tag size="small" :type="categoryTagType(task.category)">{{ categoryLabel(task.category) }}</el-tag>
+          <el-tag size="small" :type="levelTagType(getTaskLevel(task.id))" effect="plain">L{{ getTaskLevel(task.id) }}</el-tag>
+        </div>
+        <p v-if="task.description" class="manage-card-desc">{{ task.description }}</p>
+        <div class="row-actions manage-card-actions">
+          <el-button v-if="canAddChild(task.id)" text size="small" type="primary" :icon="Plus" aria-label="加子任务" @click="openCreateDialog(task)" />
+          <el-button v-if="isLeaf(task.id)" text size="small" type="primary" :icon="Calendar" aria-label="排期" @click="openScheduleDialog(task)" />
+          <el-button text size="small" type="primary" :icon="Edit" aria-label="编辑" @click="openEditDialog(task)" />
+          <el-button text size="small" type="danger" :icon="Delete" aria-label="删除" @click="handleDelete(task)" />
+        </div>
+      </div>
+      <div v-if="!mobileTaskList.length" class="manage-empty">
+        <p class="manage-empty__text">{{ viewMode === 'active' ? '暂无未完成任务' : '暂无已完成任务' }}</p>
+        <el-button v-if="viewMode === 'active'" text type="primary" @click="openCreateDialog()">创建第一个任务</el-button>
+      </div>
+    </div>
+
+    <!-- Matrix view（四象限看板）：数据源与编辑事件见 QuadrantMatrix 组件；@create 接全空态的创建引导 -->
+    <QuadrantMatrix v-if="layoutMode === 'matrix'" :tasks="matrixTasks" @edit="openEditDialog" @create="openCreateDialog()" />
 
     <!-- Create / Edit dialog -->
     <el-dialog v-model="formDialogVisible" :title="dialogTitle" :width="isMobile ? '92vw' : '480px'" destroy-on-close>
@@ -200,6 +237,22 @@ const {
 
 // 矩阵数据源 = 无筛选用可见全集、有筛选用过滤扁平集（QuadrantMatrix 内部再按 order 排序）
 const matrixTasks = computed(() => (hasFilter.value ? filteredFlat.value : visibleTasks.value))
+
+// ---- 移动端卡片列表（P0）：displayData 是树（无筛选，带 children）或扁平集（有筛选），
+// 统一扁平化遍历；层级不折叠，用缩进（层级-1 档 --space-lg）+ L 徽标共同表达 ----
+type TreeLikeTask = Task & { children?: TreeLikeTask[] }
+
+const mobileTaskList = computed(() => {
+  const out: { task: Task; indent: number }[] = []
+  const walk = (nodes: TreeLikeTask[]): void => {
+    for (const node of nodes) {
+      out.push({ task: node, indent: Math.max(getTaskLevel(node.id) - 1, 0) })
+      if (node.children?.length) walk(node.children)
+    }
+  }
+  walk(displayData.value as TreeLikeTask[])
+  return out
+})
 
 // ---- Create / Edit ----
 const formDialogVisible = ref(false)
@@ -327,6 +380,85 @@ html.platform-mobile .manage-page {
   }
 }
 
+/* ---- 移动端卡片列表（P0）：树表格 → 卡片，.matrix-card 家族语言 ---- */
+.manage-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  flex-shrink: 0; /* 长列表撑高 .manage-page 触发整页滚动，而非被 flex 压扁 */
+}
+
+.manage-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+
+.manage-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.manage-card-title {
+  flex: 1;
+  min-width: 0; /* flex 子项默认 min-width:auto 会顶开省略号 */
+  font-size: var(--font-base);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 完成态：矩阵卡片同款语言（删除线 + 变灰） */
+.manage-card.is-done .manage-card-title {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.manage-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.manage-card-desc {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 操作行右沉（拇指热区在右下角）；触控热区沿用 .row-actions 的 min-height */
+.manage-card-actions {
+  justify-content: flex-end;
+}
+
+/* ---- 空态行动引导（P1-8）：文案 + text 主色按钮直达创建 ---- */
+.manage-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-lg) 0;
+}
+
+.manage-empty__text {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+
+.manage-empty :deep(.el-button) {
+  min-height: var(--touch-target); /* 空态按钮同样保触控热区 */
+}
+
 .manage-toolbar {
   display: flex;
   align-items: center;
@@ -402,6 +534,34 @@ html.platform-mobile .manage-page {
     min-width: 92px;
     padding: 5px 14px;
   }
+}
+
+/* ---- 胶囊触控热区（P1-4）：移动端纵向 ≥ 44px；
+   指示块的 inset/height 本就是相对 .view-tabs 的百分比几何，随按钮增高自动跟随 ---- */
+html.platform-mobile .view-tab {
+  min-height: var(--touch-target);
+}
+
+/* ---- 移动端工具栏两段式（P2-9）：order 重排 + flex-basis 断行，模板不动、桌面单行不受影响 ----
+   第一行：新增按钮 + 两组视图胶囊；第二行：搜索（撑满剩余宽）+ 分类筛选 */
+html.platform-mobile .manage-toolbar .el-button {
+  order: -4;
+}
+
+html.platform-mobile .manage-toolbar .view-tabs {
+  order: -3;
+}
+
+html.platform-mobile .manage-toolbar .el-input {
+  order: 1;
+
+  /* 140px = 分类筛选的内联固定宽；basis 恰好留出它+gap 的位置，两者同排占满第二行并强制搜索断行 */
+  flex: 1 1 calc(100% - 140px - var(--space-lg));
+}
+
+html.platform-mobile .manage-toolbar .el-select {
+  order: 2;
+  flex: 0 0 auto;
 }
 
 .text-secondary {

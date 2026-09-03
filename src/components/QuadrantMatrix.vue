@@ -1,6 +1,11 @@
 <template>
   <!-- 四象限看板：跨面板拖拽 = 改重要/紧急两轴，点击卡片 = 编辑 -->
-  <div class="matrix-view">
+  <!-- 全空态（P1-8）：任务完全为空时，四块空面板不如一句行动引导——中央文案 + 创建按钮（emit 由父页接创建弹窗） -->
+  <div v-if="matrixSource.length === 0" class="matrix-board-empty">
+    <p class="matrix-board-empty__text">看板空空如也，创建第一个任务吧</p>
+    <el-button type="primary" :icon="Plus" @click="emit('create')">创建任务</el-button>
+  </div>
+  <div v-else class="matrix-view">
     <div v-for="q in QUADRANTS" :key="q.key" class="quadrant-panel">
       <div class="quadrant-panel-header">
         <span class="color-dot" :style="{ background: q.color }"></span>
@@ -45,6 +50,7 @@
  * 把落点写回 store（唯一写 order 的入口）。
  */
 import { reactive, computed, watch } from 'vue'
+import { Plus } from '@element-plus/icons-vue'
 import draggable from 'vuedraggable'
 import { storeToRefs } from 'pinia'
 import { useTaskStore, type Task } from '../stores'
@@ -52,7 +58,7 @@ import { QUADRANTS, quadrantOf, quadrantAxes, type QuadrantKey } from '../consta
 import { categoryLabel, categoryTagType } from '../constants/categories'
 
 const props = defineProps<{ tasks: Task[] }>()
-const emit = defineEmits<{ edit: [task: Task] }>()
+const emit = defineEmits<{ edit: [task: Task]; create: [] }>()
 
 const taskStore = useTaskStore()
 const { activeTasks } = storeToRefs(taskStore) // 活跃视图（墓碑已滤）
@@ -101,6 +107,28 @@ const toggleComplete = (row: Task, value: any) => {
 </script>
 
 <style scoped>
+/* 全空态：占满看板可用高度居中引导（桌面 flex:1 占满剩余高，移动端由 min-height 兜底） */
+.matrix-board-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  min-height: 240px;
+  padding: var(--space-xl) 0;
+}
+
+.matrix-board-empty__text {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+
+.matrix-board-empty :deep(.el-button) {
+  min-height: var(--touch-target); /* 创建引导同样保触控热区 */
+}
+
 /* 矩阵视图：四象限面板（移动端单列，桌面 2×2） */
 .matrix-view {
   display: grid;
