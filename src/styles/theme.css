@@ -22,7 +22,7 @@
   --border-glass-subtle: rgb(0 0 0 / 4%);
   --text-primary: #1e1e2f;
   --text-secondary: #64748b;
-  --text-muted: #94a3b8;
+  --text-muted: #7c8794; /* 白底 4.6:1 达 AA；仅限装饰性文字，功能性辅助文字用 secondary */
   --shadow-color: rgb(31 38 135 / 8%);
 
   /* Solid panel token */
@@ -31,9 +31,11 @@
   /* Monospace font */
   --font-mono: ui-monospace, 'Cascadia Code', consolas, monospace;
 
-  /* z-index：全局浮层只有语音球一档用 token（VoiceAssistant）；
-     其余 z-index 均为组件内局部小值（1~999）直接写数值 */
-  --z-overlay: 10000;
+  /* z-index 四档语义刻度（浮层级：面板 → 伪全屏 → 抽屉 → 全局球；EP 弹窗 ~2000+ 在抽屉之上） */
+  --z-todo-overlay: 20;        /* 移动端待办浮层（底罩 = calc(本值 - 1)） */
+  --z-fake-fullscreen: 999;    /* 屏保 CSS 伪全屏 */
+  --z-nav-drawer: 1100;        /* 移动端导航抽屉（底罩 = calc(本值 - 1)），低于 EP 弹窗 */
+  --z-overlay: 10000;          /* 全局常驻浮层（语音球） */
 
   /* ===== Spacing scale（4px 刻度，组件禁止写裸 px 间距） ===== */
   --space-xs: 4px;   /* 图标与文字 */
@@ -42,11 +44,13 @@
   --space-lg: 16px;  /* 区块内边距 */
   --space-xl: 24px;  /* 区块间距 */
 
-  /* ===== Type scale（5 档，收编散落的 19 种字号） ===== */
+  /* ===== Type scale（7 档，收编散落字号） ===== */
   --font-xs: 0.75rem;   /* 刻度 / 辅助角标 */
   --font-sm: 0.85rem;   /* 次要正文 / 按钮 */
   --font-base: 0.95rem; /* 正文 */
-  --font-md: 1.1rem;    /* 卡片标题 */
+  --font-md: 1.1rem;    /* 卡片标题 / 日期文本 */
+  --font-lg: 1.3rem;    /* logo / 登录标题 */
+  --font-xl: 1.6rem;    /* 统计数值 / 区块大标题 */
 
   /* ===== Radius scale ===== */
   --radius-sm: 6px;
@@ -207,4 +211,24 @@ button:not(.el-button) {
 
 button:not(.el-button):active {
   transform: scale(0.96);
+}
+
+/* 键盘焦点可见性：全局 button 规则 outline:none 后的唯一焦点指示
+   （:focus-visible 仅键盘 Tab 触发，鼠标点击不打扰） */
+button:not(.el-button):focus-visible,
+a:focus-visible,
+[role='button']:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 2px;
+}
+
+/* 前庭障碍豁免：系统开启"减少动态效果"时关闭过渡/动画与按压反馈 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

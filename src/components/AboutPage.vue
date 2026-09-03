@@ -114,7 +114,7 @@ onMounted(async () => {
 }
 
 .hero-icon {
-  font-size: 2.5rem;
+  font-size: 2.5rem; /* stylelint-disable-line declaration-property-value-disallowed-list -- 展示型大图标一次性特例（超出字号刻度） */
   color: var(--el-color-primary);
   flex-shrink: 0;
 }
@@ -128,7 +128,7 @@ onMounted(async () => {
 }
 
 .hero-title {
-  font-size: var(--font-xl, 1.25rem);
+  font-size: var(--font-lg);
   font-weight: var(--weight-bold, 600);
   color: var(--el-text-color-primary);
 }
@@ -184,7 +184,7 @@ onMounted(async () => {
 }
 
 .dl-icon {
-  font-size: 1.5rem;
+  font-size: var(--font-lg); /* 1.3rem：从 1.5rem 收编进刻度 */
   color: var(--el-color-primary);
 }
 

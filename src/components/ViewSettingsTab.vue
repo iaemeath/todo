@@ -232,3 +232,13 @@ const onBatteryExempt = async () => {
     </el-card>
   </el-form>
 </template>
+
+<style scoped>
+/* 移动端 el-input-number 步进钮处理：EP controls-position=right 的上下钮各约
+   15px 高，远低于触控标准且易误触——移动端隐藏，改由键盘直接键入数值
+   （小时数 0~24 键入成本低于连续点按；桌面保留步进钮不变） */
+html.platform-mobile :deep(.el-input-number__decrease),
+html.platform-mobile :deep(.el-input-number__increase) {
+  display: none;
+}
+</style>

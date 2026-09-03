@@ -222,7 +222,7 @@ const submitLabel = computed(() =>
       <div class="auth-brand">
         <span class="auth-logo"></span>
         <span class="auth-title">拾光</span>
-        <span class="auth-subtitle">登录后开启 ☁️ 多设备云同步</span>
+        <span class="auth-subtitle">登录后开启多设备云同步</span>
       </div>
 
       <!-- 模式切换（忘记密码形态收起，用返回链接回登录） -->
@@ -241,6 +241,7 @@ const submitLabel = computed(() =>
       <div class="auth-form">
         <el-input
           v-model="form.email"
+          aria-label="邮箱"
           placeholder="邮箱"
           :prefix-icon="Message"
           :disabled="loading"
@@ -252,6 +253,7 @@ const submitLabel = computed(() =>
           v-if="mode === 'login'"
           v-model="form.password"
           type="password"
+          aria-label="密码"
           placeholder="密码"
           :prefix-icon="Lock"
           show-password
@@ -264,6 +266,7 @@ const submitLabel = computed(() =>
           <el-input
             v-model="form.password"
             type="password"
+            aria-label="密码"
             :placeholder="mode === 'register' ? '密码（8~64 位，含字母和数字）' : '新密码（8~64 位，含字母和数字）'"
             :prefix-icon="Lock"
             show-password
@@ -274,6 +277,7 @@ const submitLabel = computed(() =>
           <el-input
             v-model="form.confirmPassword"
             type="password"
+            aria-label="确认密码"
             placeholder="确认密码（再输入一遍）"
             :prefix-icon="Lock"
             show-password
@@ -285,6 +289,7 @@ const submitLabel = computed(() =>
           <div class="mail-code-row">
             <el-input
               v-model="form.mailCode"
+              aria-label="邮箱验证码"
               placeholder="邮箱验证码"
               :prefix-icon="CircleCheck"
               :disabled="loading"
@@ -303,6 +308,7 @@ const submitLabel = computed(() =>
           <el-input
             v-if="mode === 'register'"
             v-model="form.inviteCode"
+            aria-label="邀请码"
             placeholder="邀请码（未开启邀请制可留空）"
             :prefix-icon="Key"
             :disabled="loading"
@@ -405,7 +411,7 @@ const submitLabel = computed(() =>
 }
 
 .auth-title {
-  font-size: 1.3rem;
+  font-size: var(--font-lg);
   font-weight: var(--weight-bold);
   color: var(--el-text-color-primary);
 }

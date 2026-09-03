@@ -7,7 +7,8 @@
     <!-- 工具条：闲置 3s 淡出、任意指针活动唤出（屏保沉浸 + 全端可达，替代触屏常显/hover 门控双分支） -->
     <div class="screensaver-toolbar" :class="{ 'is-idle': !toolbarVisible }">
       <button class="scv-btn" :title="isFullscreen ? '退出全屏' : '全屏'" @click="toggleFullscreen">
-        <el-icon :size="18"><FullScreen /></el-icon>
+        <Maximize v-if="!isFullscreen" :size="18" />
+        <Minimize v-else :size="18" />
       </button>
       <!-- 配色切换：图标指向点击后的去向（深色屏显太阳=切白底，反之月亮），与主流暗色开关惯例一致 -->
       <button
@@ -15,10 +16,8 @@
         :title="theme === 'dark' ? '切换白底黑字' : '切换黑底白字'"
         @click="toggleTheme"
       >
-        <el-icon :size="18">
-          <Sunny v-if="theme === 'dark'" />
-          <Moon v-else />
-        </el-icon>
+        <Sun v-if="theme === 'dark'" :size="18" />
+        <Moon v-else :size="18" />
       </button>
       <button class="scv-btn scv-btn--text" title="切换 12/24 小时制" @click="toggleHour12">
         {{ hour12 ? '12H' : '24H' }}
@@ -34,7 +33,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import dayjs from 'dayjs'
-import { FullScreen, Moon, Sunny } from '@element-plus/icons-vue'
+import { Maximize, Minimize, Moon, Sun } from 'lucide-vue-next'
 import FlipClock from './FlipClock.vue'
 import { useFullscreen } from '../composables/useFullscreen'
 import { useTaskStore, useThemeStore, useUIStore } from '../stores'
@@ -258,7 +257,7 @@ const toggleHour12 = () => {
 .screensaver-page.is-native-fs {
   position: fixed;
   inset: 0;
-  z-index: 999;
+  z-index: var(--z-fake-fullscreen);
 }
 
 .screensaver-stage {

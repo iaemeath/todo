@@ -79,7 +79,7 @@
 - 令牌只在 `src/styles/theme.css` 定义一次，组件一律 `var(--xxx)` 引用，**禁裸值**——stylelint 已强制：padding/gap 禁裸 px、border-radius 仅允许 9999px（胶囊特例）、transition 禁手写秒数与 cubic-bezier、font-weight 禁裸数字；确需特例时行内 `stylelint-disable-line` 并注明原因（参考既有写法）
 - 色彩：`--color-primary`（运行时可被用户主题色覆盖，派生 light/dark/alpha 用 color-mix 跟随）；语义色 `--color-success/warning/danger/info`（各带 `*-alpha` 弱底）；文本三档 `--text-primary/secondary/muted`；边框 `--border-glass(-subtle)`
 - 间距五档 `--space-xs/sm/md/lg/xl`（4/8/12/16/24px，语义=图标间距/组内/卡片内/区块内/区块间）
-- 其余族：圆角 `--radius-sm/md/lg`、阴影 `--shadow-sm/md/lg`、字号 `--font-xs/sm/base/md`、字重 `--weight-regular~bold`、动效 `--duration-fast/base/slow` + `--ease-spring`（招牌弹性）/`--ease-standard`、浮层 `--z-overlay`
+- 其余族：圆角 `--radius-sm/md/lg`、阴影 `--shadow-sm/md/lg`、字号 `--font-xs/sm/base/md/lg/xl`（7 档，档外值须收编）、字重 `--weight-regular~bold`、动效 `--duration-fast/base/slow` + `--ease-spring`（招牌弹性）/`--ease-standard`、浮层四档 `--z-todo-overlay/--z-fake-fullscreen/--z-nav-drawer/--z-overlay`（新浮层用令牌，勿写裸值）
 - Element Plus 主题已桥接：`--el-*` 映射到上述令牌——调整 EP 观感改 theme.css 映射，不在组件里覆盖 `--el-` 变量
 
 ### 平台与主题双态
