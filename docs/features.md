@@ -25,6 +25,8 @@ Android APK 手动分发。
 
 - FullCalendar 日/周/月视图；中央时间选择器导航
 - 拖拽调度：eventDrop / eventResize / eventReceive 三处跨零点校验（endTime ≤ startTime 拒绝并回滚）
+- 新增日程入口：拖选时段（快捷路径）+ 工具条「+」/移动端 FAB（显式路径，预填今天下一整点起 1 小时）；移动端首启一次性手势教学 toast
+- 已知取舍：移动端日期选择面板单元格 41×30px（EP 表格行高 30px 写死），低于 44px 触控标准——改行高需动 EP 内部表格布局，暂接受
 - 共享 ScheduleDialog（日历新建/编辑、任务排期、从任务新增 三入口；调用方自有字段走 hint 插槽 + preValidate 扩展校验）
 - 状态二段切换（未进行/已进行，按结束时刻划分）；搜索与状态/颜色筛选相交过滤
 - 日程可关联叶子任务（addScheduleFromTask，墓碑任务拒绝排期）

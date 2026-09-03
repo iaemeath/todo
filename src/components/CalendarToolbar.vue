@@ -3,6 +3,8 @@
        中 时间选择器（选范围按跨度智能切视图）| 右 月视图 + 待办开关 -->
   <MobileAppBar v-if="isMobile">
     <template #center>
+      <!-- 「今天」：浏览偏离今天时出现（条件显示避免常态噪音），点击回到包含今天的视图 -->
+      <button v-if="showToday" class="today-toggle" title="回到今天" @click="emit('today')">今</button>
       <!-- 区间模式：两端共用 EP daterange（所见=所选）。移动端面板收窄为单月：
            unlink-panels 使左面板自带前进箭头，CSS 隐藏右面板（EP 双月 646px 溢出手机屏） -->
       <el-date-picker
@@ -57,7 +59,7 @@
   </MobileAppBar>
 
   <!-- 桌面：顶部工具条三段式——
-       左 导航开关（toggle rail 显隐）| 中 ‹ 时间选择器 › | 右 月视图 + 待办开关 -->
+       左 导航开关（toggle rail 显隐）| 中 ‹ 今天 时间选择器 › | 右 新增 + 月视图 + 待办开关 -->
   <div v-else class="calendar-toolbar">
     <div class="calendar-toolbar__side">
       <button
@@ -70,6 +72,7 @@
       </button>
     </div>
     <div class="calendar-toolbar__center">
+      <button v-if="showToday" class="today-toggle" title="回到今天" @click="emit('today')">今</button>
       <button class="period-nav" title="上一时段" @click="emit('shift', -1)">
         <ChevronLeft :size="20" />
       </button>
@@ -102,6 +105,10 @@
       </button>
     </div>
     <div class="calendar-toolbar__side calendar-toolbar__side--right">
+      <!-- 新增日程（显式入口；拖选时段仍是快捷路径） -->
+      <button class="toolbar-add" title="新增日程" @click="emit('create')">
+        <Plus :size="20" />
+      </button>
       <!-- 月视图 toggle：激活时选择器切换为月选择器（网页端常驻） -->
       <button class="month-toggle" :class="{ active: pickerMode === 'month' }" @click="emit('toggleMonth')" title="月视图">
         月
@@ -120,13 +127,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSettingsStore, useUIStore } from '../stores'
 import MobileAppBar from './MobileAppBar.vue'
-import { PanelRight, PanelRightClose, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { PanelRight, PanelRightClose, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight, Plus } from 'lucide-vue-next'
 
-defineProps<{ pickerMode: 'range' | 'month' }>()
+const props = defineProps<{ pickerMode: 'range' | 'month' }>()
 const selectedRange = defineModel<[Date, Date]>('selectedRange', { required: true })
 const selectedMonth = defineModel<Date>('selectedMonth', { required: true })
 const emit = defineEmits<{
@@ -134,7 +141,22 @@ const emit = defineEmits<{
   rangeChange: [range: [Date, Date] | null]
   monthPick: [d: Date | null]
   toggleMonth: []
+  today: []
+  create: []
 }>()
+
+// 「今天」按钮显隐：当前视图不包含今天才出现（避免常态噪音）
+const showToday = computed(() => {
+  const now = new Date()
+  if (props.pickerMode === 'month') {
+    const m = selectedMonth.value
+    return m.getFullYear() !== now.getFullYear() || m.getMonth() !== now.getMonth()
+  }
+  const [s, e] = selectedRange.value
+  const d0 = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  return d0 < new Date(s.getFullYear(), s.getMonth(), s.getDate()) ||
+    d0 > new Date(e.getFullYear(), e.getMonth(), e.getDate())
+})
 
 const { settings } = storeToRefs(useSettingsStore())
 const uiStore = useUIStore()
@@ -223,15 +245,18 @@ const onMonthPick = (d: Date | null) => {
 }
 
 /* 工具条按钮统一形态：32×32 透明底、无边框、hover 灰底 + 主题色。
-   period-nav / month / nav 开关 / todo 开关四者共用一组规则；
-   month / todo 两按钮在移动端经 MobileAppBar 插槽渲染，需并列 .mobile-app-bar
+   period-nav / month / nav 开关 / 新增 / todo 开关五者共用一组规则；
+   month / todo / today 在移动端经 MobileAppBar 插槽渲染，需并列 .mobile-app-bar
    上下文（本块非 scoped 全局样式，插槽内容可命中） */
 .calendar-toolbar .period-nav,
 .calendar-toolbar .month-toggle,
 .calendar-toolbar .toolbar-nav-toggle,
+.calendar-toolbar .toolbar-add,
 .calendar-toolbar .todo-toggle,
+.calendar-toolbar .today-toggle,
 .mobile-app-bar .month-toggle,
-.mobile-app-bar .todo-toggle {
+.mobile-app-bar .todo-toggle,
+.mobile-app-bar .today-toggle {
   width: 32px;
   height: 32px;
   border: none;
@@ -242,9 +267,20 @@ const onMonthPick = (d: Date | null) => {
   transition: all var(--duration-fast) ease;
 }
 
-/* 月按钮：统一形态内的文字排版（字号与 20px 图标视觉等重） */
+/* 移动端触控热区：热区与视觉尺寸解耦——图标仍 20px，命中区抬到 44px 标准
+   （灰带内容行恰 44px，按钮贴行高不溢出；桌面维持 32px 视觉） */
+html.platform-mobile .mobile-app-bar .month-toggle,
+html.platform-mobile .mobile-app-bar .todo-toggle,
+html.platform-mobile .mobile-app-bar .today-toggle {
+  width: var(--touch-target);
+  height: var(--touch-target);
+}
+
+/* 文字按钮（月 / 今）：统一形态内的文字排版（字号与 20px 图标视觉等重） */
 .calendar-toolbar .month-toggle,
-.mobile-app-bar .month-toggle {
+.calendar-toolbar .today-toggle,
+.mobile-app-bar .month-toggle,
+.mobile-app-bar .today-toggle {
   font-size: var(--font-sm);
   font-weight: var(--weight-semibold);
   line-height: 1;
@@ -253,9 +289,12 @@ const onMonthPick = (d: Date | null) => {
 .calendar-toolbar .period-nav:hover,
 .calendar-toolbar .month-toggle:hover,
 .calendar-toolbar .toolbar-nav-toggle:hover,
+.calendar-toolbar .toolbar-add:hover,
 .calendar-toolbar .todo-toggle:hover,
+.calendar-toolbar .today-toggle:hover,
 .mobile-app-bar .month-toggle:hover,
-.mobile-app-bar .todo-toggle:hover {
+.mobile-app-bar .todo-toggle:hover,
+.mobile-app-bar .today-toggle:hover {
   background: var(--el-fill-color); /* 工具条灰带上 hover 需更深一档可见 */
   color: var(--el-color-primary);
 }
@@ -304,10 +343,10 @@ html.platform-mobile .calendar-title-picker.el-range-editor {
   padding: var(--space-xs);
 }
 
-/* 日期文本：大号加粗居中 */
+/* 日期文本：大号加粗居中（font-md 1.1rem，与 42% 定宽注释联动） */
 .calendar-title-picker .el-range-input {
   background: transparent;
-  font-size: 1.08rem;
+  font-size: var(--font-md);
   font-weight: var(--weight-semibold);
   color: var(--el-text-color-primary);
   cursor: pointer;
@@ -315,7 +354,7 @@ html.platform-mobile .calendar-title-picker.el-range-editor {
 }
 
 /* 两个日期框 EP 默认 39% 定宽；移动端胶囊收窄 20px 后按 42% 回补，
-   保证最长 "12月31日"（1.08rem×5 字 ≈ 87px）不贴边截字 */
+   保证最长 "12月31日"（font-md 1.1rem×5 字 ≈ 89px）不贴边截字 */
 html.platform-mobile .calendar-title-picker .el-range-input {
   width: 42%;
 }
@@ -325,7 +364,7 @@ html.platform-mobile .calendar-title-picker .el-range-input {
   display: none;
 }
 
-/* 日历图标：主题色，调大一档（18px）与 1.08rem 粗体日期文字视觉等重 */
+/* 日历图标：主题色，调大一档（18px）与 font-md 粗体日期文字视觉等重 */
 .calendar-title-picker .el-range__icon {
   color: var(--el-color-primary);
   font-size: 18px;

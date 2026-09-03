@@ -125,6 +125,24 @@ export function useCalendarNavigation(calendar: Ref<CalendarHandle | null>) {
     api.changeView('timeGridCustom', customRange.start)
   }
 
+  // 「今天」：回到包含今天的视图——月模式回当月；单日视图跳今天；
+  // 区间模式保持当前跨度、整段平移到今天起步（Google Calendar「今天」同语义）
+  const goToday = () => {
+    const api = calendar.value?.getApi()
+    if (!api) return
+    if (pickerMode.value === 'month') {
+      api.changeView('dayGridMonth', new Date())
+      return
+    }
+    if (curViewType.value === 'timeGridDay') {
+      api.gotoDate(new Date())
+      return
+    }
+    const today = dayjs().startOf('day')
+    const days = Math.max(1, dayjs(customRange.end).startOf('day').diff(dayjs(customRange.start).startOf('day'), 'day'))
+    applyCustomRange([today.toDate(), today.add(days - 1, 'day').toDate()])
+  }
+
   return {
     pickerMode,
     selectedRange,
@@ -135,6 +153,7 @@ export function useCalendarNavigation(calendar: Ref<CalendarHandle | null>) {
     handleDatesSet,
     applyCustomRange,
     changeMonth,
+    goToday,
     toggleMonthMode,
     shiftPeriod
   }

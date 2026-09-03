@@ -22,11 +22,19 @@
       @range-change="onRangeChange"
       @month-pick="onMonthPick"
       @toggle-month="toggleMonthMode"
+      @today="goToday"
+      @create="openCreateSchedule"
     />
 
     <FullCalendar ref="fullCalendar" :options="calendarOptions" />
 
-    <!-- 日程新增/编辑弹窗（web 右击、移动双击事件打开编辑）——表单/校验在 ScheduleDialog -->
+    <!-- 移动端新增日程 FAB：拖选时段在触屏上需长按启动、可发现性差，
+         显式 + 入口补位（语音球上方悬浮，错开遮挡） -->
+    <button v-if="isMobile" class="fab-add-schedule" title="新增日程" @click="openCreateSchedule">
+      <el-icon :size="22"><Plus /></el-icon>
+    </button>
+
+    <!-- 日程新增/编辑弹窗（web 单击/右击、移动双击事件打开编辑）——表单/校验在 ScheduleDialog -->
     <ScheduleDialog
       v-model:visible="newScheduleDialogVisible"
       :header="editingScheduleId ? '编辑日程' : '新增日程'"
@@ -46,6 +54,8 @@ import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import type { DayHeaderContentArg } from '@fullcalendar/core'
+import { Plus } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { storeToRefs } from 'pinia'
 import { useSettingsStore, useUIStore } from '../stores'
 import ScheduleDialog from './ScheduleDialog.vue'
@@ -101,6 +111,11 @@ onMounted(() => {
     })
     resizeObserver.observe(wrapperEl)
   }
+  // 一次性手势教学（coach mark）：移动端"长按拖选创建日程"零可发现性——首次进入提示一次
+  if (isMobile.value && !localStorage.getItem('coach_drag_select')) {
+    localStorage.setItem('coach_drag_select', '1')
+    ElMessage({ message: '提示：长按日历空白处并拖动，圈选时段即可创建日程', duration: 6000, showClose: true })
+  }
 })
 
 onBeforeUnmount(() => {
@@ -115,6 +130,7 @@ const {
   newScheduleDialogVisible,
   scheduleDialogInitial,
   editingScheduleId,
+  openNewScheduleDialog,
   confirmNewSchedule,
   handleDeleteSchedule,
   applyEventMove,
@@ -126,7 +142,19 @@ const {
 
 // ---- 视图导航（中央时间选择器 ↔ FC 双向同步）----
 const nav = useCalendarNavigation(fullCalendar)
-const { pickerMode, selectedRange, selectedMonth, showColHeader, shiftPeriod, toggleMonthMode, handleDatesSet } = nav
+const { pickerMode, selectedRange, selectedMonth, showColHeader, shiftPeriod, toggleMonthMode, goToday, handleDatesSet } = nav
+
+// 显式新增入口（桌面工具条 + / 移动端 FAB）：预填今天下一个整点起 1 小时
+const openCreateSchedule = () => {
+  const start = new Date()
+  start.setMinutes(0, 0, 0)
+  start.setHours(start.getHours() + 1)
+  const end = new Date(start.getTime() + 60 * 60 * 1000)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const fmtDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  const fmtTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  openNewScheduleDialog(fmtDate(start), fmtTime(start), fmtTime(end))
+}
 
 // 工具栏回调：弹层收起已在 CalendarToolbar 内自理，这里只负责应用
 const onRangeChange = (range: [Date, Date] | null) => {
@@ -223,6 +251,33 @@ watch(isMobile, (m) => {
 html.platform-mobile .calendar-wrapper {
   border-radius: 0;
   border: none;
+}
+
+/* 移动端新增日程 FAB：语音球（fixed 右下 40px、64px 大）正上方悬浮，
+   同右缘对齐、主色实底区分于语音球的白底；热区 = 44px 标准 */
+.fab-add-schedule {
+  position: fixed;
+  right: calc(40px + (64px - var(--touch-target)) / 2); /* 与右下语音球中心线对齐（球 right 40 / 直径 64） */
+  bottom: calc(40px + var(--safe-area-inset-bottom) + 64px + var(--space-md));
+  width: var(--touch-target);
+  height: var(--touch-target);
+  border: none;
+  border-radius: 9999px;
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  z-index: calc(var(--z-todo-overlay) - 2); /* 待办浮层之下，浮层打开时被盖住不打扰 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 长按拖选的按压反馈：触屏按住时间格出现淡色浸染（FC longPressDelay 期间的
+   唯一视觉信号，配合一次性 coach mark 提升"按住可拖选"的可感知性） */
+html.platform-mobile .calendar-wrapper .fc-timegrid-slot-lane:active,
+html.platform-mobile .calendar-wrapper .fc-timegrid-col:active {
+  background: var(--color-primary-alpha);
 }
 
 /* 日历主体填满工具条以下剩余空间 */

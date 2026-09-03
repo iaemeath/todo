@@ -136,7 +136,11 @@ export function useScheduleCalendar() {
   // FC 无原生双击回调，基于 eventClick 自判定；滚动是滑动不会触发 eventClick，无双击误判。
   let lastEventTap = { id: '', time: 0 }
   const handleEventClick = (info: EventClickArg) => {
-    if (!isMobile.value) return // web 端走右键菜单，不用 eventClick
+    // web 端：单击即编辑（显式入口，右击保留为等价快捷路径）
+    if (!isMobile.value) {
+      openEditDialog(info.event.id)
+      return
+    }
     const id = info.event.id
     const now = Date.now()
     if (lastEventTap.id === id && now - lastEventTap.time < 350) {
@@ -192,6 +196,7 @@ export function useScheduleCalendar() {
   return {
     calendarEvents,
     newScheduleDialogVisible,
+    openNewScheduleDialog,
     scheduleDialogInitial,
     editingScheduleId,
     confirmNewSchedule,
