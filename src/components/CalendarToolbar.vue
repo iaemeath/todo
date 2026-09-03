@@ -3,8 +3,6 @@
        中 时间选择器（选范围按跨度智能切视图）| 右 月视图 + 待办开关 -->
   <MobileAppBar v-if="isMobile">
     <template #center>
-      <!-- 「今天」：浏览偏离今天时出现（条件显示避免常态噪音），点击回到包含今天的视图 -->
-      <button v-if="showToday" class="today-toggle" title="回到今天" @click="emit('today')">今</button>
       <!-- 区间模式：两端共用 EP daterange（所见=所选）。移动端面板收窄为单月：
            unlink-panels 使左面板自带前进箭头，CSS 隐藏右面板（EP 双月 646px 溢出手机屏） -->
       <el-date-picker
@@ -33,6 +31,8 @@
         format="YYYY年M月"
         @change="onMonthPick"
       />
+      <!-- 「今天」：浏览偏离今天时出现（条件显示避免常态噪音），点击回到包含今天的视图 -->
+      <button v-if="showToday" class="today-toggle" title="回到今天" @click="emit('today')">今</button>
     </template>
     <template #right>
       <!-- 月视图 toggle：激活时选择器切换为月选择器。
@@ -72,7 +72,6 @@
       </button>
     </div>
     <div class="calendar-toolbar__center">
-      <button v-if="showToday" class="today-toggle" title="回到今天" @click="emit('today')">今</button>
       <button class="period-nav" title="上一时段" @click="emit('shift', -1)">
         <ChevronLeft :size="20" />
       </button>
@@ -103,6 +102,8 @@
       <button class="period-nav" title="下一时段" @click="emit('shift', 1)">
         <ChevronRight :size="20" />
       </button>
+      <!-- 「今天」：浏览偏离今天时出现（条件显示避免常态噪音），点击回到包含今天的视图 -->
+      <button v-if="showToday" class="today-toggle" title="回到今天" @click="emit('today')">今</button>
     </div>
     <div class="calendar-toolbar__side calendar-toolbar__side--right">
       <!-- 新增日程（显式入口；拖选时段仍是快捷路径） -->
