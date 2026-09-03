@@ -2,9 +2,9 @@
   <div class="manage-page">
     <!-- Toolbar -->
     <div class="manage-toolbar">
-      <!-- 布局切换：象限（四象限看板，默认）/ 树（层级表格），与 未完成/已完成 正交 -->
+      <!-- 布局切换：象限（四象限看板，默认）/ 树（层级表格）/ 卡片（卡片列表），与 未完成/已完成 正交 -->
       <div class="view-tabs">
-        <span class="view-tab-indicator" :class="{ right: layoutMode === 'tree' }"></span>
+        <span class="view-tab-indicator" :style="layoutIndicatorStyle"></span>
         <button
           v-for="opt in layoutOptions"
           :key="opt.value"
@@ -15,10 +15,12 @@
           <span class="view-tab-label">{{ opt.label }}</span>
         </button>
       </div>
-      <el-input v-model="searchQuery" :prefix-icon="Search" placeholder="搜索标题或描述..." clearable style="width: 240px;" />
-      <el-select v-model="filterCategory" placeholder="分类" clearable style="width: 140px;">
-        <el-option v-for="c in categoryOptions" :key="c.value" :label="c.label" :value="c.value" />
-      </el-select>
+      <div class="manage-filters">
+        <el-input v-model="searchQuery" :prefix-icon="Search" placeholder="搜索标题或描述..." clearable />
+        <el-select v-model="filterCategory" placeholder="分类" clearable>
+          <el-option v-for="c in categoryOptions" :key="c.value" :label="c.label" :value="c.value" />
+        </el-select>
+      </div>
       <div class="view-tabs">
         <span class="view-tab-indicator" :class="{ right: viewMode === 'done' }"></span>
         <button
@@ -34,9 +36,9 @@
       <el-button type="primary" :icon="Plus" @click="openCreateDialog()"><span v-if="!isMobile">新增任务</span></el-button>
     </div>
 
-    <!-- Table (tree) —— 桌面分支，移动端走下方卡片列表 -->
+    <!-- Table (tree) —— 树视图（层级表格，双端；移动端另有卡片视图承载同构信息） -->
     <el-table
-      v-if="layoutMode === 'tree' && !isMobile"
+      v-if="layoutMode === 'tree'"
       :data="displayData"
       row-key="id"
       :tree-props="{ children: 'children' }"
@@ -89,8 +91,8 @@
       </el-table-column>
     </el-table>
 
-    <!-- 移动端卡片列表（树/过滤扁平共用）：表格信息架构平移——标题+完成、标签组、描述、图标操作；层级用缩进+L 徽标表达，不折叠 -->
-    <div v-else-if="layoutMode === 'tree'" class="manage-card-list">
+    <!-- 卡片视图（双端）：表格信息架构平移——标题+完成、标签组、描述、图标操作；层级用缩进+L 徽标表达，不折叠 -->
+    <div v-else-if="layoutMode === 'card'" class="manage-card-list">
       <div
         v-for="{ task, indent } in mobileTaskList"
         :key="task.id"
@@ -122,7 +124,7 @@
     </div>
 
     <!-- Matrix view（四象限看板）：数据源与编辑事件见 QuadrantMatrix 组件；@create 接全空态的创建引导 -->
-    <QuadrantMatrix v-if="layoutMode === 'matrix'" :tasks="matrixTasks" @edit="openEditDialog" @create="openCreateDialog()" />
+    <QuadrantMatrix v-else :tasks="matrixTasks" @edit="openEditDialog" @create="openCreateDialog()" />
 
     <!-- Create / Edit dialog -->
     <el-dialog v-model="formDialogVisible" :title="dialogTitle" :width="isMobile ? '92vw' : '480px'" destroy-on-close>
@@ -238,7 +240,16 @@ const {
 // 矩阵数据源 = 无筛选用可见全集、有筛选用过滤扁平集（QuadrantMatrix 内部再按 order 排序）
 const matrixTasks = computed(() => (hasFilter.value ? filteredFlat.value : visibleTasks.value))
 
-// ---- 移动端卡片列表（P0）：displayData 是树（无筛选，带 children）或扁平集（有筛选），
+// 布局胶囊为三段，基类指示块（两段 50% + .right 位移）不再适用——按当前档位算段宽与位移内联下发
+const layoutIndicatorStyle = computed(() => {
+  const idx = Math.max(layoutOptions.value.findIndex(o => o.value === layoutMode.value), 0)
+  return {
+    width: `calc((100% - 6px) / ${layoutOptions.value.length})`,
+    transform: `translateX(${idx * 100}%)`
+  }
+})
+
+// ---- 卡片视图列表：displayData 是树（无筛选，带 children）或扁平集（有筛选），
 // 统一扁平化遍历；层级不折叠，用缩进（层级-1 档 --space-lg）+ L 徽标共同表达 ----
 type TreeLikeTask = Task & { children?: TreeLikeTask[] }
 
@@ -380,12 +391,34 @@ html.platform-mobile .manage-page {
   }
 }
 
-/* ---- 移动端卡片列表（P0）：树表格 → 卡片，.matrix-card 家族语言 ---- */
+/* ---- 卡片视图：树表格 → 卡片（双端），.matrix-card 家族语言 ---- */
 .manage-card-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
   flex-shrink: 0; /* 长列表撑高 .manage-page 触发整页滚动，而非被 flex 压扁 */
+}
+
+/* ---- 卡片视图限宽（双端）：桌面卡片不拉通全宽（右下角图标操作会飘太远） ---- */
+@media (width >= 769px) {
+  .manage-card-list {
+    max-width: 760px;
+  }
+}
+
+/* 筛选组容器：桌面透明化（搜索/筛选仍是工具条直接子项，单行布局零变化）。
+   定宽从模板内联样式移到这里：内联 width 会参与 min-content 计算，
+   移动端整行换行时 240+140+gap 撑破容器（表现为横向溢出） */
+.manage-filters {
+  display: contents;
+}
+
+.manage-filters > .el-input {
+  width: 240px;
+}
+
+.manage-filters > .el-select {
+  width: 140px;
 }
 
 .manage-card {
@@ -435,9 +468,19 @@ html.platform-mobile .manage-page {
   text-overflow: ellipsis;
 }
 
-/* 操作行右沉（拇指热区在右下角）；触控热区沿用 .row-actions 的 min-height */
+/* 操作行右沉（拇指热区在右下角）；卡片内操作按钮放大一档——
+   图标 20px、热区 48 宽 × touch-target 高，区别于表格行内的小号操作 */
 .manage-card-actions {
   justify-content: flex-end;
+}
+
+.manage-card-actions :deep(.el-button) {
+  min-width: 48px;
+  min-height: var(--touch-target);
+}
+
+.manage-card-actions :deep(.el-icon) {
+  font-size: 20px;
 }
 
 /* ---- 空态行动引导（P1-8）：文案 + text 主色按钮直达创建 ---- */
@@ -528,22 +571,29 @@ html.platform-mobile .manage-page {
   transform: none;
 }
 
-/* 桌面：胶囊放宽 */
+/* 桌面：胶囊放宽（min 68：布局胶囊三段后，92 会让 1200 级窗口的工具条主按钮折行） */
 @media (width >= 769px) {
   .view-tab {
-    min-width: 92px;
+    min-width: 68px;
     padding: 5px 14px;
   }
 }
 
 /* ---- 胶囊触控热区（P1-4）：移动端纵向 ≥ 44px；
-   指示块的 inset/height 本就是相对 .view-tabs 的百分比几何，随按钮增高自动跟随 ---- */
+   指示块的 inset/height 本就是相对 .view-tabs 的百分比几何，随按钮增高自动跟随。
+   横向同步收紧（min 44/内边距 4）：布局胶囊三段后首行才放得下 按钮+两组胶囊 ---- */
 html.platform-mobile .view-tab {
   min-height: var(--touch-target);
+  min-width: 44px;
+  padding: var(--space-xs);
 }
 
-/* ---- 移动端工具栏两段式（P2-9）：order 重排 + flex-basis 断行，模板不动、桌面单行不受影响 ----
-   第一行：新增按钮 + 两组视图胶囊；第二行：搜索（撑满剩余宽）+ 分类筛选 */
+/* ---- 移动端工具栏两段式：第一行 新增按钮+两组胶囊，第二行 筛选组整行换行 ----
+   筛选组（.manage-filters）basis 100% 独占一行，胶囊再多也只在自己行内折行，不再挤兑搜索 */
+html.platform-mobile .manage-toolbar {
+  gap: var(--space-sm);
+}
+
 html.platform-mobile .manage-toolbar .el-button {
   order: -4;
 }
@@ -552,15 +602,20 @@ html.platform-mobile .manage-toolbar .view-tabs {
   order: -3;
 }
 
-html.platform-mobile .manage-toolbar .el-input {
+html.platform-mobile .manage-filters {
+  display: flex;
   order: 1;
-
-  /* 140px = 分类筛选的内联固定宽；basis 恰好留出它+gap 的位置，两者同排占满第二行并强制搜索断行 */
-  flex: 1 1 calc(100% - 140px - var(--space-lg));
+  flex: 1 1 100%;
+  gap: var(--space-sm);
 }
 
-html.platform-mobile .manage-toolbar .el-select {
-  order: 2;
+html.platform-mobile .manage-filters .el-input {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+html.platform-mobile .manage-filters .el-select {
   flex: 0 0 auto;
 }
 

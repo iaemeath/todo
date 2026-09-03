@@ -15,7 +15,7 @@ import { useTaskStore, type Task } from '../stores'
 // 视图按 L1（顶级任务）的 completed 归类：done = 已完成的 L1，active = 未完成的 L1。
 // 子任务（L2/L3）的完成状态不参与视图归类，子树跟随所属 L1 整体呈现。
 type ViewMode = 'active' | 'done'
-type LayoutMode = 'tree' | 'matrix'
+type LayoutMode = 'matrix' | 'tree' | 'card'
 
 export type { ViewMode, LayoutMode }
 
@@ -33,7 +33,7 @@ export function useTaskViewFilter() {
       const raw = JSON.parse(localStorage.getItem(LS_VIEW_PREFS) || '{}')
       return {
         view: raw.view === 'done' ? 'done' : 'active',
-        layout: raw.layout === 'tree' ? 'tree' : 'matrix'
+        layout: raw.layout === 'tree' || raw.layout === 'card' ? raw.layout : 'matrix'
       }
     } catch {
       return { view: 'active', layout: 'matrix' }
@@ -48,12 +48,13 @@ export function useTaskViewFilter() {
     { value: 'done', label: '已完成' }
   ])
 
-  // ---- Layout mode：象限（四象限看板，默认）/ 树（层级表格）----
+  // ---- Layout mode：象限（四象限看板，默认）/ 树（层级表格）/ 卡片（卡片列表）----
   const layoutMode = ref<LayoutMode>(initialPrefs.layout)
 
   const layoutOptions = computed<{ value: LayoutMode; label: string }[]>(() => [
     { value: 'matrix', label: '象限' },
-    { value: 'tree', label: '树' }
+    { value: 'tree', label: '树' },
+    { value: 'card', label: '卡片' }
   ])
 
   watch([viewMode, layoutMode], ([view, layout]) => {

@@ -2,13 +2,28 @@
   <div class="manage-page">
     <!-- Toolbar -->
     <div class="manage-toolbar">
-      <el-input v-model="searchQuery" :prefix-icon="Search" placeholder="搜索标题..." clearable style="width: 240px;" />
-      <el-select v-model="filterColor" placeholder="颜色" clearable style="width: 140px;">
-        <el-option v-for="c in colorOptions" :key="c.value" :label="c.label" :value="c.value">
-          <span class="color-dot" :style="{ background: c.hex }"></span>
-          <span style="margin-left: 8px;">{{ c.label }}</span>
-        </el-option>
-      </el-select>
+      <!-- 布局切换：表（表格）/ 卡片（卡片列表），与 未进行/已进行 正交（对齐任务页双胶囊模式） -->
+      <div class="view-tabs">
+        <span class="view-tab-indicator" :class="{ right: layoutMode === 'card' }"></span>
+        <button
+          v-for="opt in layoutOptions"
+          :key="opt.value"
+          class="view-tab"
+          :class="{ active: layoutMode === opt.value }"
+          @click="layoutMode = opt.value"
+        >
+          <span class="view-tab-label">{{ opt.label }}</span>
+        </button>
+      </div>
+      <div class="manage-filters">
+        <el-input v-model="searchQuery" :prefix-icon="Search" placeholder="搜索标题..." clearable />
+        <el-select v-model="filterColor" placeholder="颜色" clearable>
+          <el-option v-for="c in colorOptions" :key="c.value" :label="c.label" :value="c.value">
+            <span class="color-dot" :style="{ background: c.hex }"></span>
+            <span style="margin-left: 8px;">{{ c.label }}</span>
+          </el-option>
+        </el-select>
+      </div>
       <div class="view-tabs">
         <span class="view-tab-indicator" :class="{ right: viewMode === 'done' }"></span>
         <button
@@ -21,12 +36,14 @@
           <span class="view-tab-label">{{ opt.label }}</span>
         </button>
       </div>
-      <el-button type="primary" :icon="Link" @click="openFromTodoDialog"><span v-if="!isMobile">从任务新增</span></el-button>
-      <el-button type="primary" :icon="Plus" @click="openCreateDialog"><span v-if="!isMobile">新增日程</span></el-button>
+      <div class="manage-actions">
+        <el-button type="primary" :icon="Link" @click="openFromTodoDialog"><span v-if="!isMobile">从任务新增</span></el-button>
+        <el-button type="primary" :icon="Plus" @click="openCreateDialog"><span v-if="!isMobile">新增日程</span></el-button>
+      </div>
     </div>
 
-    <!-- Table —— 桌面分支，移动端走下方卡片列表 -->
-    <el-table v-if="!isMobile" :data="filteredSchedules" stripe border style="width: 100%;">
+    <!-- Table —— 表视图（双端；移动端另有卡片视图承载同构信息） -->
+    <el-table v-if="layoutMode === 'table'" :data="filteredSchedules" stripe border style="width: 100%;">
       <template #empty>
         <div class="manage-empty">
           <p class="manage-empty__text">{{ emptyText }}</p>
@@ -54,8 +71,9 @@
       </el-table-column>
       <el-table-column label="来源" width="160" show-overflow-tooltip>
         <template #default="{ row }">
-          <span v-if="row.taskId && taskTitle(row.taskId)" class="text-secondary">
-            任务 · {{ taskTitle(row.taskId) }}
+          <!-- 来源仅在与标题不同名时有信息量：从任务创建的日程标题即任务名，重复展示 -->
+          <span v-if="sourceTitle(row as Schedule)" class="text-secondary">
+            任务 · {{ sourceTitle(row as Schedule) }}
           </span>
           <span v-else class="text-muted">—</span>
         </template>
@@ -70,7 +88,7 @@
       </el-table-column>
     </el-table>
 
-    <!-- 移动端卡片列表：表格信息架构平移——标题+色点、日期时段、来源、描述、图标操作 -->
+    <!-- 卡片视图（双端）：表格信息架构平移——标题+色点、日期时段、来源、描述、图标操作 -->
     <div v-else class="manage-card-list">
       <div v-for="row in filteredSchedules" :key="row.id" class="manage-card">
         <div class="manage-card-head">
@@ -78,7 +96,7 @@
           <span class="color-dot" :style="{ background: colorHex(row.color) }"></span>
         </div>
         <div class="manage-card-meta">{{ formatDate(row.date) }} · {{ row.startTime }} ~ {{ row.endTime }}</div>
-        <div v-if="row.taskId && taskTitle(row.taskId)" class="manage-card-meta">任务 · {{ taskTitle(row.taskId) }}</div>
+        <div v-if="sourceTitle(row)" class="manage-card-meta">任务 · {{ sourceTitle(row) }}</div>
         <p v-if="row.description" class="manage-card-desc">{{ row.description }}</p>
         <div class="row-actions manage-card-actions">
           <el-button text size="small" type="primary" :icon="Edit" aria-label="编辑" @click="openEditDialog(row)" />
@@ -180,8 +198,12 @@ const formatDate = (dateStr: string) => {
   return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
-// 来源任务标题：在活跃 tasks 中查（任务即使后续变为父级，仍能正确显示来源）
-const taskTitle = (taskId: string) => activeTasks.value.find(t => t.id === taskId)?.title
+// 来源任务标题：在活跃 tasks 中查（任务即使后续变为父级，仍能正确显示来源）。
+// 仅当任务标题 ≠ 日程标题时返回——从任务创建的日程标题即任务名，再示一遍是重复
+const sourceTitle = (row: Schedule): string | undefined => {
+  const t = row.taskId ? activeTasks.value.find(t => t.id === row.taskId)?.title : undefined
+  return t && t !== row.title ? t : undefined
+}
 
 // ---- Search & filter ----
 const searchQuery = ref('')
@@ -192,6 +214,14 @@ const viewMode = ref<ViewMode>('upcoming')
 const viewOptions = [
   { value: 'upcoming' as const, label: '未进行' },
   { value: 'done' as const, label: '已进行' }
+]
+
+// 布局切换：表（表格）/ 卡片（卡片列表）。移动端默认卡片（表格在窄屏过挤）、桌面默认表格
+type LayoutMode = 'table' | 'card'
+const layoutMode = ref<LayoutMode>(isMobile.value ? 'card' : 'table')
+const layoutOptions = [
+  { value: 'table' as const, label: '表' },
+  { value: 'card' as const, label: '卡片' }
 ]
 
 // 已进行是时间推导态（结束时刻早于现在），无持久字段：
@@ -381,12 +411,44 @@ html.platform-mobile .manage-page {
   min-height: var(--touch-target);
 }
 
-/* ---- 移动端卡片列表（P0）：表格 → 卡片，.matrix-card 家族语言 ---- */
+/* ---- 卡片视图：表格 → 卡片（双端），.matrix-card 家族语言 ---- */
 .manage-card-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
   flex-shrink: 0; /* 长列表撑高 .manage-page 触发整页滚动，而非被 flex 压扁 */
+}
+
+/* ---- 卡片视图限宽（双端）：桌面卡片不拉通全宽（右下角图标操作会飘太远） ---- */
+@media (width >= 769px) {
+  .manage-card-list {
+    max-width: 760px;
+  }
+}
+
+/* 筛选组容器：桌面透明化（搜索/筛选仍是工具条直接子项，单行布局零变化）。
+   定宽从模板内联样式移到这里：内联 width 会参与 min-content 计算，
+   移动端整行换行时 240+140+gap 撑破容器（表现为横向溢出） */
+.manage-filters {
+  display: contents;
+}
+/* 双主按钮成组：窄窗口工具条折行时成对换行（而非孤悬一个在次行）；
+   gap 对齐 EP 兄弟按钮默认 12px 间距，包组后视觉零变化 */
+.manage-actions {
+  display: flex;
+  gap: var(--space-md);
+}
+
+.manage-actions .el-button + .el-button {
+  margin-left: 0; /* EP 兄弟按钮默认 margin 交给 gap */
+}
+
+.manage-filters > .el-input {
+  width: 240px;
+}
+
+.manage-filters > .el-select {
+  width: 140px;
 }
 
 .manage-card {
@@ -433,9 +495,19 @@ html.platform-mobile .manage-page {
   text-overflow: ellipsis;
 }
 
-/* 操作行右沉（拇指热区在右下角）；触控热区沿用 .row-actions 的 min-height */
+/* 操作行右沉（拇指热区在右下角）；卡片内操作按钮放大一档——
+   图标 20px、热区 48 宽 × touch-target 高，区别于表格行内的小号操作 */
 .manage-card-actions {
   justify-content: flex-end;
+}
+
+.manage-card-actions :deep(.el-button) {
+  min-width: 48px;
+  min-height: var(--touch-target);
+}
+
+.manage-card-actions :deep(.el-icon) {
+  font-size: 20px;
 }
 
 /* ---- 空态行动引导（P1-8）：文案 + text 主色按钮直达创建 ---- */
@@ -526,39 +598,51 @@ html.platform-mobile .manage-page {
   transform: none;
 }
 
-/* 桌面：胶囊放宽 */
+/* 桌面：胶囊放宽（min 68：布局胶囊三段后，92 会让 1200 级窗口的工具条主按钮折行） */
 @media (width >= 769px) {
   .view-tab {
-    min-width: 92px;
+    min-width: 68px;
     padding: 5px 14px;
   }
 }
 
 /* ---- 胶囊触控热区（P1-4）：移动端纵向 ≥ 44px；
-   指示块的 inset/height 本就是相对 .view-tabs 的百分比几何，随按钮增高自动跟随 ---- */
+   指示块的 inset/height 本就是相对 .view-tabs 的百分比几何，随按钮增高自动跟随。
+   横向同步收紧（min 44/内边距 4）：双主按钮+两组胶囊才放得下首行 ---- */
 html.platform-mobile .view-tab {
   min-height: var(--touch-target);
+  min-width: 44px;
+  padding: var(--space-xs);
 }
 
-/* ---- 移动端工具栏两段式（P2-9）：order 重排 + flex-basis 断行，模板不动、桌面单行不受影响 ----
-   第一行：双主操作（从任务新增/新增日程）+ 状态胶囊；第二行：搜索（撑满剩余宽）+ 颜色筛选 */
-html.platform-mobile .manage-toolbar .el-button {
-  order: -4; /* 两个主按钮同为 -4，DOM 序保持 从任务新增 → 新增日程 */
+/* ---- 移动端工具栏两段式：第一行 双主按钮+两组胶囊，第二行 筛选组整行换行 ----
+   筛选组（.manage-filters）basis 100% 独占一行，胶囊再多也只在自己行内折行，不再挤兑搜索 */
+html.platform-mobile .manage-toolbar {
+  gap: var(--space-sm);
+}
+
+html.platform-mobile .manage-actions {
+  order: -4; /* 双主按钮成组上首行，组内 DOM 序保持 从任务新增 → 新增日程 */
 }
 
 html.platform-mobile .manage-toolbar .view-tabs {
   order: -3;
 }
 
-html.platform-mobile .manage-toolbar .el-input {
+html.platform-mobile .manage-filters {
+  display: flex;
   order: 1;
-
-  /* 140px = 颜色筛选的内联固定宽；basis 恰好留出它+gap 的位置，两者同排占满第二行并强制搜索断行 */
-  flex: 1 1 calc(100% - 140px - var(--space-lg));
+  flex: 1 1 100%;
+  gap: var(--space-sm);
 }
 
-html.platform-mobile .manage-toolbar .el-select {
-  order: 2;
+html.platform-mobile .manage-filters .el-input {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+html.platform-mobile .manage-filters .el-select {
   flex: 0 0 auto;
 }
 
