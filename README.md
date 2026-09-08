@@ -2,7 +2,7 @@
 
 > AI 驱动的日历待办应用，捡拾时光。
 
-![桌面屏保模式：翻页时钟](docs/images/desktop-screensaver.png)
+![拾光主页：周视图日程 + 四象限待办栏](docs/images/home.png)
 
 一份 Vue 3 代码，三端交付：**Web**（浏览器直接用）、**Electron 桌面**（托盘常驻 + 自动更新）、
 **Android**（Capacitor 原生壳 + 系统闹钟提醒）。local-first 设计——数据存在本机，
@@ -41,6 +41,10 @@
 
 - 游客全功能（不强制登录）；深浅双主题；桌面屏保模式（翻页时钟 + 语音入口）
 - 移动端适配：抽屉导航、手势关闭浮层、卡片视图、滑动唤出屏保
+
+桌面屏保模式：
+
+![桌面屏保模式：翻页时钟](docs/images/desktop-screensaver.png)
 
 ## 技术栈
 
