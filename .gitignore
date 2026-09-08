@@ -20,6 +20,9 @@ components.d.ts
 # ZCode local workspace
 .zcode/
 
+# AI 协作工具本地目录（个人记忆/插件状态，不入库）
+.claude/
+
 # Syncthing
 .stfolder/
 
@@ -47,8 +50,6 @@ server/data/
 release/
 release2/
 
-# mem 记忆插件本地状态（高频变动，不入库）
-.claude/.plugin_claude_mem_lite_state.json
 electron/main.bundle.cjs
 
 # playwright-cli 测试快照
