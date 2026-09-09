@@ -52,13 +52,15 @@ export function useScheduleCalendar() {
    * 日程移动/拉伸后的落库（eventDrop / eventResize 共用，两回调才带 revert 能力）。
    * Schedule 模型无跨天字段（date + 同日 start/end）：拖过零点会解析出
    * endTime < startTime 的非法数据——校验失败 revert 回原位，不落库。
+   * 多选整组平移：被拖成员 ∈ 选中集且跨天时，其余成员按同天数差平移
+   * （时刻保留，date±N 天永不跨零点）；原地拉伸/同日拖动天数差为 0 天然不触发。
    */
   const applyEventMove = (info: EventDropArg | EventResizeArg) => {
     const event = info.event
 
     // Format dates back to our custom format
     const startDate = new Date(event.start as Date)
-    const endDate = event.end ? new Date(event.end as Date) : new Date(startDate.getTime() + 60 * 60 * 1000)
+    const endDate = event.end ? new Date(event.end) : new Date(startDate.getTime() + 60 * 60 * 1000)
 
     const dateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`
     const startTimeStr = startDate.toTimeString().substring(0, 5)
@@ -69,11 +71,47 @@ export function useScheduleCalendar() {
       ElMessage.warning('日程不能跨零点，请调整到更早的时段')
       return
     }
+
+    // 变更前快照（撤销用）：被拖成员从 oldEvent 取，其余成员从活跃集取
+    const oldStart = info.oldEvent?.start ? new Date(info.oldEvent.start) : startDate
+    const oldEnd = info.oldEvent?.end ? new Date(info.oldEvent.end) : oldStart
+    const moved: Array<{ id: string; before: { date: string; startTime: string; endTime: string } }> = [{
+      id: event.id,
+      before: { date: fmtDate(oldStart), startTime: fmtTime(oldStart), endTime: fmtTime(oldEnd) }
+    }]
     updateSchedule(event.id, {
       date: dateStr,
       startTime: startTimeStr,
       endTime: endTimeStr
     })
+
+    // 整组平移：其余选中成员按被拖成员的天数差平移（只动 date）
+    const dayDiff = dayjs(dateStr).diff(dayjs(moved[0].before.date), 'day')
+    const group = dayDiff !== 0 && selectedScheduleIds.value.has(event.id)
+      ? [...selectedScheduleIds.value].filter(id => id !== event.id)
+      : []
+    for (const id of group) {
+      const s = activeSchedules.value.find(x => x.id === id)
+      if (!s) continue
+      moved.push({ id, before: { date: s.date, startTime: s.startTime, endTime: s.endTime } })
+      updateSchedule(id, { date: dayjs(s.date).add(dayDiff, 'day').format('YYYY-MM-DD') })
+    }
+    if (group.length > 0) {
+      ElMessage({
+        message: h('span', { class: 'undo-toast' }, [
+          `已平移 ${moved.length} 个日程（${dayDiff > 0 ? '+' : ''}${dayDiff} 天）`,
+          h('button', {
+            class: 'undo-toast__btn',
+            onClick: () => {
+              for (const m of moved) updateSchedule(m.id, m.before)
+              ElMessage.closeAll()
+            }
+          }, '撤销')
+        ]),
+        duration: 5000,
+        showClose: true
+      })
+    }
   }
 
   const handleEventReceive = (info: EventReceiveArg) => {
@@ -133,38 +171,48 @@ export function useScheduleCalendar() {
     newScheduleDialogVisible.value = true
   }
 
-  // ---- 选中态与键盘复制（web 端；移动端无键盘不参与）----
-  const selectedScheduleId = ref<string | null>(null)
+  // ---- 选中态与键盘复制（web 端；移动端无键盘/Ctrl 修饰不参与）----
+  // 始终替换式更新（new Set）保证响应式触发；Ctrl+单击加减选、普通单击重置单选
+  const selectedScheduleIds = ref<Set<string>>(new Set())
+  const replaceSelection = (ids: Iterable<string>) => {
+    selectedScheduleIds.value = new Set(ids)
+  }
 
   // Ctrl+V：选中日程复制到后一天（时段、颜色、提醒、任务关联全保留）。
-  // 选中转移到新副本——连续 Ctrl+V 自然递增 +1/+2/+3 天，不会产生同日重复
+  // 多选时整组复制；选中新副本集合——连续 Ctrl+V 自然递增 +1/+2/+3 天，不重复
   const copySelectedToNextDay = () => {
-    const src = activeSchedules.value.find(s => s.id === selectedScheduleId.value)
-    if (!src) {
-      selectedScheduleId.value = null
+    const picked = activeSchedules.value.filter(s => selectedScheduleIds.value.has(s.id))
+    if (picked.length === 0) {
+      replaceSelection([])
       return
     }
-    const srcId = src.id
-    const nextDate = dayjs(src.date).add(1, 'day').format('YYYY-MM-DD')
-    const created = addSchedule({
-      taskId: src.taskId,
-      title: src.title,
-      description: src.description,
-      date: nextDate,
-      startTime: src.startTime,
-      endTime: src.endTime,
-      color: src.color,
-      remindMinutes: src.remindMinutes
-    })
-    selectedScheduleId.value = created.id
+    const srcIds = picked.map(s => s.id)
+    const createdIds: string[] = []
+    for (const src of picked) {
+      const created = addSchedule({
+        taskId: src.taskId,
+        title: src.title,
+        description: src.description,
+        date: dayjs(src.date).add(1, 'day').format('YYYY-MM-DD'),
+        startTime: src.startTime,
+        endTime: src.endTime,
+        color: src.color,
+        remindMinutes: src.remindMinutes
+      })
+      createdIds.push(created.id)
+    }
+    replaceSelection(createdIds)
+    const label = picked.length === 1
+      ? `已复制「${picked[0].title.slice(0, 12)}${picked[0].title.length > 12 ? '…' : ''}」到 ${dayjs(picked[0].date).add(1, 'day').format('M月D日')}`
+      : `已复制 ${picked.length} 个日程到后一天`
     ElMessage({
       message: h('span', { class: 'undo-toast' }, [
-        `已复制「${src.title.slice(0, 12)}${src.title.length > 12 ? '…' : ''}」到 ${dayjs(nextDate).format('M月D日')}`,
+        label,
         h('button', {
           class: 'undo-toast__btn',
           onClick: () => {
-            deleteSchedule(created.id)
-            selectedScheduleId.value = srcId
+            for (const id of createdIds) deleteSchedule(id)
+            replaceSelection(srcIds)
             ElMessage.closeAll()
           }
         }, '撤销')
@@ -181,10 +229,10 @@ export function useScheduleCalendar() {
     return el.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""]') !== null
   }
   const onKeydown = (e: KeyboardEvent) => {
-    if (newScheduleDialogVisible.value || !selectedScheduleId.value) return
+    if (newScheduleDialogVisible.value || selectedScheduleIds.value.size === 0) return
     if (isTypingTarget(e.target)) return
     if (e.key === 'Escape') {
-      selectedScheduleId.value = null
+      replaceSelection([])
       return
     }
     if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
@@ -196,8 +244,8 @@ export function useScheduleCalendar() {
   onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 
   // 单击/双击（双端统一 350ms 同一事件判定）：
-  // web 单击=选中高亮（Ctrl+V 复制的操作对象），350ms 内再点同一事件=编辑；
-  // 移动端单击静默（无键盘、无选中消费者），双击编辑维持原语义
+  // web 单击=选中（Ctrl/Cmd+单击追加或移除成员、普通单击重置单选），
+  // 350ms 内再点同一事件=编辑；移动端单击静默，双击编辑维持原语义
   let lastEventTap = { id: '', time: 0 }
   const handleEventClick = (info: EventClickArg) => {
     const id = info.event.id
@@ -208,7 +256,16 @@ export function useScheduleCalendar() {
       return
     }
     lastEventTap = { id, time: now }
-    if (!isMobile.value) selectedScheduleId.value = id
+    if (isMobile.value) return
+    const next = new Set(selectedScheduleIds.value)
+    if (info.jsEvent.ctrlKey || info.jsEvent.metaKey) {
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+    } else {
+      next.clear()
+      next.add(id)
+    }
+    replaceSelection(next)
   }
 
   // web 端：右击事件 → 编辑弹窗（FC 无原生 contextmenu 回调，事件挂载时绑原生监听）
@@ -259,7 +316,7 @@ export function useScheduleCalendar() {
     openNewScheduleDialog,
     scheduleDialogInitial,
     editingScheduleId,
-    selectedScheduleId,
+    selectedScheduleIds,
     confirmNewSchedule,
     handleDeleteSchedule,
     applyEventMove,

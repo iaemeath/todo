@@ -123,7 +123,7 @@ const {
   newScheduleDialogVisible,
   scheduleDialogInitial,
   editingScheduleId,
-  selectedScheduleId,
+  selectedScheduleIds,
   openNewScheduleDialog,
   confirmNewSchedule,
   handleDeleteSchedule,
@@ -161,9 +161,9 @@ const onMonthPick = (d: Date | null) => {
 }
 
 const calendarOptions = computed(() => {
-  // 选中 id 在求值时先提出（闭包内惰性读取不进依赖收集）——选中变化重算
+  // 选中集在求值时先提出（闭包内惰性读取不进依赖收集）——选中变化重算
   // options，新 eventClassNames 引用驱动 FC 重渲染事件类名
-  const selectedId = selectedScheduleId.value
+  const selectedIds = selectedScheduleIds.value
   return {
   plugins: [timeGridPlugin, interactionPlugin, dayGridPlugin],
   initialView: isMobile.value ? 'timeGridDay' : 'timeGridWeek',
@@ -196,9 +196,9 @@ const calendarOptions = computed(() => {
   scrollTimeReset: false,
   eventDrop: applyEventMove, // 日程拖动落库（跨零点校验失败 revert）
   eventResize: applyEventMove, // 日程拉伸落库（跨零点校验失败 revert）
-  // 选中高亮（web 单击选中 → Ctrl+V 复制的操作对象）
+  // 选中高亮（web 单击/Ctrl+单击选中集合 → 拖拽整组平移与 Ctrl+V 的操作对象）
   eventClassNames: (arg: { event: { id: string } }) =>
-    arg.event.id === selectedId ? ['ev-selected'] : [],
+    selectedIds.has(arg.event.id) ? ['ev-selected'] : [],
   eventReceive: handleEventReceive, // When external event is dropped
   select: handleSelect, // 拖选时段新增日程（唯一新增入口；单击被时长闸门过滤，防误触）
   eventClick: handleEventClick, // 移动端：双击事件编辑（自判定）
