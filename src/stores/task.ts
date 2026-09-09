@@ -298,6 +298,18 @@ export const useTaskStore = defineStore('task', () => {
     }
   }
 
+  // 墓碑复活（撤销删除/误删恢复）：清 deletedAt + 重打 revTime（语义同 touch），
+  // 记录回到活跃集并随记录级同步传播到其他端
+  const restoreSchedules = (ids: string[]) => {
+    const now = Date.now()
+    for (const id of ids) {
+      const s = schedules.value.find((x) => x.id === id)
+      if (!s || !s.deletedAt) continue
+      delete s.deletedAt
+      s.revTime = now
+    }
+  }
+
   // 从叶子任务创建日程（排期）——活跃集：墓碑任务不可再排期。
   // description 缺省继承任务描述（日程描述字段本就源自任务场景，屏保任务卡/日历悬浮展示用）
   const addScheduleFromTask = (taskId: string, date: string, startTime: string, endTime: string, color: string = DEFAULT_SCHEDULE_COLOR, description?: string, remindMinutes: number = 0) => {
@@ -333,6 +345,7 @@ export const useTaskStore = defineStore('task', () => {
     addSchedule,
     updateSchedule,
     deleteSchedule,
+    restoreSchedules,
     addScheduleFromTask
   }
 })

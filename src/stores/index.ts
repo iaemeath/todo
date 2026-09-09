@@ -4,7 +4,7 @@
 export { useTaskStore, type Task, type Schedule } from './task'
 export { useSettingsStore, type Settings, defaultSettings } from './settings'
 export { useThemeStore } from './theme'
-export { useUIStore, type AppView, type SettingsSection } from './ui'
+export { useUIStore, type AppView, type SettingsSection, type CalendarShortcutAction } from './ui'
 export { useUsageStore, type UsageRecord } from './usage'
 export { parseBundle, type ExportBundle } from '../types/bundle'
 

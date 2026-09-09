@@ -13,6 +13,9 @@ import { router } from '../router'
 export type AppView = 'home' | 'task' | 'schedule' | 'screensaver' | 'settings' | 'auth'
 export type SettingsSection = 'view' | 'ai' | 'data' | 'guide' | 'users' | 'about'
 
+/** 主页日历快捷键命令（全局快捷键层 → CalendarArea，请求-消费桥接，同 gotoDateRequest） */
+export type CalendarShortcutAction = 'today' | 'create' | 'prev' | 'next' | 'view-day' | 'view-week' | 'view-month'
+
 /** AppView → 路由路径（设置域为一级直达路由，v4.6 扁平化） */
 const viewPath = (v: AppView, section?: SettingsSection): string => {
   switch (v) {
@@ -137,6 +140,13 @@ export const useUIStore = defineStore('ui', () => {
     gotoDateRequest.value = { date, ts: Date.now() }
   }
 
+  // 主页日历快捷键命令（useGlobalShortcuts → CalendarArea），同上请求-消费；
+  // ts 保证连续两次相同 action 也能触发 watch
+  const shortcutRequest = ref<{ action: CalendarShortcutAction; ts: number } | null>(null)
+  const requestCalendarShortcut = (action: CalendarShortcutAction) => {
+    shortcutRequest.value = { action, ts: Date.now() }
+  }
+
   // 登录/注册页：openAuth 记录来源视图，登录成功/返回时回到来源
   const authReturnView = ref<AppView>('home')
   const openAuth = () => {
@@ -165,6 +175,8 @@ export const useUIStore = defineStore('ui', () => {
     setNavRailCollapsed,
     gotoDateRequest,
     requestGotoDate,
+    shortcutRequest,
+    requestCalendarShortcut,
     authReturnView,
     openAuth,
     closeAuth

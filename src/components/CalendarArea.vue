@@ -59,7 +59,7 @@ import { useScheduleCalendar } from '../composables/useScheduleCalendar'
 
 const { settings } = storeToRefs(useSettingsStore())
 const uiStore = useUIStore()
-const { isMobile, gotoDateRequest } = storeToRefs(uiStore)
+const { isMobile, gotoDateRequest, shortcutRequest } = storeToRefs(uiStore)
 
 const fullCalendar = ref<InstanceType<typeof FullCalendar> | null>(null)
 
@@ -78,6 +78,28 @@ watch(gotoDateRequest, (req) => {
   if (!req) return
   fullCalendar.value?.getApi().gotoDate(req.date)
   gotoDateRequest.value = null
+})
+
+// 全局快捷键命令消费（useGlobalShortcuts → ui store shortcutRequest → 此处执行）。
+// 1/2/3：单日今天 / 7 天区间（今天起步）/ 当月视图——全部复用 nav 现有语义
+watch(shortcutRequest, (req) => {
+  if (!req) return
+  switch (req.action) {
+    case 'today': goToday(); break
+    case 'create': openCreateSchedule(); break
+    case 'prev': shiftPeriod(-1); break
+    case 'next': shiftPeriod(1); break
+    case 'view-day': nav.applyCustomRange([new Date(), new Date()]); break
+    case 'view-week': {
+      const start = new Date()
+      const end = new Date()
+      end.setDate(end.getDate() + 6)
+      nav.applyCustomRange([start, end])
+      break
+    }
+    case 'view-month': nav.changeMonth(new Date()); break
+  }
+  shortcutRequest.value = null
 })
 let resizeObserver: ResizeObserver | null = null
 let wrapperEl: HTMLElement | null = null

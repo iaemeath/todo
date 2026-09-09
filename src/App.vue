@@ -11,6 +11,8 @@ import { startSync, stopSync } from './services/syncManager'
 import { startReminders, stopReminders } from './services/reminderService'
 import { startVersionCheck } from './services/versionCheck'
 import { useSwipe } from './composables/useSwipe'
+import { useGlobalShortcuts } from './composables/useGlobalShortcuts'
+import ShortcutsHelpDialog from './components/ShortcutsHelpDialog.vue'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 
 // 二级页面与语音助手异步加载，避免首屏 bundle 过大
@@ -27,6 +29,9 @@ const uiStore = useUIStore()
 const authStore = useAuthStore()
 const { currentView, isMobile, todoVisible, mobileTodoDragging, navRailCollapsed, screensaverFullscreen } = storeToRefs(uiStore)
 const { setTodoVisible } = uiStore // action 直接解构
+
+// 全局键盘快捷键（桌面端单一 keydown 分发；帮助浮层状态由此给出）
+const { helpVisible } = useGlobalShortcuts()
 
 onMounted(() => {
   loadTheme()
@@ -115,6 +120,9 @@ useSwipe('body', (dir) => {
 
       <!-- 屏保全屏藏语音球（壳内 CSS 伪装全屏盖不住 z 更高的球）；v-show 保拖拽位置等组件内状态 -->
       <VoiceAssistant v-show="!screensaverFullscreen" />
+
+      <!-- 全局快捷键帮助（? 呼出 / Esc 关闭） -->
+      <ShortcutsHelpDialog v-model:visible="helpVisible" />
     </div>
   </el-config-provider>
 </template>

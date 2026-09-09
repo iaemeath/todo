@@ -238,8 +238,37 @@ export function useScheduleCalendar() {
     })
   }
 
-  // 键盘：Esc 取消选中；Ctrl/Cmd+V 复制到后一天。编辑弹窗打开或焦点在
-  // 表单控件时不接管（用户可能在输入框里正常粘贴文字）
+  // Del/Backspace：删除选中集（软删墓碑）。撤销 = 墓碑复活（restoreSchedules：
+  // 清 deletedAt 重打 revTime 回活跃集，并随记录级同步传播到其他端）
+  const { restoreSchedules } = taskStore
+  const deleteSelectedSchedules = () => {
+    const picked = activeSchedules.value.filter(s => selectedScheduleIds.value.has(s.id))
+    if (picked.length === 0) return
+    const ids = picked.map(s => s.id)
+    for (const id of ids) deleteSchedule(id)
+    replaceSelection([])
+    const label = picked.length === 1
+      ? `已删除「${picked[0].title.slice(0, 12)}${picked[0].title.length > 12 ? '…' : ''}」`
+      : `已删除 ${picked.length} 个日程`
+    ElMessage({
+      message: h('span', { class: 'undo-toast' }, [
+        label,
+        h('button', {
+          class: 'undo-toast__btn',
+          onClick: () => {
+            restoreSchedules(ids)
+            replaceSelection(ids)
+            ElMessage.closeAll()
+          }
+        }, '撤销')
+      ]),
+      duration: 5000,
+      showClose: true
+    })
+  }
+
+  // 键盘：Esc 取消选中；Ctrl/Cmd+V 复制到后一天；Del/Backspace 删除选中集。
+  // 编辑弹窗打开或焦点在表单控件时不接管（用户可能在输入框里正常粘贴文字）
   const isTypingTarget = (el: EventTarget | null) => {
     if (!(el instanceof HTMLElement)) return false
     return el.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""]') !== null
@@ -254,6 +283,11 @@ export function useScheduleCalendar() {
     if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
       e.preventDefault()
       copySelectedToNextDay()
+      return
+    }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault()
+      deleteSelectedSchedules()
     }
   }
   onMounted(() => document.addEventListener('keydown', onKeydown))
