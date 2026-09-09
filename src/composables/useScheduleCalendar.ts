@@ -12,6 +12,15 @@ import type { CalendarOptions, DateSelectArg, EventClickArg, EventDropArg, Event
 type EventReceiveArg = Parameters<NonNullable<CalendarOptions['eventReceive']>>[0]
 // v6 的 eventResize 参数类型（EventResizeDoneArg）未从 core 导出，同法取形
 type EventResizeArg = Parameters<NonNullable<CalendarOptions['eventResize']>>[0]
+// eventDragStart/eventAllow 参数同法取形
+type EventDragStartArg = Parameters<NonNullable<CalendarOptions['eventDragStart']>>[0]
+type EventAllowInfoArg = Parameters<NonNullable<CalendarOptions['eventAllow']>>[0]
+type DraggedEventArg = Parameters<NonNullable<CalendarOptions['eventAllow']>>[1]
+
+// 整组拖拽预览需要的最小 EventApi/CalendarApi 结构面（composable 不持日历引用，
+// 由 CalendarArea 闭包注入真实 api）
+interface EventApiLike { setDates: (start: string, end: string) => void }
+interface CalendarApiLike { getEventById: (id: string) => EventApiLike | null }
 
 import { storeToRefs } from 'pinia'
 import { ElMessage } from 'element-plus'
@@ -29,8 +38,13 @@ export function useScheduleCalendar() {
   const { setTodoVisible } = uiStore
   const { isDark } = storeToRefs(useThemeStore())
 
+  // 强制重渲染闸：整组拖拽取消/跨零点 revert 时，其余成员的 FC 内部数据已被
+  // 预览改写而 store 未动——bump 使 calendarEvents 产出新数组引用，FC diff 后复位
+  const calendarResetNonce = ref(0)
+
   // Convert our schedules to FullCalendar event format
   const calendarEvents = computed(() => {
+    void calendarResetNonce.value
     return activeSchedules.value.map(task => {
       const scheme = colorScheme(task.color)
       const textColor = isDark.value ? scheme.text : scheme.textLight
@@ -57,6 +71,7 @@ export function useScheduleCalendar() {
    */
   const applyEventMove = (info: EventDropArg | EventResizeArg) => {
     const event = info.event
+    if (dragGroupSnapshot) groupDropHandled = true
 
     // Format dates back to our custom format
     const startDate = new Date(event.start as Date)
@@ -68,6 +83,7 @@ export function useScheduleCalendar() {
 
     if (endTimeStr <= startTimeStr) {
       info.revert()
+      if (dragGroupSnapshot) calendarResetNonce.value++ // 预览中的其余成员复位
       ElMessage.warning('日程不能跨零点，请调整到更早的时段')
       return
     }
@@ -268,6 +284,55 @@ export function useScheduleCalendar() {
     replaceSelection(next)
   }
 
+  // ---- 多选整组拖拽预览（吸附对齐）----
+  // FC 拖拽是吸附式（整列/整格跳动），像素跟随会与被拖成员错位（快拖时成员
+  // 已跳列、跟随还悬在半路）。改由 eventAllow 在每次悬停落点变化时读出吸附后
+  // 的「天数差」，实时 setDates 其余成员——成员由 FC 网格引擎定位，与被拖成员
+  // 同步跳列，任何视图/滚动下都对齐；天数差 0（同列内挪时刻）不动组。
+  // eventAllow 同时服务 resize 校验，dragGroupSnapshot 仅在 eventDragStart 置位，
+  // 拉伸不会误入
+  let dragGroupSnapshot: Map<string, { date: string; startTime: string; endTime: string }> | null = null
+  let lastGroupDayDelta = 0 // 已应用到成员的偏移天数（去重，避免每个 mousemove 重渲染）
+  let groupDropHandled = false // eventDrop 已受理（成功或 revert），dragStop 不再复位
+
+  const handleEventDragStart = (info: EventDragStartArg) => {
+    const ids = selectedScheduleIds.value
+    if (!ids.has(info.event.id) || ids.size <= 1) return
+    groupDropHandled = false
+    lastGroupDayDelta = 0
+    dragGroupSnapshot = new Map()
+    for (const id of ids) {
+      if (id === info.event.id) continue
+      const s = activeSchedules.value.find(x => x.id === id)
+      if (s) dragGroupSnapshot.set(id, { date: s.date, startTime: s.startTime, endTime: s.endTime })
+    }
+  }
+
+  // CalendarArea 闭包注入 FC api；返回 true 放行本次悬停落点。
+  // 以工厂导出（携带 arg 类型），SFC 侧 options 内联箭头才有上下文类型
+  const eventAllowHandler = (getApi: () => CalendarApiLike | null) =>
+    (info: EventAllowInfoArg, draggedEvent: DraggedEventArg): boolean => {
+      if (!dragGroupSnapshot?.size || !draggedEvent?.start) return true
+      const dayDelta = dayjs(info.start).startOf('day').diff(dayjs(draggedEvent.start).startOf('day'), 'day')
+      if (dayDelta === lastGroupDayDelta) return true
+      lastGroupDayDelta = dayDelta
+      for (const [id, orig] of dragGroupSnapshot) {
+        const d = dayjs(orig.date).add(dayDelta, 'day').format('YYYY-MM-DD')
+        getApi()?.getEventById(id)?.setDates(`${d}T${orig.startTime}:00`, `${d}T${orig.endTime}:00`)
+      }
+      return true
+    }
+
+  // 拖拽结束（取消/无效落点未走 eventDrop 时）：其余成员的 FC 内部数据仍停在
+  // 预览位而 store 未动——bump nonce 强制按 store 复位。成功路径 eventDrop 已
+  // 落库重渲染，无需处理
+  const handleEventDragStop = () => {
+    if (dragGroupSnapshot && !groupDropHandled) calendarResetNonce.value++
+    dragGroupSnapshot = null
+    lastGroupDayDelta = 0
+    groupDropHandled = false
+  }
+
   // web 端：右击事件 → 编辑弹窗（FC 无原生 contextmenu 回调，事件挂载时绑原生监听）
   const handleEventDidMount = (info: EventMountArg) => {
     // 悬浮显示日程描述：FC 无内置 tooltip，原生 title 零依赖兜底（extendedProps 已带全量日程字段）
@@ -323,6 +388,9 @@ export function useScheduleCalendar() {
     handleEventReceive,
     handleSelect,
     handleEventClick,
-    handleEventDidMount
+    handleEventDidMount,
+    handleEventDragStart,
+    eventAllowHandler,
+    handleEventDragStop
   }
 }
