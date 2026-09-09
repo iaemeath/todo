@@ -123,6 +123,7 @@ const {
   newScheduleDialogVisible,
   scheduleDialogInitial,
   editingScheduleId,
+  selectedScheduleId,
   openNewScheduleDialog,
   confirmNewSchedule,
   handleDeleteSchedule,
@@ -159,7 +160,11 @@ const onMonthPick = (d: Date | null) => {
   nav.changeMonth(d)
 }
 
-const calendarOptions = computed(() => ({
+const calendarOptions = computed(() => {
+  // 选中 id 在求值时先提出（闭包内惰性读取不进依赖收集）——选中变化重算
+  // options，新 eventClassNames 引用驱动 FC 重渲染事件类名
+  const selectedId = selectedScheduleId.value
+  return {
   plugins: [timeGridPlugin, interactionPlugin, dayGridPlugin],
   initialView: isMobile.value ? 'timeGridDay' : 'timeGridWeek',
   events: calendarEvents.value,
@@ -191,6 +196,9 @@ const calendarOptions = computed(() => ({
   scrollTimeReset: false,
   eventDrop: applyEventMove, // 日程拖动落库（跨零点校验失败 revert）
   eventResize: applyEventMove, // 日程拉伸落库（跨零点校验失败 revert）
+  // 选中高亮（web 单击选中 → Ctrl+V 复制的操作对象）
+  eventClassNames: (arg: { event: { id: string } }) =>
+    arg.event.id === selectedId ? ['ev-selected'] : [],
   eventReceive: handleEventReceive, // When external event is dropped
   select: handleSelect, // 拖选时段新增日程（唯一新增入口；单击被时长闸门过滤，防误触）
   eventClick: handleEventClick, // 移动端：双击事件编辑（自判定）
@@ -209,7 +217,8 @@ const calendarOptions = computed(() => ({
   },
 
   locale: 'zh-cn'
-}))
+  }
+})
 
 // 设备切换时同步默认视图（initialView 仅首次渲染生效，resize 切换设备需用 API changeView）
 watch(isMobile, (m) => {
@@ -347,6 +356,31 @@ html.platform-mobile .calendar-wrapper:not(.show-col-header) .fc .fc-col-header 
   border-radius: var(--radius-md) !important;
   box-shadow: var(--shadow-md);
   transition: transform var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+}
+
+/* 选中日程高亮（web 单击选中；Ctrl+V 复制的操作对象） */
+.fc .fc-event.ev-selected {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+  box-shadow: var(--shadow-lg);
+}
+
+/* 撤销 toast 内的行动按钮（ElMessage VNode 挂 body，样式须全局——
+   TodoSidebar 的同名 scoped 定义作用不到 ElMessage 根外的 DOM） */
+.undo-toast {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.undo-toast__btn {
+  background: transparent;
+  border: none;
+  color: var(--el-color-primary);
+  font-size: var(--font-base);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  padding: var(--space-xs);
 }
 
 .fc-timegrid-event:hover {

@@ -4,7 +4,8 @@
  * 拖选新增（单击闸门过滤）、移动端双击 / web 右键编辑入口、新增/编辑弹窗状态
  * （表单渲染与校验在 ScheduleDialog 组件，本组合式只持状态与落库）。
  */
-import { ref, computed } from 'vue'
+import { ref, computed, h, onMounted, onBeforeUnmount } from 'vue'
+import dayjs from 'dayjs'
 import type { CalendarOptions, DateSelectArg, EventClickArg, EventDropArg, EventMountArg } from '@fullcalendar/core'
 
 // FC v6 core 未直接导出 eventReceive 回调的 Arg 类型，从 CalendarOptions 推导
@@ -132,23 +133,82 @@ export function useScheduleCalendar() {
     newScheduleDialogVisible.value = true
   }
 
-  // 移动端：轻触事件，两次快速轻触同一事件（<350ms）视为双击 → 编辑。
-  // FC 无原生双击回调，基于 eventClick 自判定；滚动是滑动不会触发 eventClick，无双击误判。
-  let lastEventTap = { id: '', time: 0 }
-  const handleEventClick = (info: EventClickArg) => {
-    // web 端：单击即编辑（显式入口，右击保留为等价快捷路径）
-    if (!isMobile.value) {
-      openEditDialog(info.event.id)
+  // ---- 选中态与键盘复制（web 端；移动端无键盘不参与）----
+  const selectedScheduleId = ref<string | null>(null)
+
+  // Ctrl+V：选中日程复制到后一天（时段、颜色、提醒、任务关联全保留）。
+  // 选中转移到新副本——连续 Ctrl+V 自然递增 +1/+2/+3 天，不会产生同日重复
+  const copySelectedToNextDay = () => {
+    const src = activeSchedules.value.find(s => s.id === selectedScheduleId.value)
+    if (!src) {
+      selectedScheduleId.value = null
       return
     }
+    const srcId = src.id
+    const nextDate = dayjs(src.date).add(1, 'day').format('YYYY-MM-DD')
+    const created = addSchedule({
+      taskId: src.taskId,
+      title: src.title,
+      description: src.description,
+      date: nextDate,
+      startTime: src.startTime,
+      endTime: src.endTime,
+      color: src.color,
+      remindMinutes: src.remindMinutes
+    })
+    selectedScheduleId.value = created.id
+    ElMessage({
+      message: h('span', { class: 'undo-toast' }, [
+        `已复制「${src.title.slice(0, 12)}${src.title.length > 12 ? '…' : ''}」到 ${dayjs(nextDate).format('M月D日')}`,
+        h('button', {
+          class: 'undo-toast__btn',
+          onClick: () => {
+            deleteSchedule(created.id)
+            selectedScheduleId.value = srcId
+            ElMessage.closeAll()
+          }
+        }, '撤销')
+      ]),
+      duration: 5000,
+      showClose: true
+    })
+  }
+
+  // 键盘：Esc 取消选中；Ctrl/Cmd+V 复制到后一天。编辑弹窗打开或焦点在
+  // 表单控件时不接管（用户可能在输入框里正常粘贴文字）
+  const isTypingTarget = (el: EventTarget | null) => {
+    if (!(el instanceof HTMLElement)) return false
+    return el.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""]') !== null
+  }
+  const onKeydown = (e: KeyboardEvent) => {
+    if (newScheduleDialogVisible.value || !selectedScheduleId.value) return
+    if (isTypingTarget(e.target)) return
+    if (e.key === 'Escape') {
+      selectedScheduleId.value = null
+      return
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
+      e.preventDefault()
+      copySelectedToNextDay()
+    }
+  }
+  onMounted(() => document.addEventListener('keydown', onKeydown))
+  onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
+
+  // 单击/双击（双端统一 350ms 同一事件判定）：
+  // web 单击=选中高亮（Ctrl+V 复制的操作对象），350ms 内再点同一事件=编辑；
+  // 移动端单击静默（无键盘、无选中消费者），双击编辑维持原语义
+  let lastEventTap = { id: '', time: 0 }
+  const handleEventClick = (info: EventClickArg) => {
     const id = info.event.id
     const now = Date.now()
     if (lastEventTap.id === id && now - lastEventTap.time < 350) {
       openEditDialog(id)
       lastEventTap = { id: '', time: 0 }
-    } else {
-      lastEventTap = { id, time: now }
+      return
     }
+    lastEventTap = { id, time: now }
+    if (!isMobile.value) selectedScheduleId.value = id
   }
 
   // web 端：右击事件 → 编辑弹窗（FC 无原生 contextmenu 回调，事件挂载时绑原生监听）
@@ -199,6 +259,7 @@ export function useScheduleCalendar() {
     openNewScheduleDialog,
     scheduleDialogInitial,
     editingScheduleId,
+    selectedScheduleId,
     confirmNewSchedule,
     handleDeleteSchedule,
     applyEventMove,
