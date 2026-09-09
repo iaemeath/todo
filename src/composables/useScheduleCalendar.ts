@@ -136,16 +136,50 @@ export function useScheduleCalendar() {
   // ---- 选中态与键盘复制（web 端；移动端无键盘不参与）----
   const selectedScheduleId = ref<string | null>(null)
 
-  // Ctrl+V：选中日程复制到后一天（时段、颜色、提醒、任务关联全保留）。
+  // ---- 悬浮日识别（Ctrl+V 落点跟随；web 端）----
+  // timeGrid 正文空白区的顶层元素是时段格（fc-timegrid-slot-lane），不带
+  // data-date 且祖先链上也没有（带它的背景列被表格层盖住）——closest 只能
+  // 命中事件块/月视图日格；空白区用列头 TH（与正文列严格对齐）做 clientX
+  // 几何映射兜底。悬浮列高亮同理只能 JS 维护类（:hover 落不到被盖的背景列）
+  const hoverDate = ref<string | null>(null)
+  const resolveHoverDay = (e: MouseEvent): string | null => {
+    const hit = (e.target as HTMLElement).closest('[data-date]')?.getAttribute('data-date')
+    if (hit) return hit
+    const x = e.clientX
+    for (const h of document.querySelectorAll<HTMLElement>('.fc .fc-col-header-cell[data-date]')) {
+      const r = h.getBoundingClientRect()
+      if (x >= r.left && x < r.right) return h.dataset.date ?? null
+    }
+    return null
+  }
+  const onCalendarMouseover = (e: MouseEvent) => {
+    const day = resolveHoverDay(e)
+    if (day === hoverDate.value) return
+    hoverDate.value = day
+    document.querySelectorAll('.fc [data-date].hover-col').forEach(el => el.classList.remove('hover-col'))
+    if (day) {
+      document.querySelectorAll(`.fc [data-date="${day}"]`).forEach(el => el.classList.add('hover-col'))
+    }
+  }
+  const onCalendarMouseleave = () => {
+    hoverDate.value = null
+    document.querySelectorAll('.fc [data-date].hover-col').forEach(el => el.classList.remove('hover-col'))
+  }
+
+  // Ctrl+V：选中日程复制（时段、颜色、提醒、任务关联全保留）。
+  // 落点：悬浮日优先（指哪粘哪；悬浮在源同日则按后一天——选中日程时鼠标
+  // 往往就在源列上，同日退回避免误产双份）；无悬浮退回后一天。
   // 选中转移到新副本——连续 Ctrl+V 自然递增 +1/+2/+3 天，不会产生同日重复
-  const copySelectedToNextDay = () => {
+  const copySelectedSchedule = () => {
     const src = activeSchedules.value.find(s => s.id === selectedScheduleId.value)
     if (!src) {
       selectedScheduleId.value = null
       return
     }
     const srcId = src.id
-    const nextDate = dayjs(src.date).add(1, 'day').format('YYYY-MM-DD')
+    const nextDate = hoverDate.value && hoverDate.value !== src.date
+      ? hoverDate.value
+      : dayjs(src.date).add(1, 'day').format('YYYY-MM-DD')
     const created = addSchedule({
       taskId: src.taskId,
       title: src.title,
@@ -189,7 +223,7 @@ export function useScheduleCalendar() {
     }
     if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
       e.preventDefault()
-      copySelectedToNextDay()
+      copySelectedSchedule()
     }
   }
   onMounted(() => document.addEventListener('keydown', onKeydown))
@@ -260,6 +294,8 @@ export function useScheduleCalendar() {
     scheduleDialogInitial,
     editingScheduleId,
     selectedScheduleId,
+    onCalendarMouseover,
+    onCalendarMouseleave,
     confirmNewSchedule,
     handleDeleteSchedule,
     applyEventMove,
