@@ -1,9 +1,7 @@
 <template>
   <div
     class="calendar-wrapper glass-panel"
-    :class="{ 'show-col-header': showColHeader, 'has-selected': !!selectedScheduleId }"
-    @mouseover="onCalendarMouseover"
-    @mouseleave="onCalendarMouseleave"
+    :class="{ 'show-col-header': showColHeader }"
     :style="{
       '--slot-height': settings.slotHeight + 'px',
       '--major-line-width': settings.majorLineWidth + 'px',
@@ -126,8 +124,6 @@ const {
   scheduleDialogInitial,
   editingScheduleId,
   selectedScheduleId,
-  onCalendarMouseover,
-  onCalendarMouseleave,
   openNewScheduleDialog,
   confirmNewSchedule,
   handleDeleteSchedule,
@@ -367,13 +363,6 @@ html.platform-mobile .calendar-wrapper:not(.show-col-header) .fc .fc-col-header 
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
   box-shadow: var(--shadow-lg);
-}
-
-/* 悬浮日列高亮：仅在选中态（粘贴模式）下生效——提示 Ctrl+V 落点日。
-   hover-col 类由 mouseover 委托维护（正文空白区 :hover 落不到被盖的
-   背景列）；比今日列的 2% 略深以便区分，!important 对齐 FC 战争区惯例 */
-.calendar-wrapper.has-selected .fc [data-date].hover-col {
-  background-color: color-mix(in srgb, var(--color-primary) 4%, transparent) !important;
 }
 
 /* 撤销 toast 内的行动按钮（ElMessage VNode 挂 body，样式须全局——
