@@ -12,8 +12,6 @@ import type { CalendarOptions, DateSelectArg, EventClickArg, EventDropArg, Event
 type EventReceiveArg = Parameters<NonNullable<CalendarOptions['eventReceive']>>[0]
 // v6 的 eventResize 参数类型（EventResizeDoneArg）未从 core 导出，同法取形
 type EventResizeArg = Parameters<NonNullable<CalendarOptions['eventResize']>>[0]
-// eventDragStart 参数类型同法取形（core 未导出）
-type EventDragStartArg = Parameters<NonNullable<CalendarOptions['eventDragStart']>>[0]
 
 import { storeToRefs } from 'pinia'
 import { ElMessage } from 'element-plus'
@@ -243,11 +241,7 @@ export function useScheduleCalendar() {
     }
   }
   onMounted(() => document.addEventListener('keydown', onKeydown))
-  onBeforeUnmount(() => {
-    document.removeEventListener('keydown', onKeydown)
-    clearDragGhost()
-    eventElMap.clear()
-  })
+  onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 
   // 单击/双击（双端统一 350ms 同一事件判定）：
   // web 单击=选中（Ctrl/Cmd+单击追加或移除成员、普通单击重置单选），
@@ -274,46 +268,8 @@ export function useScheduleCalendar() {
     replaceSelection(next)
   }
 
-  // ---- 多选整组拖拽联动（纯视觉层）：拖动选中集合任一成员时，其余成员
-  // DOM 跟随鼠标位移——整组像一块整体被拖，落库平移逻辑在 applyEventMove ----
-  // id → 事件 DOM 映射（didMount 登记，FC 重渲染重新挂载自动覆盖）
-  const eventElMap = new Map<string, HTMLElement>()
-  let dragGhost: { els: HTMLElement[]; onMove: (e: MouseEvent) => void } | null = null
-
-  const handleEventDragStart = (info: EventDragStartArg) => {
-    const ids = selectedScheduleIds.value
-    if (!ids.has(info.event.id) || ids.size <= 1) return
-    const els = [...ids]
-      .filter(id => id !== info.event.id)
-      .map(id => eventElMap.get(id))
-      .filter((el): el is HTMLElement => !!el)
-    if (els.length === 0) return
-    const startX = info.jsEvent.clientX
-    const startY = info.jsEvent.clientY
-    const onMove = (e: MouseEvent) => {
-      const dx = e.clientX - startX
-      const dy = e.clientY - startY
-      for (const el of els) el.style.transform = `translate(${dx}px, ${dy}px)`
-    }
-    // 关闭跟随成员的 hover 过渡（transition 会造成拖拽拖尾/回弹错觉）
-    for (const el of els) el.style.transition = 'none'
-    document.addEventListener('mousemove', onMove)
-    dragGhost = { els, onMove }
-  }
-
-  const clearDragGhost = () => {
-    if (!dragGhost) return
-    document.removeEventListener('mousemove', dragGhost.onMove)
-    for (const el of dragGhost.els) {
-      el.style.transform = ''
-      el.style.transition = ''
-    }
-    dragGhost = null
-  }
-
   // web 端：右击事件 → 编辑弹窗（FC 无原生 contextmenu 回调，事件挂载时绑原生监听）
   const handleEventDidMount = (info: EventMountArg) => {
-    eventElMap.set(info.event.id, info.el) // 整组拖拽联动用（重挂载自动覆盖）
     // 悬浮显示日程描述：FC 无内置 tooltip，原生 title 零依赖兜底（extendedProps 已带全量日程字段）
     const desc = info.event.extendedProps.description
     if (desc) info.el.title = String(desc)
@@ -367,8 +323,6 @@ export function useScheduleCalendar() {
     handleEventReceive,
     handleSelect,
     handleEventClick,
-    handleEventDidMount,
-    handleEventDragStart,
-    clearDragGhost
+    handleEventDidMount
   }
 }
