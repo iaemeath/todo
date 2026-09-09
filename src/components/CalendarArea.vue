@@ -131,7 +131,9 @@ const {
   handleEventReceive,
   handleSelect,
   handleEventClick,
-  handleEventDidMount
+  handleEventDidMount,
+  handleEventDragStart,
+  clearDragGhost
 } = useScheduleCalendar()
 
 // ---- 视图导航（中央时间选择器 ↔ FC 双向同步）----
@@ -194,8 +196,10 @@ const calendarOptions = computed(() => {
   // 初始定位到当前时段（now-2h）；翻页不重置滚动（保持用户浏览位置）
   scrollTime: `${String(initialScrollHour).padStart(2, '0')}:00:00`,
   scrollTimeReset: false,
-  eventDrop: applyEventMove, // 日程拖动落库（跨零点校验失败 revert）
+  eventDrop: applyEventMove, // 日程拖动落库（跨零点校验失败 revert；多选时整组按天数差平移）
   eventResize: applyEventMove, // 日程拉伸落库（跨零点校验失败 revert）
+  eventDragStart: handleEventDragStart, // 多选整组拖拽：其余成员 DOM 跟随（纯视觉）
+  eventDragStop: clearDragGhost, // 拖拽结束（含取消）：清除跟随位移
   // 选中高亮（web 单击/Ctrl+单击选中集合 → 拖拽整组平移与 Ctrl+V 的操作对象）
   eventClassNames: (arg: { event: { id: string } }) =>
     selectedIds.has(arg.event.id) ? ['ev-selected'] : [],
