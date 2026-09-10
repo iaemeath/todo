@@ -3,7 +3,7 @@
   "description": "拾光 — AI 驱动的日历待办应用，捡拾时光",
   "author": "iaemeath <iaemeath@163.com>",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "main": "electron/main.bundle.cjs",
   "scripts": {
